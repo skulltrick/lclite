@@ -1,0 +1,28 @@
+name: "Mod request / idea"
+description: Propose a new LCLite mod (or a panel row for an existing one)
+title: "[mod] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What should it do?
+      description: One or two sentences. OSRS/RuneLite references help.
+      placeholder: OSRS-style click-to-walk minimap...
+    validations:
+      required: true
+  - type: textarea
+    id: hook
+    attributes:
+      label: Where would it hook?
+      description: >-
+        Optional — see the hook-site table in PLUGINS.md. e.g. "draw over
+        viewport -> after world.renderAll". Type A (localStorage-only) vs
+        Type B (engine patch)?
+  - type: textarea
+    id: revsafety
+    attributes:
+      label: Rev-safety notes
+      description: >-
+        Anything cache-dependent (icons, interface ids)? What should degrade
+        when a pack doesn't carry it?

@@ -1,0 +1,77 @@
+name: drift-check
+
+# Weekly canary + on every PR: clone the pinned upstream revs and dry-run the
+# installer. "anchor not found" here == Lost City updated code under a hunk.
+
+on:
+  schedule:
+    - cron: '30 6 * * 1'      # Monday ~06:30 UTC
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'mods/**'
+      - 'install.mjs'
+      - 'lib.mjs'
+      - 'regen.mjs'
+
+jobs:
+  apply-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Syntax check scripts
+        run: |
+          node --check install.mjs
+          node --check lib.mjs
+          node --check regen.mjs
+          node --check mods/control-panel/files/engine/public/lclite/panel.js
+          for j in mods/*/patches/*.json; do node -e "JSON.parse(require('fs').readFileSync('$j','utf8'))" || exit 1; done
+
+      - name: Read pinned base revs
+        id: revs
+        run: |
+          # every patch JSON carries generated_from.{repo,head}; require they agree
+          node -e '
+            const fs = require("fs"), path = require("path");
+            const heads = {};
+            for (const mod of fs.readdirSync("mods")) {
+              const pd = path.join("mods", mod, "patches");
+              if (!fs.existsSync(pd)) continue;
+              for (const f of fs.readdirSync(pd).filter(x => x.endsWith(".json"))) {
+                const j = JSON.parse(fs.readFileSync(path.join(pd, f), "utf8"));
+                if (!j.generated_from?.repo || !j.generated_from?.head) {
+                  console.error("missing generated_from:", path.join(pd, f)); process.exit(1);
+                }
+                const k = j.generated_from.repo;
+                if (heads[k] && heads[k] !== j.generated_from.head) {
+                  console.error(`mixed base revs for ${k}: ${heads[k]} vs ${j.generated_from.head}`); process.exit(1);
+                }
+                heads[k] = j.generated_from.head;
+              }
+            }
+            for (const [k, v] of Object.entries(heads)) console.log(`${k}=${v}`);
+          ' | tee $GITHUB_OUTPUT
+
+      - name: Clone upstreams at base revs
+        run: |
+          git clone --filter=blob:none https://github.com/LostCityRS/Client-TS webclient
+          git clone --filter=blob:none https://github.com/LostCityRS/Engine-TS engine
+          git -C webclient checkout ${{ steps.revs.outputs.webclient }}
+          git -C engine checkout ${{ steps.revs.outputs.engine }}
+
+      - name: Dry-run installer (anchor drift test)
+        run: node install.mjs apply --check
+        # exit 2 == some hunk's anchor drifted upstream; the log prints which
+
+      - name: Apply for real + byte-diff report
+        run: |
+          node install.mjs apply --no-build
+          git -C webclient diff --stat
+          git -C engine diff --stat
+          # the mod files must end up modified — a silent zero-diff means the
+          # installer stopped working without exiting nonzero
+          [ -n "$(git -C webclient status --porcelain)" ] || { echo "nothing applied?!"; exit 1; }

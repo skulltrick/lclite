@@ -53,13 +53,37 @@ Adding a new mod = new folder under `mods/` — the installer discovers it
 automatically. The ideas register and the how-to live in
 [PLUGINS.md](PLUGINS.md).
 
-## Quick start (rev-agnostic; generated against 289)
+## Quick start
+
+**Windows:** double-click **`install.bat`** — it lists the available mods with
+checkboxes (`[X]` installed / `[ ]` off). Toggle with the number keys, Enter
+installs your selection and builds. Unchecked mods are stripped back to
+pristine upstream code, so rerunning the picker is also how you change your
+mod set later.
+
+**Any OS (terminal):**
 
 ```
-node lclite/install.mjs                 # apply all hunks to webclient/ + engine/, then build+deploy
-node lclite/install.mjs apply --check   # dry-run report only
-node lclite/install.mjs build           # bun bundle + copy client.js into engine/public/client/
+node install.mjs                 # picker (double-click install.bat does this)
+node install.mjs apply           # apply ALL mods, no build (piped/CI default)
+node install.mjs apply --check   # dry-run report only
+node install.mjs build           # bun bundle + copy client.js into engine/public/client/
+node install.mjs list            # machine-readable: name|installed|label|desc
+node install.mjs uninstall       # strip everything back toward pristine upstreams
 ```
+
+This repo is an *overlay*, not a fork: clone it **into** a Lost City checkout
+(run Lost City's own `start.bat` once so `webclient/` and `engine/` exist, then
+`git clone <this repo> lclite/` next to them). Everything above runs from
+`lclite/`, auto-detects the install one level up (`LCLITE_ROOT=<path>` to
+point elsewhere), needs Node 18+, and [bun](https://bun.sh) only to build the
+bundle (the installer prints how to get it and self-serves `bun install` for
+missing webclient deps). After it finishes: start the server and press **F1**
+in the webclient.
+
+Mods you didn't select don't leave dead controls behind — the installer writes
+`engine/public/lclite/installed.json` and the panel hides rows (and whole
+groups) for mods that aren't installed.
 
 ## Upgrading to a newer Lost City rev
 

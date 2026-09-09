@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 // lclite install — apply the mod overlay onto clean upstream repos, then build + deploy.
+// Run from this folder (lclite/ inside a Lost City checkout):
 //
-//   node lclite/install.mjs                     # apply ALL mods, then build+deploy
-//   node lclite/install.mjs --all               # same, explicit
-//   node lclite/install.mjs --mods camera,xp-drops   # desired set: apply these, strip the others
-//   node lclite/install.mjs apply --check       # dry-run report (no writes)
-//   node lclite/install.mjs build               # bun bundle + deploy client.js only
-//   node lclite/install.mjs uninstall [--check] # strip every mod back toward pristine
-//   node lclite/install.mjs pick                # interactive mod chooser (what install.bat drives)
-//   node lclite/install.mjs list                # machine-readable: name|installed|label|desc
+//   node install.mjs                     # in a terminal: picker, then apply + build;
+//                                        # piped/CI (no TTY): apply ALL mods + build
+//   node install.mjs apply               # apply ALL mods, no build (script-safe)
+//   node install.mjs --mods camera,xp-drops   # desired set: apply these, strip the others
+//   node install.mjs apply --check       # dry-run report (no writes)
+//   node install.mjs build               # bun bundle + deploy client.js only
+//   node install.mjs uninstall           # strip every mod back toward pristine
+//   node install.mjs pick                # picker only (what install.bat drives)
+//   node install.mjs list                # machine-readable: name|installed|label|desc
 //
 // apply/uninstall are idempotent and always converge the tree to the DESIRED set:
 // selected mods get their hunks applied, deselected mods get their hunks stripped
@@ -341,6 +343,10 @@ async function main() {
 
     const mods = findMods(__dirname);
     if (!mods.length) { console.error(`no mods found under ${path.join(__dirname, 'mods')}`); process.exit(1); }
+
+    // bare `node install.mjs` at a real terminal = the friendly picker;
+    // with piped stdin (CI/scripts) it keeps the old apply-all + build meaning
+    if (!args.length && process.stdin.isTTY) args.push('pick');
 
     if (args.includes('list')) {
         for (const m of mods) {
