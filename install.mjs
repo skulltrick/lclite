@@ -1,18 +1,30 @@
 #!/usr/bin/env node
 // lclite install — apply the mod overlay onto clean upstream repos, then build + deploy.
 //
-//   node lclite/install.mjs apply          # patch upstreams in place (idempotent)
-//   node lclite/install.mjs apply --check  # dry-run: report what would apply/fail
-//   node lclite/install.mjs build          # bun bundle webclient -> engine/public/client/client.js
-//   node lclite/install.mjs                # apply then build
+//   node lclite/install.mjs                     # apply ALL mods, then build+deploy
+//   node lclite/install.mjs --all               # same, explicit
+//   node lclite/install.mjs --mods camera,xp-drops   # desired set: apply these, strip the others
+//   node lclite/install.mjs apply --check       # dry-run report (no writes)
+//   node lclite/install.mjs build               # bun bundle + deploy client.js only
+//   node lclite/install.mjs uninstall [--check] # strip every mod back toward pristine
+//   node lclite/install.mjs pick                # interactive mod chooser (what install.bat drives)
+//   node lclite/install.mjs list                # machine-readable: name|installed|label|desc
+//
+// apply/uninstall are idempotent and always converge the tree to the DESIRED set:
+// selected mods get their hunks applied, deselected mods get their hunks stripped
+// (find/replace reversed) and their copied files removed.
 import fs from 'node:fs';
 import path from 'node:path';
+import readline from 'node:readline';
 import { execSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { LIB_DIR, meta, findMods, countOccurrences, toLF, restoreEOL, stripPatchFile } from './lib.mjs';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
-const MODS_DIR = path.join(__dirname, 'mods');
+const __dirname = LIB_DIR;
+// The Lost City root that holds webclient/ + engine/. Normally one level up
+// from lclite/; LCLITE_ROOT points the installer at a different install
+// (used by the t/ acceptance harness and by anyone keeping the overlay
+// separate from the game folder).
+const ROOT = path.resolve(process.env.LCLITE_ROOT || path.join(__dirname, '..'));
 
 const BUN = process.env.LCLITE_BUN || findBun();
 function findBun() {
@@ -25,34 +37,7 @@ function findBun() {
     return 'bun';
 }
 
-function toLF(s) { return s.replace(/\r\n/g, '\n'); }
-function restoreEOL(s, hadCRLF) { return hadCRLF ? s.replace(/\n/g, '\r\n') : s; }
-function countOccurrences(haystack, needle) {
-    if (!needle) return 0;
-    let n = 0, i = 0;
-    while ((i = haystack.indexOf(needle, i)) !== -1) { n++; i += needle.length; }
-    return n;
-}
-
-function loadMods() {
-    const mods = [];
-    if (!fs.existsSync(MODS_DIR)) return mods;
-    for (const name of fs.readdirSync(MODS_DIR)) {
-        const dir = path.join(MODS_DIR, name);
-        if (!fs.statSync(dir).isDirectory()) continue;
-        const patches = [];
-        const pdir = path.join(dir, 'patches');
-        if (fs.existsSync(pdir)) {
-            for (const f of fs.readdirSync(pdir).filter(f => f.endsWith('.json'))) {
-                patches.push(JSON.parse(fs.readFileSync(path.join(pdir, f), 'utf-8')));
-            }
-        }
-        mods.push({ name, dir, patches });
-    }
-    return mods;
-}
-
-// returns {applied, already, failed:[{note, find0, reason}]}
+// ---- apply (verbatim semantics of the original tool) ------------------------
 function applyPatchFile(patch, checkOnly) {
     const abs = path.join(ROOT, patch.file);
     const res = { file: patch.file, applied: 0, already: 0, failed: [] };
@@ -131,14 +116,95 @@ function copyModFiles(mod) {
     return out;
 }
 
-function run(cmd, opts = {}) {
-    console.log(`$ ${cmd}`);
-    return execSync(cmd, { stdio: 'inherit', cwd: ROOT, ...opts });
+// Remove a deselected mod's copied files — only when the tree copy still
+// matches the overlay byte-for-byte (never clobber someone's hand edits).
+function removeModFiles(mod) {
+    const out = [];
+    const fdir = path.join(mod.dir, 'files');
+    if (!fs.existsSync(fdir)) return out;
+    const walk = d => {
+        for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+            const p = path.join(d, e.name);
+            if (e.isDirectory()) walk(p);
+            else {
+                const rel = path.relative(fdir, p).replace(/\\/g, '/');
+                const dst = path.join(ROOT, rel);
+                if (!fs.existsSync(dst)) continue;
+                const same = fs.readFileSync(dst).equals(fs.readFileSync(p));
+                if (same) { fs.rmSync(dst); out.push(rel); }
+                else console.log(`  ! kept ${rel} (edited in-tree, not identical to overlay)`);
+            }
+        }
+    };
+    walk(fdir);
+    return out;
+}
+
+// ---- installed-state detection ----------------------------------------------
+// A mod counts as installed when every one of its hunks is verbatim present
+// (the same test apply uses for "already"). Anything else => strip then apply.
+function modInstalled(mod) {
+    let hunks = 0;
+    for (const patch of mod.patches) {
+        const abs = path.join(ROOT, patch.file);
+        if (!fs.existsSync(abs)) return false;
+        const text = toLF(fs.readFileSync(abs, 'utf-8'));
+        for (const h of patch.hunks) {
+            hunks++;
+            if (countOccurrences(text, h.replace.join('\n')) < 1) return false;
+        }
+    }
+    if (!hunks) return false;
+    const fdir = path.join(mod.dir, 'files');
+    if (fs.existsSync(fdir)) {
+        let any = false;
+        const walk = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else { any = true; if (!fs.existsSync(path.join(ROOT, path.relative(fdir, p)))) throw new Error('gone'); } } };
+        try { walk(fdir); } catch { return false; }
+        if (!any) return false;
+    }
+    return true;
+}
+
+function buildManifest(mods) {
+    const installed = mods.filter(m => { try { return modInstalled(m); } catch { return false; } }).map(m => m.name);
+    const dst = path.join(ROOT, 'engine/public/lclite/installed.json');
+    if (fs.existsSync(path.join(ROOT, 'engine'))) {
+        if (installed.length) {
+            fs.mkdirSync(path.dirname(dst), { recursive: true });
+            fs.writeFileSync(dst, JSON.stringify({ mods: installed, page: true }, null, 1) + '\n');
+        } else {
+            try { fs.rmSync(dst); } catch { }     // full uninstall: no stale manifest
+        }
+    }
+    return installed;
+}
+
+// ---- preflight ---------------------------------------------------------------
+function preflight() {
+    const problems = [];
+    for (const repo of ['webclient', 'engine']) {
+        if (!fs.existsSync(path.join(ROOT, repo))) problems.push(`${repo}/ not found — clone Lost City first (run its start.bat), then place lclite/ in that folder next to the repos.`);
+    }
+    return problems;
+}
+
+function ensureBun() {
+    try { execSync(`"${BUN}" --version`, { stdio: 'ignore' }); return true; } catch { }
+    console.log('\nbun was not found — needed to build the webclient bundle.');
+    console.log('  Windows/macOS/Linux:  powershell -c "irm bun.sh/install.ps1|iex"   (or: curl -fsSL https://bun.sh/install | bash)');
+    console.log('  ...then reopen the terminal, or set LCLITE_BUN=<path to bun(.exe)> and rerun.');
+    return false;
 }
 
 function build() {
     const wc = path.join(ROOT, 'webclient');
     if (!fs.existsSync(wc)) { console.error('no webclient dir'); process.exit(1); }
+    if (!ensureBun()) { console.log('skipping build — run "node lclite/install.mjs build" once bun is installed.'); return false; }
+    if (!fs.existsSync(path.join(wc, 'node_modules'))) {
+        console.log('webclient/node_modules missing — installing build deps (bun install)...');
+        try { execSync(`"${BUN}" install`, { cwd: wc, stdio: 'inherit' }); }
+        catch { console.log('!! bun install failed — rerun "node lclite/install.mjs build" manually (network? bun version?).'); return false; }
+    }
     const out = execSync(`"${BUN}" run bundle.ts`, { cwd: wc, encoding: 'utf-8', stdio: 'pipe' }).toString();
     if (out.trim()) console.log(out);
     const src = path.join(wc, 'out/client.js');
@@ -148,36 +214,183 @@ function build() {
         try { fs.copyFileSync(src + ext, dst + ext); } catch {}
     }
     console.log('built + deployed client.js');
+    return true;
 }
 
-function main() {
-    const args = process.argv.slice(2);
-    const doApply = args.length === 0 || args.includes('apply');
-    const doBuild = args.length === 0 || args.includes('build');
-    const check = args.includes('--check');
-
-    if (doApply) {
-        const mods = loadMods();
-        let fails = 0;
-        for (const mod of mods) {
+// ---- the converge engine: apply desired set, strip the rest ------------------
+function converge(mods, want, check) {
+    let fails = 0, changed = false;
+    for (const mod of mods) {
+        const m = meta(mod.name);
+        if (want[mod.name]) {
             let tA = 0, tL = 0, tF = 0;
             for (const patch of mod.patches) {
                 const r = applyPatchFile(patch, check);
                 tA += r.applied; tL += r.already; tF += r.failed.length;
+                changed ||= r.applied > 0;
                 for (const f of r.failed) {
                     fails++;
                     console.log(`  ✗ [${mod.name}] ${patch.file}: ${f.reason}\n      anchor: ${JSON.stringify((f.find0 || '').slice(0, 80))}  (${f.note})`);
                 }
             }
             const copied = check ? [] : copyModFiles(mod);
-            console.log(`${check ? 'would apply' : 'applied'} [${mod.name}]  +${tA} ~${tL} ✗${tF}${copied.length ? `  files:${copied.length}` : ''}`);
-        }
-        if (fails) {
-            console.log(`\n${fails} hunk(s) need reseating for this rev. Anchors carry 3 lines of context each side — adjust the JSON in lclite/mods/*/patches, then rerun.`);
-            process.exitCode = 2;
+            if (!check && copied.length) changed = true;
+            console.log(`${check ? 'would apply' : 'applied'} [${mod.name}]  +${tA} ~${tL} ✗${tF}${copied.length ? `  files:${copied.length}` : ''}${m.required ? '  (required)' : ''}`);
+        } else {
+            let tR = 0, tC = 0, tS = 0;
+            for (const patch of mod.patches) {
+                const r = stripPatchFile(path.join(ROOT, patch.file), patch, check);
+                tR += r.removed; tC += r.clean; tS += r.stuck.length;
+                changed ||= r.removed > 0;
+                for (const s of r.stuck) {
+                    fails++;
+                    console.log(`  ✗ [${mod.name}] ${patch.file}: ${s.reason} — hand-fix by restoring the original lines (${s.note})`);
+                }
+            }
+            if (!check) { const removed = removeModFiles(mod); if (removed.length) changed = true; }
+            console.log(`${check ? 'would strip' : 'stripped'} [${mod.name}]  -${tR} ~${tC} ✗${tS}`);
         }
     }
-    if (doBuild) build();
+    return { fails, changed };
+}
+
+// ---- interactive picker -------------------------------------------------------
+// Input is collected into a queue ourselves: rl.question() drops lines that
+// arrive between prompts (a piped "toggle + Enter" burst loses the Enter and
+// hangs), which a real double-clicked console can also do with fast typing.
+async function pick(mods) {
+    const sel = {};
+    for (const m of mods) sel[m.name] = meta(m.name).required ? true : modInstalled(m);
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const queue = []; let waiter = null, eof = false;
+    rl.on('line', l => { if (waiter) { const w = waiter; waiter = null; w(l.trim()); } else queue.push(l.trim()); });
+    rl.on('close', () => { eof = true; if (waiter) { const w = waiter; waiter = null; w(null); } });
+    const ask = q => {
+        process.stdout.write(q);
+        if (queue.length) return Promise.resolve(queue.shift());
+        if (eof) return Promise.resolve(null);
+        return new Promise(res => { waiter = res; });
+    };
+    const render = () => {
+        console.log('');
+        console.log('  LCLite — pick mods (Lost City webclient overlay)');
+        console.log('');
+        mods.forEach((m, i) => {
+            const info = meta(m.name);
+            let inst = false; try { inst = modInstalled(m); } catch { }
+            const box = info.required ? '[*]' : sel[m.name] ? '[X]' : '[ ]';
+            const state = info.required ? 'required' : (inst ? 'installed' : (sel[m.name] ? 'will install' : 'off'));
+            console.log(`   ${i + 1} ${box} ${info.label.padEnd(28)} ${info.desc}  (${state})`);
+        });
+        console.log('');
+        console.log('   <n> = toggle mod n     a = toggle all (except required)     r = reset to defaults');
+        console.log('   Enter = install selection        q = quit without installing');
+        console.log('');
+    };
+    render();
+    for (;;) {
+        const ans = await ask('  > ');
+        if (ans === null) { rl.close(); return null; }   // EOF / closed: quit, change nothing
+        const a = ans.toLowerCase();
+        if (a === 'q') { rl.close(); return null; }
+        if (a === '') break;
+        if (a === 'a') { const anyOn = mods.some(m => !meta(m.name).required && sel[m.name]); for (const m of mods) if (!meta(m.name).required) sel[m.name] = !anyOn; }
+        else if (a === 'r') { for (const m of mods) sel[m.name] = true; }
+        else {
+            const n = parseInt(a, 10);
+            const m = mods[n - 1];
+            if (m) {
+                if (meta(m.name).required) console.log('  required mod — cannot be unchecked');
+                else sel[m.name] = !sel[m.name];
+            } else console.log('  ?');
+        }
+        render();
+    }
+    rl.close();
+    return sel;
+}
+
+// ---- main ----------------------------------------------------------------------
+function wantNames(mods, names) {
+    const want = {};
+    for (const m of mods) want[m.name] = meta(m.name).required || names.includes(m.name);
+    return want;
+}
+function wantFromSel(mods, sel) {
+    const want = {};
+    for (const m of mods) want[m.name] = meta(m.name).required || !!sel[m.name];
+    return want;
+}
+
+function doApply(mods, want) {
+    const { fails } = converge(mods, want, false);
+    const installed = buildManifest(mods);
+    if (fails) {
+        console.log(`\n${fails} hunk(s) need reseating for this rev. Anchors carry 3 lines of context each side — open lclite/mods/<mod>/patches/*.json, reseat the find[] array against the new upstream code, rerun.`);
+        process.exitCode = 2;
+    } else {
+        console.log(`\nmods on the tree: ${installed.join(', ') || '(none)'}`);
+    }
+    return fails;
+}
+
+async function main() {
+    const args = process.argv.slice(2);
+    const check = args.includes('--check');
+    const noBuild = args.includes('--no-build');
+
+    const mods = findMods(__dirname);
+    if (!mods.length) { console.error(`no mods found under ${path.join(__dirname, 'mods')}`); process.exit(1); }
+
+    if (args.includes('list')) {
+        for (const m of mods) {
+            const info = meta(m.name);
+            let inst = false; try { inst = modInstalled(m); } catch { }
+            console.log(`${m.name}|${inst ? 'installed' : 'off'}|${info.label}|${info.desc}${info.required ? ' [required]' : ''}`);
+        }
+        return;
+    }
+
+    if (args.includes('pick')) {
+        const problems = preflight();
+        if (problems.length) { problems.forEach(p => console.log('!! ' + p)); process.exit(1); }
+        const sel = await pick(mods);
+        if (!sel) { console.log('quit — nothing changed.'); process.exitCode = 3; return; }
+        if (doApply(mods, wantFromSel(mods, sel)) === 0 && !noBuild) build();
+        return;
+    }
+
+    const problems = preflight();
+    if (problems.length) { problems.forEach(p => console.log('!! ' + p)); process.exit(1); }
+
+    // build-only mode
+    if (args.includes('build')) { if (!check) build(); return; }
+
+    let want;
+    if (args.includes('uninstall')) {
+        // full clean: even the required mods come off (installer's only "strip-everything" mode)
+        want = Object.fromEntries(mods.map(m => [m.name, false]));
+    }
+    else {
+        const mi = args.indexOf('--mods');
+        if (mi >= 0 && args[mi + 1]) {
+            const names = args[mi + 1].split(/[, ]+/).filter(Boolean);
+            const known = new Set(mods.map(m => m.name));
+            for (const n of names) if (!known.has(n)) console.log(`  ? unknown mod "${n}" (no folder in mods/) — ignored`);
+            want = wantNames(mods, names);
+        }
+        else want = wantNames(mods, mods.map(m => m.name));   // default / --all = everything
+    }
+
+    if (check) {
+        // dry-run: full per-hunk report (anchors that would fail on this rev etc.)
+        converge(mods, want, true);
+        return;
+    }
+
+    const failed = doApply(mods, want);
+    // bare `apply` stays patch-only (build is a separate step); plain run converges+builds
+    if (!failed && !noBuild && !args.includes('apply')) build();
 }
 
 main();

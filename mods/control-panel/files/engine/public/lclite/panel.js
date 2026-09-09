@@ -9,6 +9,8 @@
  * Layout notes (RuneLite-style): the FAB docks top-right and the panel drops down from
  * it; row descriptions are hover tooltips (#lclite-tip, fed by [data-tip]) instead of
  * per-row subtext so every row stays one line tall. Descriptions are still searchable.
+ * Rows are tagged with their mod folder (`mod:`) and hidden when the installer's
+ * manifest (engine/public/lclite/installed.json) says that mod was not selected.
  */
 (() => {
     'use strict';
@@ -37,22 +39,22 @@
     // kind: 'toggle' writes 'true'/'false'; 'action' fires; 'slider' writes a float
     // desc is the hover tooltip text (and search fodder), not visible subtext
     const MODS = [
-        { id: 'wheel-zoom', group: 'Camera', name: 'Wheel zoom', desc: 'Scroll the mouse wheel to zoom the camera.', key: 'wheelZoom', kind: 'toggle', def: 'true' },
-        { id: 'middle-rotate', group: 'Camera', name: 'Middle-drag rotate', desc: 'Hold middle mouse + drag to rotate. Drag follows the mouse (OSRS style).', key: 'middleRotate', kind: 'toggle', def: 'true' },
-        { id: 'wheel-scroll-chat', group: 'Camera', name: 'Wheel scrolls chat', desc: 'Mouse wheel over the chatbox scrolls history instead of zooming.', key: 'wheelScrollChat', kind: 'toggle', def: 'true' },
-        { id: 'zoom', group: 'Camera', name: 'Camera zoom', desc: '0.4× close-up to 2.6× wide. Mouse wheel still works in-game.', kind: 'slider', min: 0.4, max: 2.6, step: 0.05, def: '1', get: liveZoom, apply(v) { LS.set('cameraZoom', String(v)); reapply(); } },
-        { id: 'canvas-size', group: 'Display', name: 'Canvas size', desc: 'Render scale of the game canvas (same as the legacy bar).', kind: 'select', key: 'canvasSize', def: '1', options: [['1', '1x'], ['2', '2x'], ['3', '3x'], ['auto', 'Auto']], apply(v) { if (typeof setSize === 'function') setSize(v); } },
-        { id: 'canvas-scaling', group: 'Display', name: 'Pixel scaling', desc: 'Smooth (auto) vs crisp (pixelated) upscaling.', kind: 'select', key: 'filtering', def: 'true', get: () => (LS.get('filtering', 'true') === 'true' ? 'pixelated' : 'auto'), options: [['auto', 'Auto'], ['pixelated', 'Pixelated']], apply(v) { if (typeof setFilter === 'function') setFilter(v); } },
-        { id: 'stat-orbs', group: 'Interface', name: 'Stat orbs', desc: 'OSRS-style HP/Prayer/Run orbs down the left of the minimap, numbers always shown.', key: 'statOrbs', kind: 'toggle', def: 'false' },
-        { id: 'xp-drops', group: 'Interface', name: 'XP drops', desc: 'OSRS-style XP drop rows over the viewport with a level-progress tracker in its top-right corner; auto-hides a few seconds after the last gain.', key: 'xpDrops', kind: 'toggle', def: 'true' },
-        { id: 'smooth-shading', group: 'Rendering', name: 'Smooth shading', desc: 'Per-pixel Gouraud instead of 4px blocks. Costs FPS.', key: 'smoothShading', kind: 'toggle', def: 'false' },
-        { id: 'anti-cheat', group: 'Compatibility', name: 'Anti-cheat telemetry', desc: 'Send legacy RuneScope mouse/camera/anticheat packets. Harmless to disable on private servers.', key: 'antiCheat', kind: 'toggle', def: 'true' },
-        { id: 'legacy-bar', group: 'Compatibility', name: 'Show legacy control bar', desc: 'The green text row under the canvas. The panel replaces it.', key: 'lcliteLegacyBar', kind: 'toggle', def: 'false', reload: false },
-        { id: 'fullscreen', group: 'Compatibility', name: 'Fullscreen', desc: 'Toggle fullscreen for the game canvas.', kind: 'action', run() {
+        { id: 'wheel-zoom', mod: 'camera', group: 'Camera', name: 'Wheel zoom', desc: 'Scroll the mouse wheel to zoom the camera.', key: 'wheelZoom', kind: 'toggle', def: 'true' },
+        { id: 'middle-rotate', mod: 'camera', group: 'Camera', name: 'Middle-drag rotate', desc: 'Hold middle mouse + drag to rotate. Drag follows the mouse (OSRS style).', key: 'middleRotate', kind: 'toggle', def: 'true' },
+        { id: 'wheel-scroll-chat', mod: 'camera', group: 'Camera', name: 'Wheel scrolls chat', desc: 'Mouse wheel over the chatbox scrolls history instead of zooming.', key: 'wheelScrollChat', kind: 'toggle', def: 'true' },
+        { id: 'zoom', mod: 'camera', group: 'Camera', name: 'Camera zoom', desc: '0.4× close-up to 2.6× wide. Mouse wheel still works in-game.', kind: 'slider', min: 0.4, max: 2.6, step: 0.05, def: '1', get: liveZoom, apply(v) { LS.set('cameraZoom', String(v)); reapply(); } },
+        { id: 'canvas-size', mod: 'control-panel', group: 'Display', name: 'Canvas size', desc: 'Render scale of the game canvas (same as the legacy bar).', kind: 'select', key: 'canvasSize', def: '1', options: [['1', '1x'], ['2', '2x'], ['3', '3x'], ['auto', 'Auto']], apply(v) { if (typeof setSize === 'function') setSize(v); } },
+        { id: 'canvas-scaling', mod: 'control-panel', group: 'Display', name: 'Pixel scaling', desc: 'Smooth (auto) vs crisp (pixelated) upscaling.', kind: 'select', key: 'filtering', def: 'true', get: () => (LS.get('filtering', 'true') === 'true' ? 'pixelated' : 'auto'), options: [['auto', 'Auto'], ['pixelated', 'Pixelated']], apply(v) { if (typeof setFilter === 'function') setFilter(v); } },
+        { id: 'stat-orbs', mod: 'stat-orbs', group: 'Interface', name: 'Stat orbs', desc: 'OSRS-style HP/Prayer/Run orbs down the left of the minimap, numbers always shown.', key: 'statOrbs', kind: 'toggle', def: 'false' },
+        { id: 'xp-drops', mod: 'xp-drops', group: 'Interface', name: 'XP drops', desc: 'OSRS-style XP drop rows over the viewport with a level-progress tracker in its top-right corner; auto-hides a few seconds after the last gain.', key: 'xpDrops', kind: 'toggle', def: 'true' },
+        { id: 'smooth-shading', mod: 'rendering', group: 'Rendering', name: 'Smooth shading', desc: 'Per-pixel Gouraud instead of 4px blocks. Costs FPS.', key: 'smoothShading', kind: 'toggle', def: 'false' },
+        { id: 'anti-cheat', mod: 'anti-cheat', group: 'Compatibility', name: 'Anti-cheat telemetry', desc: 'Send legacy RuneScope mouse/camera/anticheat packets. Harmless to disable on private servers.', key: 'antiCheat', kind: 'toggle', def: 'true' },
+        { id: 'legacy-bar', mod: 'control-panel', group: 'Compatibility', name: 'Show legacy control bar', desc: 'The green text row under the canvas. The panel replaces it.', key: 'lcliteLegacyBar', kind: 'toggle', def: 'false', reload: false },
+        { id: 'fullscreen', mod: 'control-panel', group: 'Compatibility', name: 'Fullscreen', desc: 'Toggle fullscreen for the game canvas.', kind: 'action', run() {
             if (document.fullscreenElement) document.exitFullscreen();
             else { const el = document.getElementById('canvas'); el && el.requestFullscreen && el.requestFullscreen(); }
         } },
-        { id: 'screenshot', group: 'Compatibility', name: 'Take screenshot', desc: 'Save the current frame as PNG.', kind: 'action', run() {
+        { id: 'screenshot', mod: 'control-panel', group: 'Compatibility', name: 'Take screenshot', desc: 'Save the current frame as PNG.', kind: 'action', run() {
             const c = document.getElementById('canvas');
             if (!c) return;
             const a = document.createElement('a');
@@ -61,10 +63,10 @@
             a.click();
             toast('Screenshot saved');
         } },
-        { id: 'hide-controls', group: 'Display', name: 'Hide page controls', desc: 'Hide the legacy bar countdown-style (F1 still opens this panel).', kind: 'action', run() {
+        { id: 'hide-controls', mod: 'control-panel', group: 'Display', name: 'Hide page controls', desc: 'Hide the legacy bar countdown-style (F1 still opens this panel).', kind: 'action', run() {
             if (typeof hideControls === 'function') hideControls(); else toast('No legacy bar present');
         } },
-        { id: 'reset-all', group: 'Compatibility', name: 'Reset all lclite settings', desc: 'Clears every toggle/zoom and reloads.', kind: 'action', run() {
+        { id: 'reset-all', mod: 'control-panel', group: 'Compatibility', name: 'Reset all lclite settings', desc: 'Clears every toggle/zoom and reloads.', kind: 'action', run() {
             ['wheelZoom','middleRotate','wheelScrollChat','cameraZoom','smoothShading','antiCheat','lcliteLegacyBar'].forEach(k => localStorage.removeItem(k));
             toast('Settings cleared — reloading'); setTimeout(() => location.reload(), 500);
         } }
@@ -220,17 +222,29 @@
         return row;
     }
 
-    for (const g of GROUPS) {
-        const grp = document.createElement('div');
-        grp.className = 'lcm-group';
-        grp.innerHTML = `<div class="lcm-ghead"><span class="chev">▼</span>${g}</div><div class="lcm-gbody"></div>`;
-        grp.querySelector('.lcm-ghead').addEventListener('click', () => grp.classList.toggle('collapsed'));
-        const gbody = grp.querySelector('.lcm-gbody');
-        for (const f of MODS.filter(f => f.group === g)) {
-            gbody.appendChild(f.kind === 'toggle' ? toggleRow(f) : f.kind === 'slider' ? sliderRow(f) : f.kind === 'select' ? selectRow(f) : actionRow(f));
+    function renderRows(installed) {
+        // `installed` = Set of mod folder names from /lclite/installed.json, or
+        // null (manifest unreadable = pre-selection install): show everything.
+        body.innerHTML = '';
+        for (const g of GROUPS) {
+            const list = MODS.filter(f => f.group === g && (!f.mod || !installed || installed.has(f.mod)));
+            if (!list.length) continue;               // every row of this group stripped at install
+            const grp = document.createElement('div');
+            grp.className = 'lcm-group';
+            grp.innerHTML = `<div class="lcm-ghead"><span class="chev">▼</span>${g}</div><div class="lcm-gbody"></div>`;
+            grp.querySelector('.lcm-ghead').addEventListener('click', () => grp.classList.toggle('collapsed'));
+            const gbody = grp.querySelector('.lcm-gbody');
+            for (const f of list) {
+                gbody.appendChild(f.kind === 'toggle' ? toggleRow(f) : f.kind === 'slider' ? sliderRow(f) : f.kind === 'select' ? selectRow(f) : actionRow(f));
+            }
+            body.appendChild(grp);
         }
-        body.appendChild(grp);
     }
+    renderRows(null);
+    // hide controls for mods you unchecked at install time (installer writes the manifest)
+    fetch('/lclite/installed.json').then(r => r.ok ? r.json() : null).then(m => {
+        if (m && Array.isArray(m.mods)) renderRows(new Set(m.mods));
+    }).catch(() => { /* older install: keep every row */ });
 
     searchEl.addEventListener('input', () => {
         hideTip();
