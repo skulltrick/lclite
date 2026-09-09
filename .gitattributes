@@ -1,0 +1,10 @@
+# Normalize line endings: everything is LF in the repo.
+# Patch JSONs and sources checkout as LF so hunks never drift from the
+# line arrays they were generated from; install.mjs normalizes CRLF on read.
+* text=auto eol=lf
+
+# Windows launcher ships as CRLF (cmd expects it)
+*.bat text eol=crlf
+
+*.png binary
+*.jpg binary

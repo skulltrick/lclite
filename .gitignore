@@ -1,0 +1,13 @@
+# installer scratch
+selection.json
+*.log
+
+# local dev / scratch — this folder is copied INTO a Lost City checkout and
+# must never carry upstream content into the overlay repo
+t/
+test/
+scratch/
+
+node_modules/
+.DS_Store
+Thumbs.db
