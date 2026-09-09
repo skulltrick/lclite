@@ -1,0 +1,137 @@
+/* lclite control panel — RuneLite-inspired settings overlay for the Lost City webclient.
+   Docking: FAB pinned to the top-right of the viewport, panel drops down from it.
+   Row descriptions are hover tooltips (#lclite-tip) instead of per-row subtext. */
+:root {
+    --lcm-bg: #15181d;
+    --lcm-bg-2: #1d2128;
+    --lcm-bg-3: #262b34;
+    --lcm-border: #333a46;
+    --lcm-accent: #3b82f6;
+    --lcm-gold: #e0b44a;
+    --lcm-moon: #4e97a8;          /* Zanaris moon blue (sampled from ref) */
+    --lcm-moon-2: #39707f;        /* deep night-blue shadow */
+    --lcm-moon-lite: #8acce9;     /* pale moonlight highlight */
+    --lcm-text: #d7dce4;
+    --lcm-text-dim: #8a93a3;
+    --lcm-green: #04a800;
+}
+
+/* fixed, full-viewport, pointer-transparent host: children opt back into events.
+   This lets the tooltip anchor to viewport coords while still living inside #lclite-root
+   (the panel's outside-click handler checks root.contains(target)). */
+#lclite-root { position: fixed; inset: 0; z-index: 9000; pointer-events: none; font-family: 'Segoe UI', Arial, Helvetica, sans-serif; font-size: 13px; color: var(--lcm-text); }
+#lclite-root[hidden] { display: none; }
+#lclite-root > * { pointer-events: auto; }
+
+#lclite-fab {
+    position: absolute; top: 14px; right: 18px;
+    width: 44px; height: 44px; border-radius: 12px;
+    background: var(--lcm-bg-2); border: 1px solid var(--lcm-border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,.55);
+    transition: border-color .15s, transform .15s, background .15s;
+}
+#lclite-fab:hover { border-color: var(--lcm-accent); background: var(--lcm-bg-3); transform: scale(1.06); }
+#lclite-fab.active { border-color: var(--lcm-accent); box-shadow: 0 0 0 1px var(--lcm-accent), 0 4px 14px rgba(0,0,0,.55); }
+
+/* the LCLite mark — Zanaris-blue crescent + carved gold bolt */
+.lclite-mark { width: 24px; height: 24px; }
+.lclite-mark .mk-moon { fill: var(--lcm-moon); }
+.lclite-mark .mk-bolt { fill: var(--lcm-gold); stroke: var(--lcm-bg-2); stroke-width: 1; paint-order: stroke fill; }
+#lclite-fab:hover .lclite-mark .mk-moon { fill: var(--lcm-moon-lite); }
+#lclite-fab.active .lclite-mark .mk-moon { fill: var(--lcm-moon-lite); }
+
+#lclite-panel {
+    position: absolute; top: 66px; right: 18px; width: 320px;
+    background: var(--lcm-bg); border: 1px solid var(--lcm-border); border-radius: 10px;
+    box-shadow: 0 10px 34px rgba(0,0,0,.65);
+    display: none; overflow: hidden;
+}
+#lclite-panel.open { display: block; animation: lcm-in .16s ease-out; }
+@keyframes lcm-in { from { opacity: 0; transform: translateY(-8px) scale(.98); } to { opacity: 1; transform: none; } }
+
+.lcm-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--lcm-bg-2); border-bottom: 1px solid var(--lcm-border); }
+.lcm-head .lclite-mark { width: 16px; height: 16px; }
+.lcm-title { font-weight: 600; letter-spacing: .3px; flex: 1; }
+.lcm-x { cursor: pointer; color: var(--lcm-text-dim); font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 5px; }
+.lcm-x:hover { color: #fff; background: var(--lcm-bg-3); }
+
+.lcm-search { margin: 10px 12px 4px; position: relative; }
+.lcm-search input {
+    width: 100%; box-sizing: border-box; background: var(--lcm-bg-2); color: var(--lcm-text);
+    border: 1px solid var(--lcm-border); border-radius: 7px; padding: 6px 9px; font-size: 12px; outline: none;
+}
+.lcm-search input:focus { border-color: var(--lcm-accent); }
+
+/* taller panel: give the body most of the viewport height */
+.lcm-body { max-height: min(74vh, calc(100vh - 190px)); overflow-y: auto; padding: 6px 12px 12px; }
+.lcm-body::-webkit-scrollbar { width: 8px; }
+.lcm-body::-webkit-scrollbar-thumb { background: var(--lcm-bg-3); border-radius: 4px; }
+
+.lcm-group { margin-top: 10px; }
+.lcm-group > .lcm-ghead {
+    display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px;
+    color: var(--lcm-text-dim); padding: 4px 0;
+}
+.lcm-ghead .chev { transition: transform .15s; font-size: 9px; }
+.lcm-group.collapsed .chev { transform: rotate(-90deg); }
+.lcm-group.collapsed .lcm-gbody { display: none; }
+
+/* one-line rows: the desc lives in the hover tooltip now */
+.lcm-row {
+    display: flex; align-items: center; gap: 10px; padding: 7px 6px; border-radius: 7px;
+}
+.lcm-row:hover { background: var(--lcm-bg-2); }
+.lcm-row.dim { display: none; }
+.lcm-label { flex: 1; min-width: 0; }
+.lcm-name { cursor: help; }
+.lcm-name:hover { color: #fff; }
+.lcm-badge { font-size: 9px; color: var(--lcm-accent); border: 1px solid var(--lcm-accent); border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: 1px; }
+
+/* sliding toggle */
+.lcm-switch { position: relative; width: 34px; height: 19px; flex: none; }
+.lcm-switch input { opacity: 0; width: 0; height: 0; }
+.lcm-slider {
+    position: absolute; inset: 0; background: var(--lcm-bg-3); border: 1px solid var(--lcm-border);
+    border-radius: 19px; cursor: pointer; transition: .15s;
+}
+.lcm-slider:before {
+    content: ''; position: absolute; width: 13px; height: 13px; left: 2px; top: 2px;
+    background: var(--lcm-text-dim); border-radius: 50%; transition: .15s;
+}
+.lcm-switch input:checked + .lcm-slider { background: var(--lcm-accent); border-color: var(--lcm-accent); }
+.lcm-switch input:checked + .lcm-slider:before { transform: translateX(15px); background: #fff; }
+
+/* zoom slider */
+.lcm-zoom { display: flex; flex-direction: column; gap: 4px; padding: 7px 6px; border-radius: 7px; }
+.lcm-zoom:hover { background: var(--lcm-bg-2); }
+.lcm-zoom.dim { display: none; }
+.lcm-zoom .lcm-zrow { display: flex; align-items: center; gap: 8px; }
+.lcm-zoom input[type=range] { flex: 1; accent-color: var(--lcm-accent); height: 18px; }
+.lcm-zval { width: 44px; text-align: right; font-variant-numeric: tabular-nums; color: var(--lcm-green); font-weight: 600; }
+.lcm-zreset { background: var(--lcm-bg-3); border: 1px solid var(--lcm-border); color: var(--lcm-text-dim); border-radius: 6px; font-size: 11px; padding: 3px 8px; cursor: pointer; }
+.lcm-zreset:hover { color: #fff; border-color: var(--lcm-accent); }
+
+/* hover tooltip — shared node, positioned in viewport coords by panel.js */
+#lclite-tip {
+    position: fixed; z-index: 9500; max-width: 240px;
+    background: #0d0f12; color: var(--lcm-text); border: 1px solid var(--lcm-border);
+    border-left: 2px solid var(--lcm-accent);
+    border-radius: 6px; padding: 6px 9px; font-size: 11.5px; line-height: 1.4;
+    box-shadow: 0 6px 18px rgba(0,0,0,.6);
+    opacity: 0; visibility: hidden; transform: translateX(4px);
+    transition: opacity .12s, transform .12s, visibility .12s;
+    pointer-events: none; white-space: normal;
+}
+#lclite-tip.show { opacity: 1; visibility: visible; transform: none; }
+
+/* toast */
+#lclite-toast {
+    position: absolute; bottom: 18px; right: 18px; background: var(--lcm-bg-2); color: var(--lcm-text);
+    border: 1px solid var(--lcm-border); border-left: 3px solid var(--lcm-green);
+    padding: 7px 12px; border-radius: 7px; font-size: 12px; opacity: 0; transform: translateY(4px);
+    transition: .2s; pointer-events: none; white-space: nowrap;
+}
+#lclite-toast.show { opacity: 1; transform: none; }

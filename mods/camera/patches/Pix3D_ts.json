@@ -1,0 +1,26 @@
+{
+ "file": "webclient/src/dash3d/Pix3D.ts",
+ "mod": "camera",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "bd6cad7147cc9f44d5eb12de93f0736c18e1c4d0"
+ },
+ "hunks": [
+  {
+   "find": [
+    "",
+    "    static {"
+   ],
+   "replace": [
+    "",
+    "    /// custom: depth clip planes, scaled with camera zoom (defaults match original 50/3500)",
+    "    static nearPlane: number = 50;",
+    "    static farPlane: number = 3500;",
+    "",
+    "    static {"
+   ],
+   "note": "src/dash3d/Pix3D.ts @ old line 5",
+   "occ": 1
+  }
+ ]
+}

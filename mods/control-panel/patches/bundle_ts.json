@@ -1,0 +1,28 @@
+{
+ "file": "webclient/bundle.ts",
+ "mod": "control-panel",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "bd6cad7147cc9f44d5eb12de93f0736c18e1c4d0"
+ },
+ "hunks": [
+  {
+   "find": [
+    "                    'error',",
+    "                    'id'",
+    "                ]"
+   ],
+   "replace": [
+    "                    'error',",
+    "                    'id',",
+    "",
+    "                    // custom: page-facing settings API (engine/view/client.ejs)",
+    "                    'lostcityClient',",
+    "                    'applyCameraSettings'",
+    "                ]"
+   ],
+   "note": "bundle.ts @ old line 102",
+   "occ": 1
+  }
+ ]
+}

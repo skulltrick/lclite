@@ -1,0 +1,24 @@
+{
+ "file": "webclient/src/dash3d/Model.ts",
+ "mod": "camera",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "bd6cad7147cc9f44d5eb12de93f0736c18e1c4d0"
+ },
+ "hunks": [
+  {
+   "find": [
+    "        const maxZ: number = midZ + radiusCosEyePitch;",
+    "        if (maxZ <= 50 || midZ >= 3500) {",
+    "            return;"
+   ],
+   "replace": [
+    "        const maxZ: number = midZ + radiusCosEyePitch;",
+    "        if (maxZ <= 50 || midZ >= Pix3D.farPlane) {",
+    "            return;"
+   ],
+   "note": "src/dash3d/Model.ts @ old line 1693",
+   "occ": 1
+  }
+ ]
+}

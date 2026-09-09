@@ -1,0 +1,43 @@
+{
+ "file": "engine/view/client.ejs",
+ "mod": "control-panel",
+ "generated_from": {
+  "repo": "engine",
+  "head": "0c7cf6555d0cf92d2348999b2fd27c6ceff5ffbf"
+ },
+ "hunks": [
+  {
+   "find": [
+    "            canvas.style.imageRendering = filterSelect;",
+    "        }",
+    "    </script>",
+    "</head>"
+   ],
+   "replace": [
+    "            canvas.style.imageRendering = filterSelect;",
+    "        }",
+    "",
+    "    </script>",
+    "</head>"
+   ],
+   "note": "view/client.ejs @ old line 302",
+   "occ": 1
+  },
+  {
+   "find": [
+    "",
+    "    <script type=\"module\">"
+   ],
+   "replace": [
+    "",
+    "    <!-- lclite control panel -->",
+    "    <link rel=\"stylesheet\" href=\"/lclite/panel.css\">",
+    "    <script src=\"/lclite/panel.js\" defer></script>",
+    "",
+    "    <script type=\"module\">"
+   ],
+   "note": "view/client.ejs @ old line 363",
+   "occ": 1
+  }
+ ]
+}
