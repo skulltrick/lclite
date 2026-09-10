@@ -232,8 +232,16 @@ function poolLowMem(): boolean {
     return (Pix3D as unknown as { lowMem?: boolean }).lowMem === true;
 }
 
-/// Pix3D.texTrans[id] === true means the texture HAS zero (hole) texels.
+/// Does texture `id` have zero (hole) texels? Authoritative answer comes from
+/// GpuRenderer.texHoles, computed in flushTextures exactly like the software
+/// getTexels does (base-band texels === 0). Before a texture has ever been
+/// uploaded we fall back to Pix3D.texTrans (stale-but-usually-correct, since
+/// getTexels filled it the last time the software rendered).
 function textureHasHoles(id: number): boolean {
+    const s = GpuRenderer.texHoles[id];
+    if (s !== 2) {
+        return s === 1;
+    }
     const tt = (Pix3D as unknown as { texTrans?: boolean[] }).texTrans;
     return !!tt && tt[id] === true;
 }
@@ -260,6 +268,8 @@ export class GpuRenderer {
     private static readonly texScratch = new Uint32Array(128 * 512);
     private static readonly zeroScratch = new Uint32Array(128 * 512);
     private static texDirty = new Uint8Array(51).fill(1);
+    // per-texture hole flags: 2 = unknown (never uploaded), 1/0 = authoritative
+    static texHoles = new Uint8Array(51).fill(2);
     private static colourDirty = true;
 
     private static uMode: WebGLUniformLocation | null = null;
@@ -802,16 +812,19 @@ export class GpuRenderer {
             const texture = Pix3D.textures[id];
             const pal = pal0[id];
             if (!texture || !pal) {
+                this.texHoles[id] = 1; // all-zero layer: software getTexels returns null (draws nothing)
                 gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, id, 128, 512, 1, gl.RED_INTEGER, gl.UNSIGNED_INT, this.zeroScratch);
                 continue;
             }
             const data = texture.data;
             const sc = this.texScratch;
+            let holes = 0;
             if (poolLowMem()) {
                 // 64x64 pool, bands at flat-index +4096*i (getTexels layout);
                 // mirror into GL rows: band b starts at row b*64, 64 cols
                 for (let i = 0; i < 4096; i++) {
                     const rgb = pal[data[i]] & 0xf8f8ff;
+                    if (rgb === 0) holes = 1; // same rule getTexels uses for texTrans
                     const x = i & 63;
                     const y = i >> 6;
                     const base = y * 128 + x;
@@ -826,6 +839,7 @@ export class GpuRenderer {
                 for (let i = 0; i < 16384; i++) {
                     const src = upsample ? ((i >> 8) << 6) + ((i & 127) >> 1) : i;
                     const rgb = pal[data[src]] & 0xf8f8ff;
+                    if (rgb === 0) holes = 1;
                     sc[i] = rgb;
                     sc[16384 + i] = (rgb - (rgb >>> 3)) & 0xf8f8ff;
                     sc[32768 + i] = (rgb - (rgb >>> 2)) & 0xf8f8ff;
@@ -833,6 +847,7 @@ export class GpuRenderer {
                 }
                 gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, id, 128, 512, 1, gl.RED_INTEGER, gl.UNSIGNED_INT, sc);
             }
+            this.texHoles[id] = holes;
         }
         gl.activeTexture(gl.TEXTURE0);
     }
