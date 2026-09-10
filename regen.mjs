@@ -27,6 +27,13 @@ const MODS = {
     'xp-drops': [
         'webclient/src/client/Client.ts'
     ],
+    'gpu': [
+        // ONLY the import line in Client.ts is a tracked upstream edit: the
+        // renderer itself ships as a files/ copy (webclient/src/gpu/), and it
+        // wires its patches by monkey-patching Pix3D/Pix2D/PixMap at load time,
+        // so Model.ts / World.ts / Pix3D.ts / GameShell.ts stay untouched.
+        'webclient/src/client/Client.ts'
+    ],
     'control-panel': [
         'engine/view/client.ejs'
     ]
@@ -44,6 +51,7 @@ const MODS = {
 // constants exist to scale with zoom (World.visFar).
 const HUNK_OWNER = {
     'webclient/src/client/Client.ts': [
+        ['gpu', /GpuRenderer|lclite "gpu"/],
         ['xp-drops', /xpDrops|XP_DROP|XP_PANEL|XP_HIDE|XP_BURST|XP_MAX|drawXp|xpSkillLabel|xpLastSkill|xpLastGain|xpStatic|xpRates|areaXp|STAT_ICON_BY_SKILL|gained amount|skill icons|fresh xp-drop|Experience  /i],
         ['stat-orbs', /orbsEnabled|orbsWereOn|drawStatOrbs|drawOrb\b|stat orbs|Stat orbs|statOrbs|backing ring|glass highlight|procedural orb/i],
         ['anti-cheat', /antiCheatEnabled|antiCheat|ANTICHEAT_|telemetry|mouseTracking\.length|RuneScope/i],

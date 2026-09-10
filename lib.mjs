@@ -39,6 +39,10 @@ export const MOD_META = {
         label: 'Smooth shading option',
         desc: 'per-pixel Gouraud vs blocky 4px shading (off by default in-game)',
     },
+    'gpu': {
+        label: 'GPU renderer (WebGL2)',
+        desc: 'RuneLite-style hardware rendering of the 3D world; HUD/interfaces stay CPU-exact. Off by default.',
+    },
 };
 
 export const meta = name => MOD_META[name] || { label: name, desc: '', required: false };

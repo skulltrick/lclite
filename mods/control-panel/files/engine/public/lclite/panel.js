@@ -48,6 +48,14 @@
         { id: 'stat-orbs', mod: 'stat-orbs', group: 'Interface', name: 'Stat orbs', desc: 'OSRS-style HP/Prayer/Run orbs down the left of the minimap, numbers always shown.', key: 'statOrbs', kind: 'toggle', def: 'false' },
         { id: 'xp-drops', mod: 'xp-drops', group: 'Interface', name: 'XP drops', desc: 'OSRS-style XP drop rows over the viewport with a level-progress tracker in its top-right corner; auto-hides a few seconds after the last gain.', key: 'xpDrops', kind: 'toggle', def: 'true' },
         { id: 'smooth-shading', mod: 'rendering', group: 'Rendering', name: 'Smooth shading', desc: 'Per-pixel Gouraud instead of 4px blocks. Costs FPS.', key: 'smoothShading', kind: 'toggle', def: 'false' },
+        { id: 'gpu', mod: 'gpu', group: 'Rendering', name: 'GPU rendering', desc: 'Draw the 3D world on your graphics card (WebGL2, RuneLite-GPU style). Terrain, walls and models batch to the GPU; chat, interfaces, orbs and walk-clicks stay pixel-exact on the CPU. Falls back to software automatically on any driver error.', kind: 'toggle', def: 'false', key: 'gpu',
+          status() {
+              if (LS.get('gpu', 'false') !== 'true') return '';
+              if (window.lcliteGpuError) return 'off: ' + window.lcliteGpuError;
+              const s = window.lcliteGpuStats;
+              if (!s || !s.frames) return 'starting…';
+              return s.tris + '△ · ' + s.batches + ' calls · ' + s.ms + 'ms';
+          } },
         { id: 'anti-cheat', mod: 'anti-cheat', group: 'Compatibility', name: 'Anti-cheat telemetry', desc: 'Send legacy RuneScope mouse/camera/anticheat packets. Harmless to disable on private servers.', key: 'antiCheat', kind: 'toggle', def: 'true' },
         { id: 'legacy-bar', mod: 'control-panel', group: 'Compatibility', name: 'Show legacy control bar', desc: 'The green text row under the canvas. The panel replaces it.', key: 'lcliteLegacyBar', kind: 'toggle', def: 'false', reload: false },
         { id: 'fullscreen', mod: 'control-panel', group: 'Compatibility', name: 'Fullscreen', desc: 'Toggle fullscreen for the game canvas.', kind: 'action', run() {
@@ -176,6 +184,19 @@
             if (f.id === 'legacy-bar') applyLegacyBar();
             toast(`${f.name}: ${e.target.checked ? 'on' : 'off'}`);
         });
+        // optional live status text (e.g. the GPU row's "N△ · Xms" readout);
+        // rides the panel's existing 400ms _sync tick. Degrades silently.
+        if (typeof f.status === 'function') {
+            const st = document.createElement('span');
+            st.className = 'lcm-status';
+            row.querySelector('.lcm-label').appendChild(st);
+            f._sync = () => {
+                const txt = f.status() || '';
+                st.textContent = txt;
+                st.style.display = txt ? '' : 'none';
+            };
+            f._sync();
+        }
         return row;
     }
 

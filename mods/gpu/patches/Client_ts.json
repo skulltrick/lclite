@@ -1,0 +1,21 @@
+{
+ "file": "webclient/src/client/Client.ts",
+ "mod": "gpu",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "bd6cad7147cc9f44d5eb12de93f0736c18e1c4d0"
+ },
+ "hunks": [
+  {
+   "find": [
+    "import { playWave, setWaveVolume } from '#3rdparty/audio.js';"
+   ],
+   "replace": [
+    "import '#/gpu/GpuRenderer.js'; // custom (lclite \"gpu\" mod): WebGL2 rasterizer; side-effect import wires the patches",
+    "import { playWave, setWaveVolume } from '#3rdparty/audio.js';"
+   ],
+   "note": "src/client/Client.ts @ old line 1",
+   "occ": 1
+  }
+ ]
+}
