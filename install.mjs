@@ -389,8 +389,10 @@ async function main() {
     }
 
     if (check) {
-        // dry-run: full per-hunk report (anchors that would fail on this rev etc.)
-        converge(mods, want, true);
+        // dry-run: full per-hunk report; still fails on drift (the CI canary
+        // relies on exit code 2 == "a hunk's anchor moved upstream")
+        const { fails } = converge(mods, want, true);
+        if (fails) process.exitCode = 2;
         return;
     }
 

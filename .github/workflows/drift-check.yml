@@ -56,8 +56,11 @@ jobs:
             for (const [k, v] of Object.entries(heads)) console.log(`${k}=${v}`);
           ' | tee $GITHUB_OUTPUT
 
-      - name: Clone upstreams at base revs
+      - name: Clone upstreams beside the overlay
+        # install.mjs resolves the Lost City root as one level above its own
+        # folder, so the repos must be siblings of this checkout, not inside it
         run: |
+          cd ..
           git clone --filter=blob:none https://github.com/LostCityRS/Client-TS webclient
           git clone --filter=blob:none https://github.com/LostCityRS/Engine-TS engine
           git -C webclient checkout ${{ steps.revs.outputs.webclient }}
@@ -67,11 +70,11 @@ jobs:
         run: node install.mjs apply --check
         # exit 2 == some hunk's anchor drifted upstream; the log prints which
 
-      - name: Apply for real + byte-diff report
+      - name: Apply for real + diff report
         run: |
           node install.mjs apply --no-build
-          git -C webclient diff --stat
-          git -C engine diff --stat
+          git -C ../webclient diff --stat
+          git -C ../engine diff --stat
           # the mod files must end up modified — a silent zero-diff means the
           # installer stopped working without exiting nonzero
-          [ -n "$(git -C webclient status --porcelain)" ] || { echo "nothing applied?!"; exit 1; }
+          [ -n "$(git -C ../webclient status --porcelain)" ] || { echo "nothing applied?!"; exit 1; }
