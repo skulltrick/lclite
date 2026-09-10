@@ -180,12 +180,9 @@ of the Lost City quest) cradling a gold lightning bolt — the "lite".
 ## Disclaimer
 
 We have not been endorsed by, authorized by, or officially communicated with
-Jagex Ltd. or the Lost City / 2004Scape project on our efforts here. LCLite is
-an independent, community-made overlay; it is not affiliated with, sponsored by,
-or maintained by either of them.
+the Lost City team / 2004Scape project on our efforts here.
 
-"RuneScape", "Old School RuneScape" and all game content, assets and lore are
-the intellectual property of Jagex Ltd. "Lost City", "2004Scape" and their
+"Lost City", "2004Scape" and their
 repositories are the work of the Lost City contributors and follow their own
 licenses. "RuneLite" is a trademark of the RuneLite project — the name
 "LCLite" and this plugin-layer concept are homages only. No game files,
