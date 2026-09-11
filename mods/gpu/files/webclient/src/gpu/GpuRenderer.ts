@@ -656,10 +656,23 @@ export class GpuRenderer {
             }
         };
 
-        // Pix2D.cls: per-frame settings refresh (also = new frame boundary)
+        // Pix2D.cls: per-frame settings refresh (also = new frame boundary).
+        // GPU frames clear to SENTINEL_BLACK=1 instead of 0: the software
+        // buffer's "empty" value (0) is INDISTINGUISHABLE from Colour.BLACK
+        // (0x0 — the minimenu title bar, text shadows), so an overlay that
+        // discards 0 punches holes in black UI (v1's documented artifact,
+        // now eliminated). With a GPU frame active the world never writes
+        // the buffer, so sentinel-1 means "nothing drawn here" exactly.
+        // putImageData is skipped for GPU frames so 1 never reaches screen;
+        // if the GPU dies mid-frame, 0x000001 reads as black anyway.
         const origCls = Pix2D.cls;
         Pix2D.cls = function (): void {
             gpu.refresh();
+            if (gpu.wanted && gpu.ready && !gpu.failed && gpu.gameBuf !== null
+                && Pix2D.pixels === gpu.gameBuf && Pix2D.width === GAME_W && Pix2D.height === GAME_H) {
+                Pix2D.pixels.fill(1);
+                return;
+            }
             origCls.call(this);
         };
 

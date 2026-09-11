@@ -1,6 +1,6 @@
 # GPU v2 — Architectural Assessment (pre-implementation)
 
-Date: 2026-09-10. Status: investigation complete, no v2 code written yet.
+Date: 2026-09-10. Status: P1+P2 LIVE (lclite main @ 47236dc) — WebGPU renders captured Pix3D triangles in one scene draw (seq-depth painter's order) + full-frame HUD overlay; black-pixel artifact eliminated via sentinel-1 buffer clear. Next: P5 real texel sampling. Original assessment below.
 Scope decision: WebGPU from TypeScript (native `navigator.gpu`, WGSL). No Rust/wgpu/native/WASM.
 
 ## 1. What we're working against

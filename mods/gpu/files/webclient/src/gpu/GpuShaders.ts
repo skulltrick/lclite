@@ -147,8 +147,11 @@ fn fs2(in: FIn) -> @location(0) vec4f {
     tx = clamp(tx, 0, i32(dims.x) - 1);
     ty = clamp(ty, 0, i32(dims.y) - 1);
     let c: u32 = u32(textureLoad(hud, vec2i(tx, ty), 0).x);
-    if (c == 0u) {
-        discard; // buffer-empty: let the scene show through
+    if (c == 1u) {
+        // sentinel: GpuRenderer clears the game buffer to 1 on GPU frames so
+        // real Colour.BLACK HUD pixels (0 — minimenu bars, text shadows)
+        // composite instead of punching holes. discard: let the scene show.
+        discard;
     }
     return unpack(c);
 }
