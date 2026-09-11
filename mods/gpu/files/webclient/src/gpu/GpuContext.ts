@@ -82,6 +82,18 @@ export default class GpuContext {
             const canvas: HTMLCanvasElement = document.createElement('canvas');
             canvas.width = width;
             canvas.height = height;
+            // CRITICAL (learned the hard way in v1's successor WIP): a
+            // detached or display:none WebGPU canvas may never be PRESENTED
+            // — Dawn only composites what the page actually renders, and
+            // drawImage-from-it can then read an empty buffer. The overlay
+            // canvas therefore lives in the DOM; GpuRenderer.place() sizes/
+            // positions it over the game rect per frame and toggles display.
+            canvas.style.position = 'fixed';
+            canvas.style.zIndex = '3';        // above #canvas, below panel (9000)
+            canvas.style.pointerEvents = 'none';
+            canvas.style.display = 'none';    // GPU-off: invisible, zero page impact
+            canvas.style.imageRendering = 'pixelated';
+            document.body.appendChild(canvas);
 
             let context: any;
             try {
@@ -95,7 +107,11 @@ export default class GpuContext {
 
             const format: string = gpu.getPreferredCanvasFormat();
             try {
-                context.configure({ device: device, format: format, alphaMode: 'premultiplied' });
+                // 'opaque': the DOM overlay REPLACES the game rect on screen
+                // (no alpha mix with the page canvas underneath). The
+                // software trans-mix happens INSIDE the canvas via the scene
+                // pipeline's blend, which only uses RGB.
+                context.configure({ device: device, format: format, alphaMode: 'opaque' });
             } catch (e) {
                 return { ok: false, error: 'context.configure failed: ' + GpuContext.describe(e) };
             }
