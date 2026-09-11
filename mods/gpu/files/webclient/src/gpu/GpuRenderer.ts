@@ -599,7 +599,20 @@ export class GpuRenderer {
             batches++;
         }
         pass.end();
+        // WebGPU validation is ASYNC: bad pass/pipeline state (attachment
+        // mismatch etc.) does not throw here — it poisons the command buffer
+        // and surfaces later, which would otherwise spam the console every
+        // frame with a black rect while our stats claim healthy frames
+        // (v1 had gl.getError() for exactly this; the port must keep that
+        // discipline). One error scope around submit: the first frame that
+        // misvalidates disables the GPU with the message verbatim.
+        device.pushErrorScope('validation');
         device.queue.submit([encoder.finish()]);
+        device.popErrorScope().then((e: any): void => {
+            if (e && !this.failed) {
+                this.disable('submit validation: ' + String(e.message ?? e).slice(0, 300));
+            }
+        });
 
         this.stats.batches = batches;
         // overlay is the whole game rect now (opaque): position + show it
