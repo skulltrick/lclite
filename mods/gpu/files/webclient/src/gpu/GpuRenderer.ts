@@ -256,9 +256,17 @@ export class GpuRenderer {
                         attributes: [{ shaderLocation: 0, offset: 0, format: 'float32x2' }],
                     }],
                 },
-                // NO depthStencil: overlay wins every pixel it paints
+                // WebGPU REQUIRES pipeline attachment state to match the
+                // render pass: our shared frame pass always attaches the
+                // depth buffer, so even the overlay pipeline must declare a
+                // depthStencil (compare 'always' + no write = it wins every
+                // pixel it paints, exactly the "no depth interaction" intent
+                // WebGL got from glDisable(DEPTH_TEST)). A pipeline with NO
+                // depthStencil here poisons setPipeline -> invalid command
+                // buffer -> black frame (learned live, Sept 10).
                 fragment: { module: om, entryPoint: 'fs2', targets: [{ format: GpuContext.format }] },
                 primitive: { topology: 'triangle-list', cullMode: 'none' },
+                depthStencil: { depthWriteEnabled: false, depthCompare: 'always', format: 'depth32float' },
             });
         });
         if (err) {
