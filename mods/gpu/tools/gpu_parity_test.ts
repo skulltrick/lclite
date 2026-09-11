@@ -23,10 +23,10 @@ import Pix8 from './src/graphics/Pix8.js';
 
 const { GpuRenderer } = await import('./src/gpu/GpuRenderer.js');
 const gr = GpuRenderer as unknown as {
-    capturePrim(mode: number, xA: number, xB: number, xC: number, yA: number, yB: number, yC: number, cA: number, cB: number, cC: number): boolean;
-    captureTex(xA: number, xB: number, xC: number, yA: number, yB: number, yC: number, sA: number, sB: number, sC: number, oX: number, oY: number, oZ: number, bX: number, cX: number, bY: number, cY: number, bZ: number, cZ: number, tex: number): boolean;
-    tris: Float32Array;
-    ntris: number;
+    captureTri(mode: number, alpha: number, xA: number, xB: number, xC: number, yA: number, yB: number, yC: number, sA: number, sB: number, sC: number): boolean;
+    captureTexTri(xA: number, xB: number, xC: number, yA: number, yB: number, yC: number, sA: number, sB: number, sC: number, oX: number, oY: number, oZ: number, bX: number, cX: number, bY: number, cY: number, bZ: number, cZ: number, tex: number): boolean;
+    capture: Float32Array;
+    nv: number;
     seq: number;
 };
 
@@ -104,23 +104,22 @@ Pix3D.setPixels(swBuf, W, H);
 Pix3D.setRenderClipping();
 
 // ---- shader mirror (GLSL semantics, fp32-ish via Math.fround where it matters) --
-const VS = 16;
+const VS = 12;
 function f32(x: number): number { return Math.fround(x); }
 
 function mirrorTri(glArr: Uint32Array, lowDetail: boolean): void {
-    const t = gr.tris;
-    // MODE slot=2 (same for all verts), shade=12, uvw=8..10, texid=11, alpha=13
-    const mode = t[2] | 0;
-    const alpha = t[13];
+    const t = gr.capture;
+    const mode = t[3] | 0;
+    const alpha = t[5];
     const ocx = (Pix3D as unknown as { originX: number }).originX;
     const ocy = (Pix3D as unknown as { originY: number }).originY;
     const xs = [f32(t[0]), f32(t[VS]), f32(t[2 * VS])];
     const ys = [f32(t[1]), f32(t[VS + 1]), f32(t[2 * VS + 1])];
-    const shs = [f32(t[12]), f32(t[VS + 12]), f32(t[2 * VS + 12])];
-    const us = [f32(t[8]), f32(t[VS + 8]), f32(t[2 * VS + 8])];
-    const vs = [f32(t[9]), f32(t[VS + 9]), f32(t[2 * VS + 9])];
-    const ws = [f32(t[10]), f32(t[VS + 10]), f32(t[2 * VS + 10])];
-    const texid = t[11] | 0;
+    const shs = [f32(t[2]), f32(t[VS + 2]), f32(t[2 * VS + 2])];
+    const us = [f32(t[6]), f32(t[VS + 6]), f32(t[2 * VS + 6])];
+    const vs = [f32(t[7]), f32(t[VS + 7]), f32(t[2 * VS + 7])];
+    const ws = [f32(t[8]), f32(t[VS + 8]), f32(t[2 * VS + 8])];
+    const texid = t[9] | 0;
     const lowMem = (Pix3D as unknown as { lowMem: boolean }).lowMem;
 
     let area = (xs[1] - xs[0]) * (ys[2] - ys[0]) - (xs[2] - xs[0]) * (ys[1] - ys[1]);
@@ -131,7 +130,7 @@ function mirrorTri(glArr: Uint32Array, lowDetail: boolean): void {
     const maxX = Math.min(W - 1, Math.ceil(Math.max(xs[0], xs[1], xs[2])));
     const minY = Math.max(0, Math.floor(Math.min(ys[0], ys[1], ys[2])));
     const maxY = Math.min(H - 1, Math.ceil(Math.max(ys[0], ys[1], ys[2])));
-    const cx0 = t[3] | 0, cy0 = t[4] | 0, cx1 = t[5] | 0, cy1 = t[6] | 0;
+    const cx0 = 0, cy0 = 0, cx1 = W, cy1 = H; // v2: clip is full-frame in both paths
 
     for (let py = minY; py <= maxY; py++) {
         for (let px = minX; px <= maxX; px++) {
@@ -157,7 +156,7 @@ function mirrorTri(glArr: Uint32Array, lowDetail: boolean): void {
                         | ((((c >> 8) & 255) * a255 + ((d >> 8) & 255) * inv) / 255 | 0) << 8
                         | (((c & 255) * a255 + (d & 255) * inv) / 255 | 0);
                 }
-            } else if (mode === 3) {
+            } else if (mode === 1) {
                 const c = Math.round(f32(shs[0] * w0 + shs[1] * w1 + shs[2] * w2)) & 0xffffff;
                 glBuf[off] = c;
             } else {
@@ -215,7 +214,7 @@ for (let c = 0; c < cases; c++) {
     if (Math.abs(area2) < 30) continue;
     swBuf.fill(0);
     glBuf.fill(0);
-    gr.ntris = 0;
+    gr.nv = 0;
     gr.seq = 1;
     Pix2D.setPixels(swBuf, W, H);
     Pix3D.setPixels(swBuf, W, H);
@@ -230,11 +229,11 @@ for (let c = 0; c < cases; c++) {
         Pix3D.lowDetail = false;
         const cA = (rnd() * 65536) | 0, cB = (rnd() * 65536) | 0, cC = (rnd() * 65536) | 0;
         Pix3D.gouraudTriangle(xA, xB, xC, yA, yB, yC, cA, cB, cC);
-        gr.capturePrim(0, xA, xB, xC, yA, yB, yC, cA, cB, cC);
+        gr.captureTri(0, Pix3D.trans / 256, xA, xB, xC, yA, yB, yC, cA, cB, cC);
     } else if (kind === 1) {
         const cA = (rnd() * 0xffffff) | 0;
         Pix3D.flatTriangle(xA, xB, xC, yA, yB, yC, cA);
-        gr.capturePrim(3, xA, xB, xC, yA, yB, yC, cA, cA, cA);
+        gr.captureTri(1, Pix3D.trans / 256, xA, xB, xC, yA, yB, yC, cA, cA, cA);
     } else {
         Pix3D.lowDetail = false;
         const tex = (rnd() * 2) | 0;
@@ -248,9 +247,9 @@ for (let c = 0; c < cases; c++) {
         const cX = (oX + (rnd() * 800 - 400)) | 0, cY = (oY + (rnd() * 800 - 400)) | 0, cZ = (oZ + rnd() * 400) | 0;
         const sA = (rnd() * 255) | 0, sB = (rnd() * 255) | 0, sC = (rnd() * 255) | 0;
         Pix3D.textureTriangle(xA, xB, xC, yA, yB, yC, sA, sB, sC, oX, oY, oZ, bX, cX, bY, cY, bZ, cZ, tex);
-        gr.captureTex(xA, xB, xC, yA, yB, yC, sA, sB, sC, oX, oY, oZ, bX, cX, bY, cY, bZ, cZ, tex);
+        gr.captureTexTri(xA, xB, xC, yA, yB, yC, sA, sB, sC, oX, oY, oZ, bX, cX, bY, cY, bZ, cZ, tex);
     }
-    if (gr.ntris === 0 && kind === 2) continue; // consumed-invalid case
+    if (gr.nv === 0 && kind === 2) continue; // consumed-invalid case
     mirrorTri(glArr, false);
 
     const S = st(kindName);

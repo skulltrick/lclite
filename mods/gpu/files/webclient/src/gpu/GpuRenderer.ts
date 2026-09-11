@@ -462,8 +462,9 @@ export class GpuRenderer {
 
     /** append one triangle; false = capture full (caller runs software raster).
      *  alpha = destination weight (Pix3D.trans/256): gouraud/flat pass it,
-     *  texture faces pass 0 — the software textureRaster REPLACES (v1 rule). */
-    private static captureTri(mode: number, alpha: number,
+     *  texture faces pass 0 — the software textureRaster REPLACES (v1 rule).
+     *  public for tools/gpu_parity_test (same reason as v1's capturePrim). */
+    public static captureTri(mode: number, alpha: number,
         xA: number, xB: number, xC: number,
         yA: number, yB: number, yC: number,
         sA: number, sB: number, sC: number): boolean {
@@ -490,8 +491,9 @@ export class GpuRenderer {
      *  parity-tested by tools/gpu_parity_test): base (u0,v0,w0) from the
      *  cross products, += stepVertical*dy, += (stride>>3)*dx, int32 via
      *  imul; the Float32Array store itself performs the f32 rounding the
-     *  GLSL mirror reads back. texId/opaque are per-triangle constants. */
-    private static captureTexTri(
+     *  GLSL mirror reads back. texId/opaque are per-triangle constants.
+     *  public for tools/gpu_parity_test (same reason as v1's captureTex). */
+    public static captureTexTri(
         xA: number, xB: number, xC: number,
         yA: number, yB: number, yC: number,
         sA: number, sB: number, sC: number,
