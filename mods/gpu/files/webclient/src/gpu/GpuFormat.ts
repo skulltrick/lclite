@@ -61,6 +61,24 @@ export const OALPHA = 5;
 // draw modes
 export const MODE_GOURAUD = 0; // shade slot = colourTable index (gamma-baked)
 export const MODE_FLAT = 1;    // shade slot = resolved 0xRRGGBB int
+export const MODE_TEX = 2;     // P5: affine u,v,w texture mirror of textureRaster
+                               // (slots 6-10 live; texel>>>shade-band, holes
+                               // discard — v1's parity-proven shader math)
+
+// P5 texture slots
+export const OTU = 6;   // affine plane u (int32 value as f32)
+export const OTV = 7;
+export const OTW = 8;
+export const OTEX = 9;  // texture array layer (0..49)
+export const OTOPAQUE = 10; // 1 = no hole texels (zero texel paints black)
+
+// texture array: 50 layers of 128x512 r32uint = 4 lightness bands x 128 rows
+// (lowMem: bands at 64-row steps, 64 useful cols — same layout v1's
+// getTexels mirror produced; re-upload per pushTexture (anim) /
+// initColourTable (gamma) / unpackTextures (world hop))
+export const TEX_COUNT = 50;
+export const TEX_W = 128;
+export const TEX_H = 512;
 
 // seq -> depth scale (2^-23) and the back-face tie-break unit (2^-24)
 export const SEQ_DEPTH_SCALE = 0.00000011920928955078125;

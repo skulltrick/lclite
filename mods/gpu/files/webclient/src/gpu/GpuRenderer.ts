@@ -70,10 +70,12 @@ import Pix2D from '#/graphics/Pix2D.js';
 import PixMap from '#/graphics/PixMap.js';
 import Pix3D from '#/dash3d/Pix3D.js';
 import GpuContext from '#/gpu/GpuContext.js';
-import { SCENE_WGSL, OVERLAY_WGSL, TRIANGLE_WGSL } from '#/gpu/GpuShaders.js';
+import { sceneWgsl, OVERLAY_WGSL, TRIANGLE_WGSL } from '#/gpu/GpuShaders.js';
 import {
     VS, MAX_TRIS, OXY, OSHADE, OMODE, OSEQ, OALPHA,
-    MODE_GOURAUD, MODE_FLAT, SEQ_DEPTH_SCALE,
+    OTU, OTV, OTW, OTEX, OTOPAQUE,
+    MODE_GOURAUD, MODE_FLAT, MODE_TEX, TEX_COUNT, TEX_W, TEX_H,
+    SEQ_DEPTH_SCALE,
     USAGE_COPY_DST, USAGE_VERTEX, USAGE_UNIFORM,
     USAGE_TEXTURE_COPY_DST, USAGE_TEXTURE_BINDING, USAGE_RENDER_ATTACHMENT,
 } from '#/gpu/GpuFormat.js';
@@ -108,11 +110,21 @@ export class GpuRenderer {
     private static vbo: any = null;
     private static depthTex: any = null;
     private static colourTex: any = null;
-    private static colourBind: any = null;
+    private static sceneBind: any = null;
+    private static texArray: any = null;
     private static overlayTex: any = null;
     private static overlayBind: any = null;
     private static overlayUniform: any = null;
     private static overlayVbo: any = null;
+
+    // P5 texel pool: mirrors getTexels (50 textures x 4 lightness bands) into
+    // the 2D texture array; texHoles = authoritative per-layer hole flags
+    // computed at upload (same rule getTexels uses for texTrans)
+    private static readonly texScratch = new Uint32Array(TEX_W * TEX_H);
+    private static readonly zeroScratch = new Uint32Array(TEX_W * TEX_H);
+    private static texDirty = new Uint8Array(TEX_COUNT).fill(1);
+    private static texHoles = new Uint8Array(TEX_COUNT).fill(2); // 2=never uploaded
+    private static sceneLowMem = false; // LOW_MEM baked into scene shader
 
     // shared capture buffer (format: GpuFormat.ts)
     private static readonly capture = new Float32Array(MAX_TRIS * 3 * VS);
@@ -153,8 +165,32 @@ export class GpuRenderer {
             if (!this.failed) {
                 WIN['lcliteGpuError'] = null;
             }
+            return;
+        }
+        // lowMem flips the engine's texel pool addressing (Client.setLowMem
+        // at runtime); LOW_MEM is baked into the scene shader, so rebuild it.
+        // Rare path: guarded by the compare, and flushTextures re-dirties all
+        // layers because their layout depends on the mode.
+        const lm = (Pix3D as unknown as { lowMem?: boolean }).lowMem === true;
+        if (this.ready && lm !== this.sceneLowMem && !this.rebuilding) {
+            this.rebuilding = true;
+            this.ready = false; // software frames carry the scene meanwhile
+            this.texDirty.fill(1);
+            this.buildPipelines().then((err): void => {
+                this.rebuilding = false;
+                if (err !== null) {
+                    this.disable('lowMem rebuild: ' + err);
+                    return;
+                }
+                this.ready = true;
+            }, (e: unknown): void => {
+                this.rebuilding = false;
+                this.disable('lowMem rebuild threw: ' + (e instanceof Error ? e.message : String(e)));
+            });
         }
     }
+
+    private static rebuilding = false;
 
     private static startInit(): void {
         this.initializing = true;
@@ -184,10 +220,11 @@ export class GpuRenderer {
     private static async buildPipelines(): Promise<string | null> {
         const device: any = GpuContext.device;
 
-        // -- scene module (WGSL compile info surfaced, never silently bad) --
+        // -- scene module: LOW_MEM baked into the WGSL (see sceneWgsl) --
+        this.sceneLowMem = (Pix3D as unknown as { lowMem?: boolean }).lowMem === true;
         let sm: any;
         try {
-            sm = device.createShaderModule({ code: SCENE_WGSL, label: 'lclite-gpu-scene' });
+            sm = device.createShaderModule({ code: sceneWgsl(this.sceneLowMem), label: 'lclite-gpu-scene' });
         } catch (e) {
             return 'scene shader threw: ' + (e instanceof Error ? e.message : String(e));
         }
@@ -211,6 +248,8 @@ export class GpuRenderer {
                             { shaderLocation: 2, offset: OMODE * 4, format: 'float32' },    // mode
                             { shaderLocation: 3, offset: OSEQ * 4, format: 'float32' },     // seq
                             { shaderLocation: 4, offset: OALPHA * 4, format: 'float32' },   // alpha
+                            { shaderLocation: 5, offset: OTU * 4, format: 'float32x3' },    // u,v,w plane
+                            { shaderLocation: 6, offset: OTEX * 4, format: 'float32x2' },   // texId, opaque
                         ],
                     }],
                 },
@@ -322,9 +361,23 @@ export class GpuRenderer {
                 format: 'r32uint',
                 usage: USAGE_TEXTURE_COPY_DST | USAGE_TEXTURE_BINDING,
             });
-            this.colourBind = device.createBindGroup({
+            // P5 texel pool: 50 layers x (128 wide x 512 tall = 4 bands x
+            // 128 rows), one layer per Pix3D texture id. lowMem fills the
+            // first 256 rows (64-col bands at row stride 128) — same buffer
+            // shape either way, the shader's addressing differs (LOW_MEM).
+            this.texArray = device.createTexture({
+                label: 'lclite-gpu-texarray',
+                size: { width: TEX_W, height: TEX_H, depthOrArrayLayers: TEX_COUNT },
+                dimension: '2d-array',
+                format: 'r32uint',
+                usage: USAGE_TEXTURE_COPY_DST | USAGE_TEXTURE_BINDING,
+            });
+            this.sceneBind = device.createBindGroup({
                 layout: this.scenePipeline.getBindGroupLayout(0),
-                entries: [{ binding: 0, resource: this.colourTex.createView() }],
+                entries: [
+                    { binding: 0, resource: this.colourTex.createView() },
+                    { binding: 1, resource: this.texArray.createView() },
+                ],
             });
             // HUD overlay: uniform (rect origin+size) + full-frame r32uint tex
             this.overlayUniform = device.createBuffer({
@@ -432,20 +485,164 @@ export class GpuRenderer {
         return true;
     }
 
-    /** cached per-texture average rgb (0xRRGGBB) via the engine's own
-     *  Pix3D.getTextureAverage; re-keyed on colourTable / texture unpack */
-    private static readonly avgCache = new Int32Array(50);
-
-    private static avgColour(tex: number): number {
-        let c = this.avgCache[tex];
-        if (c === 0) {
-            c = Pix3D.getTextureAverage(tex) | 0;
-            if (c === 0) {
-                c = 1; // software does the same (never truly black)
-            }
-            this.avgCache[tex] = c;
+    /** P5: textured face -> affine u,v,w plane evaluated at each screen
+     *  vertex exactly the way textureRaster walks to it (v1's captureTex,
+     *  parity-tested by tools/gpu_parity_test): base (u0,v0,w0) from the
+     *  cross products, += stepVertical*dy, += (stride>>3)*dx, int32 via
+     *  imul; the Float32Array store itself performs the f32 rounding the
+     *  GLSL mirror reads back. texId/opaque are per-triangle constants. */
+    private static captureTexTri(
+        xA: number, xB: number, xC: number,
+        yA: number, yB: number, yC: number,
+        sA: number, sB: number, sC: number,
+        oX: number, oY: number, oZ: number,
+        bX: number, cX: number,
+        bY: number, cY: number,
+        bZ: number, cZ: number,
+        tex: number
+    ): boolean {
+        if (this.nv + 3 > MAX_TRIS * 3) {
+            return false;
         }
-        return c;
+        // vertical = origin - B, horizontal = C - origin (as in textureTriangle)
+        const vX = oX - bX, vY = oY - bY, vZ = oZ - bZ;
+        const hX = cX - oX, hY = cY - oY, hZ = cZ - oZ;
+
+        const u0 = ((hX * oY - hY * oX) << 14) | 0;
+        const u1 = ((hY * oZ - hZ * oY) << 8) | 0;
+        const u2 = ((hZ * oX - hX * oZ) << 5) | 0;
+        const v0 = ((vX * oY - vY * oX) << 14) | 0;
+        const v1 = ((vY * oZ - vZ * oY) << 8) | 0;
+        const v2 = ((vZ * oX - vX * oZ) << 5) | 0;
+        const w0 = ((vY * hX - vX * hY) << 14) | 0;
+        const w1 = ((vZ * hY - vY * hZ) << 8) | 0;
+        const w2 = ((vX * hZ - vZ * hX) << 5) | 0;
+
+        const c = this.capture;
+        const seq = this.seq++;
+        // textures never alpha-mix (the raster replaces) — alpha slot 0
+        const opaque = this.textureHasHoles(tex) ? 0 : 1;
+        const ocx = Pix3D.originX;
+        const ocy = Pix3D.originY;
+        const xs = [xA, xB, xC];
+        const ys = [yA, yB, yC];
+        const shs = [sA, sB, sC];
+        let o = this.nv * VS;
+        for (let v = 0; v < 3; v++) {
+            const dx = xs[v] - ocx;
+            const dy = ys[v] - ocy;
+            let u = (u0 + Math.imul(u2, dy)) | 0;
+            let vv = (v0 + Math.imul(v2, dy)) | 0;
+            let w = (w0 + Math.imul(w2, dy)) | 0;
+            u = (u + Math.imul(u1 >> 3, dx)) | 0;
+            vv = (vv + Math.imul(v1 >> 3, dx)) | 0;
+            w = (w + Math.imul(w1 >> 3, dx)) | 0;
+            c[o] = xs[v]; c[o + 1] = ys[v];
+            c[o + 2] = (shs[v] << 17) | 0; // textureRaster's shade word
+            c[o + 3] = MODE_TEX; c[o + 4] = seq; c[o + 5] = 0;
+            c[o + OTU] = u; c[o + OTV] = vv; c[o + OTW] = w;
+            c[o + OTEX] = tex; c[o + OTOPAQUE] = opaque;
+            o += VS;
+        }
+        this.nv += 3;
+        return true;
+    }
+
+    /** Authoritative per-texture hole flags (v1's texHoles): computed at
+     *  upload exactly like getTexels derives texTrans (any base-band texel
+     *  === 0 after the 0xf8f8ff mask). 2 = never uploaded -> fall back to
+     *  Pix3D.texTrans (stale-but-usually-right from the last software run). */
+    private static textureHasHoles(id: number): boolean {
+        const s = this.texHoles[id];
+        if (s !== 2) {
+            return s === 1;
+        }
+        const tt = (Pix3D as unknown as { texTrans?: boolean[] }).texTrans;
+        return !!tt && tt[id] === true;
+    }
+
+    /** (re)upload dirty texture layers into the array, mirroring getTexels:
+     *  palette values masked 0xf8f8ff + 3 shade bands. Reads texture.data +
+     *  texPal directly (v1's route), NOT the engine's LRU activeTexels pool —
+     *  textureRunAnims swaps .data then pushTexture()s, which marks layers
+     *  dirty here, so animated water stays current even when software never
+     *  touches the pool while the GPU owns frames. lowMem writes the
+     *  4096-texel layout (64x64 per band, bands at rows 64*i); the 64px
+     *  source upsample matches getTexels' (x>>1)+((y>>1)<<6) indexing. */
+    private static flushTextures(): void {
+        const queue: any = GpuContext.queue;
+        let anyDirty = false;
+        for (let id = 0; id < TEX_COUNT; id++) {
+            if (this.texDirty[id]) {
+                anyDirty = true;
+                break;
+            }
+        }
+        if (!anyDirty) {
+            return;
+        }
+        const lowMem = (Pix3D as unknown as { lowMem?: boolean }).lowMem === true;
+        const pal0 = (Pix3D as unknown as { texPal: (Int32Array | null)[] }).texPal;
+        for (let id = 0; id < TEX_COUNT; id++) {
+            if (!this.texDirty[id]) {
+                continue;
+            }
+            this.texDirty[id] = 0;
+            const texture = Pix3D.textures[id];
+            const pal = pal0[id];
+            if (!texture || !pal) {
+                this.texHoles[id] = 1; // empty layer: getTexels would return null
+                queue.writeTexture(
+                    { texture: this.texArray, mipLevel: 0, origin: [0, 0, id] },
+                    this.zeroScratch,
+                    { bytesPerRow: TEX_W * 4, rowsPerImage: 256 },
+                    { width: TEX_W, height: 256, depthOrArrayLayers: 1 },
+                );
+                continue;
+            }
+            const data = texture.data;
+            const sc = this.texScratch;
+            let holes = 0;
+            if (lowMem) {
+                for (let i = 0; i < 4096; i++) {
+                    const rgb = pal[data[i]] & 0xf8f8ff;
+                    if (rgb === 0) {
+                        holes = 1;
+                    }
+                    const base = (i & 63) + ((i >> 6) << 7); // x + y*128
+                    sc[base] = rgb;
+                    sc[64 * 128 + base] = (rgb - (rgb >>> 3)) & 0xf8f8ff;
+                    sc[2 * 64 * 128 + base] = (rgb - (rgb >>> 2)) & 0xf8f8ff;
+                    sc[3 * 64 * 128 + base] = (rgb - (rgb >>> 2) - (rgb >>> 3)) & 0xf8f8ff;
+                }
+                queue.writeTexture(
+                    { texture: this.texArray, mipLevel: 0, origin: [0, 0, id] },
+                    sc,
+                    { bytesPerRow: TEX_W * 4, rowsPerImage: 256 },
+                    { width: TEX_W, height: 256, depthOrArrayLayers: 1 },
+                );
+            } else {
+                const upsample = (texture as unknown as { wi: number }).wi === 64;
+                for (let i = 0; i < 16384; i++) {
+                    const src = upsample ? ((i >> 8) << 6) + ((i & 127) >> 1) : i;
+                    const rgb = pal[data[src]] & 0xf8f8ff;
+                    if (rgb === 0) {
+                        holes = 1;
+                    }
+                    sc[i] = rgb;
+                    sc[16384 + i] = (rgb - (rgb >>> 3)) & 0xf8f8ff;
+                    sc[32768 + i] = (rgb - (rgb >>> 2)) & 0xf8f8ff;
+                    sc[49152 + i] = (rgb - (rgb >>> 2) - (rgb >>> 3)) & 0xf8f8ff;
+                }
+                queue.writeTexture(
+                    { texture: this.texArray, mipLevel: 0, origin: [0, 0, id] },
+                    sc,
+                    { bytesPerRow: TEX_W * 4, rowsPerImage: TEX_H },
+                    { width: TEX_W, height: TEX_H, depthOrArrayLayers: 1 },
+                );
+            }
+            this.texHoles[id] = holes;
+        }
     }
 
     // ---- frame ----------------------------------------------------------------
@@ -530,6 +727,9 @@ export class GpuRenderer {
 
         const dbgMode = typeof localStorage !== 'undefined' ? (localStorage.getItem('gpudbg') ?? '0') : '0';
 
+        // P5: dirty texel layers before anything can sample them
+        this.flushTextures();
+
         if (this.colourDirty) {
             // colourTable is Int32Array(65536) of 0xRRGGBB; as u32 into
             // 256x256 r32uint (x = idx & 255, y = idx >> 8; bytesPerRow
@@ -574,7 +774,7 @@ export class GpuRenderer {
             if (this.nv >= 3) {
                 queue.writeBuffer(this.vbo, 0, this.capture.buffer, 0, this.nv * VS * 4);
                 pass.setPipeline(this.scenePipeline);
-                pass.setBindGroup(0, this.colourBind);
+                pass.setBindGroup(0, this.sceneBind);
                 pass.setVertexBuffer(0, this.vbo);
                 pass.draw(this.nv, 1, 0, 0);
                 batches++;
@@ -713,12 +913,10 @@ export class GpuRenderer {
             origFlat.call(this, xA, xB, xC, yA, yB, yC, c);
         };
 
-        // P2: textured triangles go to the GPU as flat average-colour faces.
-        // They carry seq like everything else, so painter's order stays
-        // EXACT (the WIP left them on the CPU and their overlay-pass
-        // last-wins punched textured floors through later GPU walls). Real
-        // texel sampling is P5. tex<0 / untextured: software would draw
-        // nothing — consume identically.
+        // P5: textured faces capture their affine plane + texel array layer
+        // (v1's parity-tested route) — real RGSS-style texel sampling on GPU.
+        // Out-of-range or not-yet-unpacked textures draw NOTHING in software
+        // (getTexels null / tex<0), so consume them while capturing (v1 rule).
         const origTex = Pix3D.textureTriangle;
         Pix3D.textureTriangle = function (
             xA: number, xB: number, xC: number,
@@ -730,34 +928,40 @@ export class GpuRenderer {
             bZ: number, cZ: number,
             tex: number
         ): void {
-            // v1 semantics: out-of-range or not-yet-unpacked textures draw
-            // NOTHING in software — consume them while capturing so the GPU
-            // frame matches (an average-colour triangle would be wrong here).
             if (tex < 0 || tex >= 50 || !Pix3D.textures[tex]) {
                 if (gpu.capturing()) {
                     return;
                 }
-            } else if (gpu.capturing()
-                && gpu.captureTri(MODE_FLAT, 0, xA, xB, xC, yA, yB, yC,  // textures never alpha-mix (v1 rule)
-                    gpu.avgColour(tex), gpu.avgColour(tex), gpu.avgColour(tex))) {
+            } else if (gpu.capturing() && gpu.captureTexTri(
+                xA, xB, xC, yA, yB, yC, sA, sB, sC, oX, oY, oZ, bX, cX, bY, cY, bZ, cZ, tex)) {
                 return;
             }
             origTex.call(this, xA, xB, xC, yA, yB, yC, sA, sB, sC, oX, oY, oZ, bX, cX, bY, cY, bZ, cZ, tex);
         };
 
-        // gamma/brightness rebuild: colourTable + texture averages stale
+        // animated water: Client.textureRunAnims swaps textures[].data then
+        // pushTexture()s the pool -> mark the GPU layer dirty too
+        const origPush = Pix3D.pushTexture;
+        Pix3D.pushTexture = function (id: number): void {
+            origPush.call(this, id);
+            if (id >= 0 && id < TEX_COUNT) {
+                gpu.texDirty[id] = 1;
+            }
+        };
+
+        // gamma/brightness rebuild: colourTable + every texPal + averages stale
         const origICT = Pix3D.initColourTable;
         Pix3D.initColourTable = function (brightness: number): void {
             origICT.call(this, brightness);
             gpu.colourDirty = true;
-            gpu.avgCache.fill(0);
+            gpu.texDirty.fill(1);
         };
 
-        // world hop / re-login re-unpacks the texture pack: averages stale
+        // world hop / re-login re-unpacks the texture pack
         const origUnpack = Pix3D.unpackTextures;
         Pix3D.unpackTextures = function (jag: Parameters<typeof Pix3D.unpackTextures>[0]): void {
             origUnpack.call(this, jag);
-            gpu.avgCache.fill(0);
+            gpu.texDirty.fill(1);
         };
     }
 }

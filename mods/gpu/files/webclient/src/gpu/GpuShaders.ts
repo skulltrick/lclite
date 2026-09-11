@@ -36,15 +36,35 @@
 // canvas against earlier scene pixels, so channel A here is only the
 // blend's dst-weight carrier.
 
-// P2 scene pass: non-indexed triangles, attribute layout = GpuFormat's VS.
-export const SCENE_WGSL = `
+// P2+ scene pass: non-indexed triangles, attribute layout mirrors GpuFormat
+// (xy, shade, mode, seq, alpha, u, v, w, texId, texOpaque). Generated
+// function because the lowMem texel-pool variant (64px bands, w>>12 fixed
+// point, 4032 clamps) bakes in as a const — the engine flips Pix3D.lowMem
+// without rebuilding anything else, and per-frame uniforms for a boolean that
+// changes ~never are plumbing we don't need.
+//
+// MODE_TEX fragment path is v1's GLSL (45eb643) ported VERBATIM — it was
+// pixel-parity-tested against the real textureRaster by tools/gpu_parity_test,
+// so this is spec translation, not new math: affine i32 planes (interpolated
+// linearly — w=1 positions make perspective-correct == affine, matching the
+// raster's plane walk), w>>14 (>>12 lowMem) fixed-point division, 0x3f80
+// (0xfc0 lowMem) row masks, 16256/4032 clamps, the 0xf8f8ff 4-band pool,
+// texel>>>shadeShift, holes discard vs opaque-black-replace, textures never
+// alpha-mix. Shade word e=(shade<<17): band=(e>>21)&3, shift=(e>>23)&31.
+export function sceneWgsl(lowMem: boolean): string {
+    return `
+const LOW_MEM: bool = ${lowMem ? 'true' : 'false'};
+
 @group(0) @binding(0) var colourTable: texture_2d<u32>;
+@group(0) @binding(1) var texArray: texture_2d_array<u32>;
 
 struct VOut {
     @builtin(position) pos: vec4f,
     @location(0) shade: f32,
     @location(1) mode: f32,
     @location(2) alpha: f32,
+    @location(3) uvw: vec3f,                      // SMOOTH: affine plane walk
+    @location(4) @interpolate(flat) tex: vec2f,   // id + opaque (per-tri const)
 };
 
 fn unpack(c: u32) -> vec3f {
@@ -62,6 +82,8 @@ fn vs(
     @location(2) mode: f32,
     @location(3) seq: f32,
     @location(4) alpha: f32,
+    @location(5) uvw: vec3f,
+    @location(6) tex: vec2f,
 ) -> VOut {
     var o: VOut;
     // screen px (y-down, 512x334) -> NDC; depth = seq * 2^-23 (exact f32)
@@ -74,18 +96,62 @@ fn vs(
     o.shade = shade;
     o.mode = mode;
     o.alpha = alpha;
+    o.uvw = uvw;
+    o.tex = tex;
     return o;
 }
 
 @fragment
 fn fs(in: VOut) -> @location(0) vec4f {
+    if (in.mode > 1.5) {
+        // ---- MODE_TEX: v1's parity-proven textureRaster mirror ----
+        let cu0: i32 = i32(in.uvw.x);
+        let cv0: i32 = i32(in.uvw.y);
+        let cw0: i32 = i32(in.uvw.z);
+        let e: i32 = i32(in.shade);
+        let band: i32 = (e >> 21) & 3;
+        let shift: u32 = u32((e >> 23) & 31);
+        var col: i32;
+        var row: i32;
+        if (LOW_MEM) {
+            let curW: i32 = cw0 >> 12;
+            if (curW == 0) {
+                discard;
+            }
+            var cu: i32 = cu0 / curW;
+            cu = clamp(cu, 0, 4032);
+            let cv: i32 = cv0 / curW;
+            col = cu >> 6;
+            row = ((cv & 0xfc0) >> 6) + band * 64;
+        } else {
+            let curW: i32 = cw0 >> 14;
+            if (curW == 0) {
+                discard;
+            }
+            var cu: i32 = cu0 / curW;
+            cu = clamp(cu, 0, 16256);
+            let cv: i32 = cv0 / curW;
+            col = cu >> 7;
+            row = ((cv & 0x3f80) >> 7) + band * 128;
+        }
+        var packed: u32 = textureLoad(texArray, vec2i(col, row), i32(in.tex.x), 0).x;
+        packed = packed >> shift;
+        if (packed == 0u) {
+            if (in.tex.y > 0.5) {
+                // pool has no holes: the raster wrote black (a=0 -> replace)
+                return vec4f(0.0, 0.0, 0.0, 0.0);
+            }
+            discard; // transparent texel: the earlier pixel shows through
+        }
+        return vec4f(unpack(packed), 0.0); // textures replace (trans unused)
+    }
     var rgb: vec3f;
     if (in.mode < 0.5) {
         // gouraud: colourTable[idx] direct
         let idx: u32 = min(u32(max(in.shade, 0.0)), 65535u);
         rgb = unpack(textureLoad(colourTable, vec2i(i32(idx & 255u), i32(idx >> 8u)), 0).x);
     } else {
-        // flat / texture-average: shade slot IS the resolved 0xRRGGBB
+        // flat: shade slot IS the resolved 0xRRGGBB
         rgb = unpack(u32(max(in.shade, 0.0)));
     }
     let a: f32 = clamp(in.alpha, 0.0, 1.0);
@@ -93,6 +159,7 @@ fn fs(in: VOut) -> @location(0) vec4f {
     return vec4f(rgb * (1.0 - a), a);
 }
 `;
+}
 
 // HUD overlay pass: the 512x334 game buffer still holding CPU pixels
 // (bubbles/hitbars/orbs/tracker/in-viewport text). Texels are the raw
