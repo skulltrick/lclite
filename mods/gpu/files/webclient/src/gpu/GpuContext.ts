@@ -40,12 +40,22 @@ export default class GpuContext {
 
             let adapter: any;
             try {
+                // high-performance first, but NEVER fail on it: privacy-
+                // hardened Chromium forks (Brave's GPU fingerprinting
+                // defenses) and single-GPU drivers can null an OPTIONED
+                // request while a bare one succeeds.
                 adapter = await gpu.requestAdapter({ powerPreference: 'high-performance' });
+                if (!adapter) {
+                    adapter = await gpu.requestAdapter();
+                }
             } catch (e) {
                 return { ok: false, error: 'requestAdapter threw: ' + GpuContext.describe(e) };
             }
             if (!adapter) {
-                return { ok: false, error: 'no suitable GPU adapter' };
+                return { ok: false, error: 'no suitable GPU adapter — browser refused WebGPU for this page '
+                    + '(check brave://gpu or chrome://gpu WebGPU lines; enable "Use hardware acceleration" '
+                    + 'in browser settings; with Brave also try Shields -> Standard/Disabled for localhost '
+                    + 'and the #enable-unsafe-webgpu flag)' };
             }
 
             // Adapter info is async + varies across Chrome versions (sync .info
