@@ -65,10 +65,20 @@ export const MODE_FLAT = 1;    // shade slot = resolved 0xRRGGBB int
 // seq -> depth scale (2^-23) and the back-face tie-break unit (2^-24)
 export const SEQ_DEPTH_SCALE = 0.00000011920928955078125;
 
-// GPU usage bitfields (no @webgpu/types dependency — overlay rule: no new deps)
-export const USAGE_COPY_DST = 4;
-export const USAGE_VERTEX = 16;
-export const USAGE_UNIFORM = 32;
+// GPU usage bitfields (no @webgpu/types dependency — overlay rule: no new
+// deps), straight from the WebGPU IDL:
+//   GPUBufferUsage:  COPY_SRC 0x04 · COPY_DST 0x08 · INDEX 0x10 · VERTEX 0x20
+//                    UNIFORM 0x40  · STORAGE 0x80
+//   GPUTextureUsage: COPY_SRC 0x01 · COPY_DST 0x02 · TEXTURE_BINDING 0x04
+//                    RENDER_ATTACHMENT 0x10
+// TRAP (killed the first P2 attempt twice): COPY_DST|VERTEX|UNIFORM are
+// 8|32|64 — NOT 4|16|32 (that trio is COPY_SRC|INDEX|VERTEX). A bind group
+// built on a mis-flagged buffer fails validation with
+// "Binding usage (BufferUsage::(CopySrc|Vertex)) doesn't match expected
+// usage (BufferUsage::Uniform)" — see wip/gpu-p2-capture and 57539b1.
+export const USAGE_COPY_DST = 8;
+export const USAGE_VERTEX = 32;
+export const USAGE_UNIFORM = 64;
 export const USAGE_TEXTURE_COPY_DST = 2;
 export const USAGE_TEXTURE_BINDING = 4;
 export const USAGE_RENDER_ATTACHMENT = 16;
