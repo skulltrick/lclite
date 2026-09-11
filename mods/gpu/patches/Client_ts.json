@@ -11,7 +11,7 @@
     "import { playWave, setWaveVolume } from '#3rdparty/audio.js';"
    ],
    "replace": [
-    "import '#/gpu/GpuRenderer.js'; // custom (lclite \"gpu\" mod): WebGL2 rasterizer; side-effect import wires the patches",
+    "import '#/gpu/GpuRenderer.js'; // custom (lclite \"gpu\" mod v2): WebGPU renderer; side-effect import wires the patches",
     "import { playWave, setWaveVolume } from '#3rdparty/audio.js';"
    ],
    "note": "src/client/Client.ts @ old line 1",

@@ -48,7 +48,7 @@
         { id: 'stat-orbs', mod: 'stat-orbs', group: 'Interface', name: 'Stat orbs', desc: 'OSRS-style HP/Prayer/Run orbs down the left of the minimap, numbers always shown.', key: 'statOrbs', kind: 'toggle', def: 'false' },
         { id: 'xp-drops', mod: 'xp-drops', group: 'Interface', name: 'XP drops', desc: 'OSRS-style XP drop rows over the viewport with a level-progress tracker in its top-right corner; auto-hides a few seconds after the last gain.', key: 'xpDrops', kind: 'toggle', def: 'true' },
         { id: 'smooth-shading', mod: 'rendering', group: 'Rendering', name: 'Smooth shading', desc: 'Per-pixel Gouraud instead of 4px blocks. Costs FPS.', key: 'smoothShading', kind: 'toggle', def: 'false' },
-        { id: 'gpu', mod: 'gpu', group: 'Rendering', name: 'GPU rendering', desc: 'Draw the 3D world on your graphics card (WebGL2, RuneLite-GPU style). Terrain, walls and models batch to the GPU; chat, interfaces, orbs and walk-clicks stay pixel-exact on the CPU. Falls back to software automatically on any driver error.', kind: 'toggle', def: 'false', key: 'gpu',
+        { id: 'gpu', mod: 'gpu', group: 'Rendering', name: 'GPU rendering', desc: 'Draw the 3D world on your graphics card (WebGPU, RuneLite-GPU style). Terrain, walls and models batch to the GPU; chat, interfaces, orbs and walk-clicks stay pixel-exact on the CPU. Falls back to software automatically on any driver error.', kind: 'toggle', def: 'false', key: 'gpu',
           status() {
               if (LS.get('gpu', 'false') !== 'true') return '';
               if (window.lcliteGpuError) return 'off: ' + window.lcliteGpuError;
