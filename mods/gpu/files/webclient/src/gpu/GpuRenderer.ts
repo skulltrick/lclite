@@ -94,6 +94,8 @@ interface GpuStats {
     ms: number;       // smoothed render+composite time
     glFrames: number; // frames owned by the GPU
     swFrames: number; // frames left fully to software
+    hud: number;      // P7: HUD overlay pixels uploaded last frame
+    cpuMs: number;    // P7: smoothed CPU ms between frame starts (work not moved to GPU)
 }
 
 export class GpuRenderer {
@@ -138,7 +140,7 @@ export class GpuRenderer {
     private static lastPlace = '';
 
     private static lastRenderMs = 0;
-    private static readonly stats: GpuStats = { frames: 0, tris: 0, batches: 0, ms: 0, glFrames: 0, swFrames: 0 };
+    private static readonly stats: GpuStats = { frames: 0, tris: 0, batches: 0, ms: 0, glFrames: 0, swFrames: 0, hud: 0, cpuMs: 0 };
 
     /** one-shot wiring; called at module load (side-effect import from Client.ts) */
     public static attach(): void {
@@ -156,6 +158,18 @@ export class GpuRenderer {
      *  world render and the composite inside one frame (same as v1). */
     public static refresh(): void {
         const wanted = typeof localStorage !== 'undefined' && localStorage.getItem('gpu') === 'true';
+        const now = performance.now();
+        if (wanted && this.ready && !this.failed) {
+            // P7 stat: CPU ms between frame starts — scene culling/lighting/
+            // ordering/picking + HUD raster STILL run on the CPU by design
+            // (that's the capture architecture); this is the honest number
+            // for "how much work the GPU path did NOT move off the CPU".
+            const dt = now - this.lastFrameAt;
+            if (this.lastFrameAt > 0 && dt > 0 && dt < 500) {
+                this.stats.cpuMs = Math.round((this.stats.cpuMs * 0.9 + dt * 0.1) * 10) / 10;
+            }
+        }
+        this.lastFrameAt = now;
         if (wanted && !this.wanted && !this.ready && !this.failed && !this.initializing) {
             this.startInit();
         }
@@ -676,6 +690,7 @@ export class GpuRenderer {
 
         const t0 = performance.now();
         try {
+            this.scanHudRect();
             this.renderFrame(x, y);
         } catch (e) {
             this.disable('render threw: ' + (e instanceof Error ? e.message : String(e)));
@@ -688,14 +703,74 @@ export class GpuRenderer {
         return true;
     }
 
+    /** P7 dirty rect: on GPU frames the world never touches the game buffer
+     *  (it was sentinel-cleared at cls), so any pixel !== SENTINEL is a HUD/
+     *  interface write from entityOverlays/otherOverlays this frame. Scan for
+     *  the bounding box (row-wise, early-out whole empty rows) and upload
+     *  only that — v1 uploaded the full 680KB every frame; a typical frame
+     *  (chat + a few widgets) is a fraction of it, and a bare-screen frame
+     *  uploads nothing at all. ~171k-word scan is ~0.1-0.2ms JS. */
+    private static rx0 = 0;
+    private static ry0 = 0;
+    private static rw = 0;
+    private static rh = 0;
+    private static readonly overlayUni = new Float32Array(4);
+    private static lastFrameAt = 0;
+
+    private static scanHudRect(): void {
+        const buf = this.gameU32 ?? (this.gameU32 = new Uint32Array(this.gameBuf!.buffer));
+        const W = GAME_W;
+        const H = GAME_H;
+        let minX = W;
+        let maxX = -1;
+        let minY = H;
+        let maxY = -1;
+        for (let y = 0; y < H; y++) {
+            const row = y * W;
+            let rowHit = false;
+            for (let x = 0; x < W; x++) {
+                if (buf[row + x] !== 1) {
+                    rowHit = true;
+                    if (x < minX) {
+                        minX = x;
+                    }
+                    if (x > maxX) {
+                        maxX = x;
+                    }
+                }
+            }
+            if (rowHit) {
+                if (y < minY) {
+                    minY = y;
+                }
+                if (y > maxY) {
+                    maxY = y;
+                }
+            }
+        }
+        this.rx0 = minX;
+        this.ry0 = minY;
+        this.rw = maxX < minX ? 0 : maxX - minX + 1;
+        this.rh = maxY < minY ? 0 : maxY - minY + 1;
+        this.stats.hud = this.rw * this.rh;
+    }
+
     /** place the DOM overlay exactly over the game rect and make it visible.
      *  Recomputed per frame (canvas resize / page scroll) but only written on
-     *  change, so steady-state cost is one getBoundingClientRect. */
+     *  change, so steady-state cost is one getBoundingClientRect.
+     *  Fullscreen: the page only composites the fullscreened element subtree,
+     *  so a body-level overlay would vanish — reparent into the fullscreen
+     *  element and position via the (unaffected) bounding rects. */
     private static place(x: number, y: number): void {
         const c = GpuContext.canvas;
         const base = document.getElementById('canvas') as HTMLCanvasElement | null;
         if (!c || !base || !base.width || !base.height) {
             return;
+        }
+        const fsEl = document.fullscreenElement as HTMLElement | null;
+        const parent = fsEl ?? document.body;
+        if (c.parentElement !== parent) {
+            parent.appendChild(c);
         }
         const rect = base.getBoundingClientRect();
         const sx = rect.width / base.width;   // css px per backing-store px
@@ -787,20 +862,31 @@ export class GpuRenderer {
                 this.stats.tris = 0;
             }
 
-            // HUD overlay: whole game buffer, non-black replaces, last-wins
-            const buf = this.gameU32 ??= new Uint32Array(this.gameBuf!.buffer);
-            queue.writeTexture(
-                { texture: this.overlayTex },
-                buf,
-                { bytesPerRow: GAME_W * 4, rowsPerImage: GAME_H },
-                { width: GAME_W, height: GAME_H, depthOrArrayLayers: 1 },
-            );
-            queue.writeBuffer(this.overlayUniform, 0, new Float32Array([0, 0, GAME_W, GAME_H]));
-            pass.setPipeline(this.overlayPipeline);
-            pass.setBindGroup(0, this.overlayBind);
-            pass.setVertexBuffer(0, this.overlayVbo);
-            pass.draw(6, 1, 0, 0);
-            batches++;
+            // HUD overlay: P7 dirty rect only (scanHudRect set rx0/rw...).
+            // The texture stays full-frame; bytesPerRow is the natural 2048
+            // (already %256==0) so the sub-rect uploads straight from the
+            // game buffer view — no padded scratch. Empty rect: skip the
+            // pass entirely (bare-screen frames cost zero overlay bandwidth).
+            if (this.rw > 0 && this.rh > 0) {
+                const buf = this.gameU32 ?? (this.gameU32 = new Uint32Array(this.gameBuf!.buffer));
+                const W = GAME_W;
+                queue.writeTexture(
+                    { texture: this.overlayTex, origin: [this.rx0, this.ry0, 0] },
+                    buf.subarray(this.rx0 + this.ry0 * W),
+                    { bytesPerRow: W * 4, rowsPerImage: this.rh },
+                    { width: this.rw, height: this.rh, depthOrArrayLayers: 1 },
+                );
+                this.overlayUni[0] = this.rx0;
+                this.overlayUni[1] = this.ry0;
+                this.overlayUni[2] = this.rw;
+                this.overlayUni[3] = this.rh;
+                queue.writeBuffer(this.overlayUniform, 0, this.overlayUni.buffer, 0, 16);
+                pass.setPipeline(this.overlayPipeline);
+                pass.setBindGroup(0, this.overlayBind);
+                pass.setVertexBuffer(0, this.overlayVbo);
+                pass.draw(6, 1, 0, 0);
+                batches++;
+            }
         }
         pass.end();
         // WebGPU validation is ASYNC: bad pass/pipeline state (attachment

@@ -29,7 +29,9 @@
     "                    'batches',",
     "                    'ms',",
     "                    'glFrames',",
-    "                    'swFrames'",
+    "                    'swFrames',",
+    "                    'hud',",
+    "                    'cpuMs'",
     "                ]"
    ],
    "note": "bundle.ts @ old line 102",

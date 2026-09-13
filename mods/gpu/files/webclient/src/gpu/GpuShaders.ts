@@ -161,12 +161,14 @@ fn fs(in: VOut) -> @location(0) vec4f {
 `;
 }
 
-// HUD overlay pass: the 512x334 game buffer still holding CPU pixels
-// (bubbles/hitbars/orbs/tracker/in-viewport text). Texels are the raw
-// 0xRRGGBB buffer ints as r32uint (v1's R32UI scheme; P2 uploads the whole
-// frame — dirty-rect is a later optimization) — non-black replaces, black
-// discards (the buffer's own empty value). No depth interaction: last-wins
-// over the scene by construction.
+// HUD overlay pass: the game buffer still holding CPU pixels (bubbles/hitbars/
+// orbs/tracker/in-viewport text). Texels are the raw 0xRRGGBB buffer ints as
+// r32uint; the overlay is cleared to SENTINEL(1) each frame, so only real HUD
+// pixels composite — black UI (minimenu bars, shadows) included. P7 uploads
+// only the dirty bounding box (uniform carries origin+size in buffer px; the
+// texture stays full-size and sampling uses ABSOLUTE coords, so sub-rect
+// uploads need no texture recreation). No depth interaction beyond compare
+// 'always': last-wins over the scene by construction.
 export const OVERLAY_WGSL = `
 struct Uni {
     origin: vec2f,   // rect top-left in game px
@@ -208,12 +210,12 @@ fn vs2(
 
 @fragment
 fn fs2(in: FIn) -> @location(0) vec4f {
+    // absolute buffer texel: quad spans origin..origin+size, fragment centers
+    // land on exact texel indices (i32 truncation of x0+i+0.5)
     let dims = textureDimensions(hud);
-    var tx: i32 = i32(in.uv.x * f32(dims.x));
-    var ty: i32 = i32(in.uv.y * f32(dims.y));
-    tx = clamp(tx, 0, i32(dims.x) - 1);
-    ty = clamp(ty, 0, i32(dims.y) - 1);
-    let c: u32 = u32(textureLoad(hud, vec2i(tx, ty), 0).x);
+    let ax: i32 = clamp(i32(u.origin.x + in.uv.x * u.size.x), 0, i32(dims.x) - 1);
+    let ay: i32 = clamp(i32(u.origin.y + in.uv.y * u.size.y), 0, i32(dims.y) - 1);
+    let c: u32 = u32(textureLoad(hud, vec2i(ax, ay), 0).x);
     if (c == 1u) {
         // sentinel: GpuRenderer clears the game buffer to 1 on GPU frames so
         // real Colour.BLACK HUD pixels (0 — minimenu bars, text shadows)
