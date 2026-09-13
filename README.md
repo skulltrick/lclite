@@ -47,7 +47,7 @@ rev-drift or removal in one can never take another down:
 | `mods/stat-orbs/` | HP/Prayer/Energy orbs down the lower-left of the minimap (OSRS layout), drawn into the minimap widget buffer so they ride on top of the interface; numbers always visible, ghost-wipe on toggle-off |
 | `mods/anti-cheat/` | Toggle for the legacy RuneScope telemetry (mouse/camera/anticheat packets) — whole-packet suppression keeps the ISAAC keystream aligned; harmless off on private servers |
 | `mods/rendering/` | Smooth (per-pixel Gouraud) vs blocky 4px shading option, saved/restored correctly through item-icon rendering |
-| `mods/gpu/` | RuneLite-GPU-style **WebGL2 renderer** for the 3D world: triangles captured at the `Pix3D` raster entry points and replayed on the GPU in exact capture order (`gl_FragDepth` painter's algorithm); chat/HUD/interfaces keep rendering on the CPU and composite as a pixel-exact overlay; auto-falls back to software on any GL failure |
+| `mods/gpu/` | RuneLite-GPU-style **WebGPU renderer** for the 3D world: triangles captured at the `Pix3D` raster entry points (gouraud/flat/textured, incl. affine texel sampling mirroring the software raster) and replayed on the GPU in exact capture order (seq-as-depth painter's algorithm, 2 draw calls/frame); chat/HUD/interfaces keep rendering on the CPU and composite as a pixel-exact dirty-rect overlay; auto-falls back to software on any GPU error with the reason in the panel badge |
 | `mods/control-panel/` | The F1 settings panel itself (FAB, search, groups), its `client.ejs` injection, and the terser property-reserves that keep the panel↔engine contract stable across builds |
 
 Adding a new mod = new folder under `mods/` — the installer discovers it
@@ -146,9 +146,11 @@ lclite/
     stat-orbs/         Client.ts hunks: HP/Prayer/Energy orbs on the minimap widget
     anti-cheat/        Client.ts hunks: telemetry gates at every packet emission site
     rendering/         ObjType.ts hunks: smooth-shading save/restore for item icons
-    gpu/               one Client.ts import hunk + files/webclient/src/gpu/
-                       GpuRenderer.ts (the whole WebGL2 renderer; monkey-patches the
-                       Pix3D raster entry points + PixMap.draw at load time)
+    gpu/               one Client.ts import hunk + files/webclient/src/gpu/:
+                       GpuFormat.ts (backend-neutral capture contract), GpuContext.ts
+                       (WebGPU bootstrap), GpuShaders.ts (WGSL), GpuRenderer.ts
+                       (capture + scene/overlay passes; monkey-patches the Pix3D
+                       raster entry points + Pix2D/PixMap at load time)
                        + tools/gpu_parity_test.ts (bun; software-vs-shader parity)
     control-panel/     patches/client_ejs.json (injection) + bundle.ts (terser reserves)
                        + files/engine/public/lclite/panel.{js,css} (static assets,

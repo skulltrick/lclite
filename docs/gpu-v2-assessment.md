@@ -101,6 +101,30 @@ gameDrawMain (untouched)
 6. **P6 depth/order** — keep seq-depth first (v1 semantics); evaluate real depth-buffer + two-pass (opaque depth-tested, then trans/allocation priorities) as an explicit experiment, since prompt's Phase 6 goal conflicts with RS2 bucket interleave — document findings.
 7. **P7 entities polish + HUD overlay composite + performance pass** (batch counts, buffer reuse, dirty-rect overlay), then open the draw-distance work.
 
-## 6. Open questions for the user (from the v1 verdict "not efficient or useful")
+## 6. P6 EVALUATION RESULT (2026-09-10): keep seq-depth, no hardware depth test
+
+Decision from the P6 experiment window: **seq-in-vertex-depth (z = seq·2⁻²³,
+depth32float, GEQUAL, clear 0) stays as THE ordering model.** Evaluated
+against switching to a real depth buffer with camera-space z:
+
+1. RS2 painter order *is* the behavioral spec — `render2`'s bucket sort,
+   `facePriority` 10/11 interleave, and per-call back-to-front `fill()` all
+   encode ordering decisions the CPU already made. Re-deriving that from
+   geometric depth alone would change behavior (translucent blends, roof
+   faces, tree-vs-player tie cases), i.e. a rewrite of correct behavior.
+2. Precision is a non-issue: 8.4M distinct depths (capture caps at 65,536
+   tris/frame; overflow degrades to software like v1).
+3. GEQUAL-vs-clear-0 admits every triangle unconditionally — proven live
+   (P2-P5 all order pixel-exact, parity harness identical to v1 baseline).
+4. The win v1 chased (per-tri drawArrays 30-60k → few draws) came from the
+   batching, which seq-depth does not forfeit. A hardware depth test buys
+   nothing further at this architecture's draw-call counts.
+
+What P6 *did* take from the experiment: the depth buffer stays a
+render-target concern only (order + future MSAA/resolution phases), and any
+later "render at native resolution" work (RuneLite-GPU parity) can attach
+real geometry depth THEN, layered on top of seq bits if ever needed.
+
+## 7. Open questions for the user (from the v1 verdict "not efficient or useful")
 - Primary success metric to optimize first: fps at default view? fps when zoomed out (the scenario v1 choked on)? memory? parity fidelity?
 - Keep v1's module `mods/gpu/` (revert contents) or new `mods/gpu2/` with v1 parked as reference until P1 lands?
