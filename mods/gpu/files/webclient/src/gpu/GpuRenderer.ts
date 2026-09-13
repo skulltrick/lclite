@@ -368,7 +368,9 @@ export class GpuRenderer {
             this.texArray = device.createTexture({
                 label: 'lclite-gpu-texarray',
                 size: { width: TEX_W, height: TEX_H, depthOrArrayLayers: TEX_COUNT },
-                dimension: '2d-array',
+                // WebGPU has NO '2d-array' dimension (that's GL's enum name):
+                // array textures are dimension '2d' + depthOrArrayLayers.
+                dimension: '2d',
                 format: 'r32uint',
                 usage: USAGE_TEXTURE_COPY_DST | USAGE_TEXTURE_BINDING,
             });
