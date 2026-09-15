@@ -147,12 +147,14 @@ Full walkthrough with hook-site tables and the panel/engine contract:
 
 ```
 lclite/
-  install.mjs          applier + builder (node, zero deps)
+  install.mjs          applier + builder (node, zero deps; `doctor` + `new` too)
   regen.mjs            re-extracts hunks from your working tree (run AFTER you edit the
-                       engine sources, before committing the overlay); HUNK_OWNER rules
-                       route hunks in shared files (Client.ts!) to their owning mod
-  PLUGINS.md           developer guide: TYPE A (UI) vs TYPE B (engine) plugins,
-                       the settings contract, ideas register
+                       engine sources, before committing the overlay); lclite:<mod>
+                       markers route hunks in shared files (Client.ts!) to their owner
+  root.json            host project layout (repo dirs + remotes) — edit for custom
+                       2004-lineage servers; absent = built-in Lost City defaults
+  PLUGINS.md           developer guide: TYPE A (UI) / B (engine) / C (visual entity),
+                       the settings contract, distribution rules, ideas register
   mods/
     camera/            Client/GameShell/World/Pix3D/Model hunks: wheel zoom, rotate,
                        ground pick, visibility + far-plane plumbing (zoom-owned)
