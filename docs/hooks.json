@@ -1,0 +1,511 @@
+{
+ "generated_by": "regen.mjs",
+ "heads": {
+  "webclient": "bd6cad7147cc9f44d5eb12de93f0736c18e1c4d0",
+  "engine": "0c7cf6555d0cf92d2348999b2fd27c6ceff5ffbf"
+ },
+ "hooks": {
+  "webclient/src/client/GameShell.ts": [
+   {
+    "mod": "camera",
+    "note": "src/client/GameShell.ts @ old line 37",
+    "line": 37,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/client/GameShell.ts @ old line 53",
+    "line": 53,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/client/GameShell.ts @ old line 111",
+    "line": 111,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/client/GameShell.ts @ old line 318",
+    "line": 318,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/client/GameShell.ts @ old line 335",
+    "line": 335,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/client/GameShell.ts @ old line 356",
+    "line": 356,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/client/GameShell.ts @ old line 401",
+    "line": 401,
+    "marker": true
+   }
+  ],
+  "webclient/src/client/Client.ts": [
+   {
+    "mod": "gpu",
+    "note": "src/client/Client.ts @ old line 0",
+    "line": 0,
+    "marker": true
+   },
+   {
+    "mod": "xp-drops",
+    "note": "src/client/Client.ts @ old line 87",
+    "line": 87,
+    "marker": true
+   },
+   {
+    "mod": "xp-drops",
+    "note": "src/client/Client.ts @ old line 121",
+    "line": 121,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 355",
+    "line": 355,
+    "marker": true
+   },
+   {
+    "mod": "xp-drops",
+    "note": "src/client/Client.ts @ old line 422",
+    "line": 422,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 514",
+    "line": 514,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 587",
+    "line": 587,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 588",
+    "line": 588,
+    "marker": true
+   },
+   {
+    "mod": "xp-drops",
+    "note": "src/client/Client.ts @ old line 1015",
+    "line": 1015,
+    "marker": true
+   },
+   {
+    "mod": "rendering",
+    "note": "src/client/Client.ts @ old line 1260",
+    "line": 1260,
+    "marker": true
+   },
+   {
+    "mod": "xp-drops",
+    "note": "src/client/Client.ts @ old line 1819",
+    "line": 1819,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 2060",
+    "line": 2060,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 2063",
+    "line": 2062,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 2132",
+    "line": 2131,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 2173",
+    "line": 2172,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 2181",
+    "line": 2180,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 2307",
+    "line": 2306,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 2315",
+    "line": 2315,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 2325",
+    "line": 2325,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 2942",
+    "line": 2941,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 3226",
+    "line": 3226,
+    "marker": true
+   },
+   {
+    "mod": "stat-orbs",
+    "note": "src/client/Client.ts @ old line 3887",
+    "line": 3887,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 4193",
+    "line": 4192,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 4258",
+    "line": 4258,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 4271",
+    "line": 4270,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 4387",
+    "line": 4386,
+    "marker": true
+   },
+   {
+    "mod": "xp-drops",
+    "note": "src/client/Client.ts @ old line 4571",
+    "line": 4571,
+    "marker": true
+   },
+   {
+    "mod": "xp-drops",
+    "note": "src/client/Client.ts @ old line 4574",
+    "line": 4574,
+    "marker": true
+   },
+   {
+    "mod": "true-tile",
+    "note": "src/client/Client.ts @ old line 4803",
+    "line": 4803,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 4868",
+    "line": 4867,
+    "marker": true
+   },
+   {
+    "mod": "true-tile",
+    "note": "src/client/Client.ts @ old line 5073",
+    "line": 5073,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 5403",
+    "line": 5402,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 5572",
+    "line": 5571,
+    "marker": true
+   },
+   {
+    "mod": "xp-drops",
+    "note": "src/client/Client.ts @ old line 6684",
+    "line": 6684,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 8609",
+    "line": 8608,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 8627",
+    "line": 8626,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 8637",
+    "line": 8636,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 8796",
+    "line": 8795,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 8806",
+    "line": 8805,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 8862",
+    "line": 8861,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 8880",
+    "line": 8879,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 8913",
+    "line": 8912,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 8923",
+    "line": 8922,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 8993",
+    "line": 8992,
+    "marker": true
+   },
+   {
+    "mod": "anti-cheat",
+    "note": "src/client/Client.ts @ old line 9128",
+    "line": 9127,
+    "marker": true
+   },
+   {
+    "mod": "stat-orbs",
+    "note": "src/client/Client.ts @ old line 11320",
+    "line": 11320,
+    "marker": true
+   },
+   {
+    "mod": "stat-orbs",
+    "note": "src/client/Client.ts @ old line 11334",
+    "line": 11334,
+    "marker": true
+   },
+   {
+    "mod": "stat-orbs",
+    "note": "src/client/Client.ts @ old line 11435",
+    "line": 11435,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 11672",
+    "line": 11672,
+    "marker": true
+   }
+  ],
+  "webclient/src/dash3d/World.ts": [
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 117",
+    "line": 117,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 950",
+    "line": 950,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 954",
+    "line": 954,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 967",
+    "line": 967,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 972",
+    "line": 972,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 982",
+    "line": 981,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 987",
+    "line": 986,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 992",
+    "line": 991,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 997",
+    "line": 996,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 1014",
+    "line": 1013,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 1030",
+    "line": 1029,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 1038",
+    "line": 1037,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 1085",
+    "line": 1084,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 1093",
+    "line": 1092,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 1242",
+    "line": 1242,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 1271",
+    "line": 1270,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 1313",
+    "line": 1312,
+    "marker": true
+   },
+   {
+    "mod": "camera",
+    "note": "src/dash3d/World.ts @ old line 1368",
+    "line": 1367,
+    "marker": true
+   }
+  ],
+  "webclient/src/dash3d/Pix3D.ts": [
+   {
+    "mod": "camera",
+    "note": "src/dash3d/Pix3D.ts @ old line 34",
+    "line": 34,
+    "marker": true
+   }
+  ],
+  "webclient/src/dash3d/Model.ts": [
+   {
+    "mod": "camera",
+    "note": "src/dash3d/Model.ts @ old line 1723",
+    "line": 1722,
+    "marker": true
+   }
+  ],
+  "webclient/src/config/ObjType.ts": [
+   {
+    "mod": "rendering",
+    "note": "src/config/ObjType.ts @ old line 428",
+    "line": 428,
+    "marker": true
+   },
+   {
+    "mod": "rendering",
+    "note": "src/config/ObjType.ts @ old line 514",
+    "line": 513,
+    "marker": true
+   }
+  ],
+  "webclient/bundle.ts": [
+   {
+    "mod": "control-panel",
+    "note": "bundle.ts @ old line 132",
+    "line": 131,
+    "marker": true
+   }
+  ],
+  "engine/view/client.ejs": [
+   {
+    "mod": "control-panel",
+    "note": "view/client.ejs @ old line 331",
+    "line": 331,
+    "marker": true
+   },
+   {
+    "mod": "control-panel",
+    "note": "view/client.ejs @ old line 392",
+    "line": 392,
+    "marker": true
+   }
+  ]
+ }
+}

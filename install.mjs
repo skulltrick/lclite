@@ -39,6 +39,27 @@ function findBun() {
     return 'bun';
 }
 
+// ---- reseat assist (B4) ------------------------------------------------------
+// When an anchor fails, don't just say "not found": fuzzy-locate its most
+// distinctive lines in the current file and print WHERE they went. Rev-day
+// reseating = read the line number, open the file there, fix find[], done.
+function reseatHints(text, find) {
+    const lines = text.split('\n');
+    const probe = find.map(l => l.trim()).filter(l => l.length >= 20);
+    probe.sort((a, b) => b.length - a.length);
+    const out = [];
+    for (const p of probe.slice(0, 3)) {
+        const hit = lines.findIndex(l => l.trim() === p);
+        if (hit >= 0) { out.push(`"${p.slice(0, 60)}..." now at line ${hit + 1}`); continue; }
+        // relaxed: substring / whitespace-collapse match
+        const rx = new RegExp(p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\s+/g, '\\s*').slice(0, 180));
+        const hit2 = lines.findIndex(l => rx.test(l));
+        if (hit2 >= 0) out.push(`"${p.slice(0, 60)}..." ~ line ${hit2 + 1} (whitespace changed)`);
+        else out.push(`"${p.slice(0, 60)}..." NOT found in file — likely renamed/removed upstream`);
+    }
+    return out;
+}
+
 // ---- apply (verbatim semantics of the original tool) ------------------------
 function applyPatchFile(patch, checkOnly) {
     const abs = path.join(ROOT, patch.file);
@@ -60,8 +81,8 @@ function applyPatchFile(patch, checkOnly) {
         // corruption in an earlier version of this tool.)
         if (countOccurrences(text, rep) >= 1) { res.already++; continue; }
         const n = countOccurrences(text, find);
-        if (n === 0) { res.failed.push({ note: h.note || '', find0: h.find[0] || '', reason: 'anchor not found (upstream drifted or rev mismatch)' }); continue; }
-        if (n > 1) { res.failed.push({ note: h.note || '', find0: h.find[0] || '', reason: `anchor ambiguous (${n} matches)` }); continue; }
+        if (n === 0) { res.failed.push({ note: h.note || '', find0: h.find[0] || '', hints: reseatHints(text, h.find), reason: 'anchor not found (upstream drifted or rev mismatch)' }); continue; }
+        if (n > 1) { res.failed.push({ note: h.note || '', find0: h.find[0] || '', hints: [], reason: `anchor ambiguous (${n} matches)` }); continue; }
         // Stale-JSON guard: rep isn't verbatim in the tree, yet the region right after
         // (or inside) the anchor already contains a run of this hunk's added lines =>
         // the mod IS present, hand-edited inside the replacement region. Re-inserting
@@ -233,6 +254,7 @@ function converge(mods, want, check) {
                 for (const f of r.failed) {
                     fails++;
                     console.log(`  ✗ [${mod.name}] ${patch.file}: ${f.reason}\n      anchor: ${JSON.stringify((f.find0 || '').slice(0, 80))}  (${f.note})`);
+                    for (const hint of (f.hints || [])) console.log(`      ↳ ${hint}`);
                 }
             }
             const copied = check ? [] : copyModFiles(mod);
@@ -312,6 +334,29 @@ async function pick(mods) {
     return sel;
 }
 
+// ---- new-mod scaffold (B2) ---------------------------------------------------
+// One command instead of a wiki hunt. Creates the folder contract and prints the
+// exact 5-step recipe; `doctor` will verify every step afterwards.
+function scaffold(name) {
+    const dir = path.join(__dirname, 'mods', name);
+    if (fs.existsSync(dir)) { console.error(`mods/${name} already exists`); process.exitCode = 1; return; }
+    fs.mkdirSync(path.join(dir, 'patches'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'README.md'),
+        `# mods/${name}\n\nOne paragraph: what this mod does and how a player notices it.\n\n` +
+        `## Engine hunks (TYPE B)\nEdit the live tree, then \`node lclite/regen.mjs\` — hunks route here\n` +
+        `automatically because every added block carries \`// lclite:${name}\` as its first line.\n` +
+        `Files this mod patches must be listed in MODS + HUNK_OWNER fallback in regen.mjs.\n\n` +
+        `## Settings contract\nlocalStorage key \`${name}\` (camelCase), read per-frame at this mod's OWN hook site.\n` +
+        `Panel row: PLUGINS entry in mods/control-panel/files/engine/public/lclite/panel.js.\n`);
+    console.log(`created mods/${name}/`);
+    console.log('\nnext steps (all verified by `node lclite/install.mjs doctor`):');
+    console.log(`  1. edit webclient/src/... (or engine/view/...) directly — start every added block with "/* lclite:${name} */"`);
+    console.log('  2. dev-test fast:   bun run bundle.ts dev   (unmangled names for console probes)');
+    console.log(`  3. snapshot hunks:  add '${name}': ['<file>', ...] to MODS in regen.mjs, then node lclite/regen.mjs`);
+    console.log('  4. prove it:        t/ pristine apply == live tree byte-for-byte (README "acceptance test")');
+    console.log('  5. panel row:       PLUGINS entry { id, name, desc, master:{key,def} } in panel.js (TYPE A if no hunks)');
+}
+
 // ---- main ----------------------------------------------------------------------
 function wantNames(mods, names) {
     const want = {};
@@ -328,7 +373,7 @@ function doApply(mods, want) {
     const { fails } = converge(mods, want, false);
     const installed = buildManifest(mods);
     if (fails) {
-        console.log(`\n${fails} hunk(s) need reseating for this rev. Anchors carry 3 lines of context each side — open lclite/mods/<mod>/patches/*.json, reseat the find[] array against the new upstream code, rerun.`);
+        console.log(`\n${fails} hunk(s) need reseating for this rev. The ↳ lines above say where the anchor's lines moved — open lclite/mods/<mod>/patches/*.json, update the find[] array to the new surrounding code, rerun.`);
         process.exitCode = 2;
     } else {
         console.log(`\nmods on the tree: ${installed.join(', ') || '(none)'}`);
@@ -371,6 +416,18 @@ async function main() {
 
     // build-only mode
     if (args.includes('build')) { if (!check) build(); return; }
+
+    if (args.includes('doctor')) {
+        // forward ONLY the known-safe flag: never splice raw argv into a shell string
+        try { execSync(`node "${path.join(__dirname, 'doctor.mjs')}"${args.includes('--json') ? ' --json' : ''}`, { stdio: 'inherit' }); } catch { process.exitCode = 1; }
+        return;
+    }
+    if (args.includes('new')) {
+        const name = args[args.indexOf('new') + 1];
+        if (!name || !/^[a-z][a-z0-9-]*$/.test(name)) { console.error('usage: node install.mjs new <mod-name>  (lowercase, hyphens)'); process.exitCode = 1; return; }
+        scaffold(name);
+        return;
+    }
 
     let want;
     if (args.includes('uninstall')) {

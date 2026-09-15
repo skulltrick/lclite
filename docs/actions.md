@@ -1,5 +1,16 @@
 # Hunk system — action plan
 
+> **STATUS 2026-09-15: P0 + P1 shipped** (commits 4014add..). A1 markers 81/81,
+> A2 minimize-to-unique (find-lines 833→395, worst anchor 130→16), A3 overlap
+> geometry check, B1 `install.mjs doctor` (+CI step), B2 `install.mjs new`,
+> B3 AGENTS.md + generated docs/HOOKS.md + docs/hooks.json, B4 reseat hints
+> (proven: prints fuzzy line where anchor moved). The ≥61-line rule is RETIRED
+> (regen now -U0 islands). Two latent bugs found + fixed en route: pure-insertion
+> off-by-one at file start, trail-window swallowing the next island's anchor.
+> Acceptance: pristine t/ apply byte-identical 8/8, regen idempotent, tsc green,
+> prod build deployed. Remaining: C-track (deferred by design), README screenshot
+> pass (newcomer polish, not structural).
+
 Date: 2026-09-15. Why: see `hunk-system-assessment.md`. Goal: **fast agent +
 human workflow** and **cheap integration onto any new Lost City build**.
 Rule of thumb: prefer deterministic over inferential; every rule must be

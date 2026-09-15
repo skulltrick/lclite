@@ -20,9 +20,12 @@ upstream clone (pristine)  +  lclite overlay  →  node lclite/install.mjs  → 
 ```
 
 - **Hunks are the durable artifact.** Each mod owns a folder under
-  `lclite/mods/` with small semantic patches (`{find, replace}` line arrays with
-  3+ context lines). On a new rev, a hunk either applies clean or prints exactly
-  which anchor drifted — reseat the anchor, done. Your settings UI and static assets
+  `lclite/mods/` with small semantic patches (`{find, replace}` line arrays —
+  `find` is the MINIMAL unique window around the change, not a context blob).
+  Every added code block carries a `lclite:<mod>` marker comment, so hunks are
+  owned by declaration, never by guesswork. On a new rev, a hunk either applies
+  clean or prints exactly which anchor drifted — and *where its lines moved* —
+  so reseating is minutes, not archaeology. Your settings UI and static assets
   are plain files, copied verbatim, so they never conflict.
 - **The panel is the plugin surface.** A RuneLite-style popover (F1) renders every
   mod as a toggle/slider; the settings bus is `localStorage` keys and the engine
@@ -106,13 +109,14 @@ Then:
    `lclite/` at the root survives this, which is exactly why it lives here),
    or `git pull` inside each repo for the same rev line.
 2. `node lclite/install.mjs` — clean apply → done, build, play.
-3. Any hunk that fails prints the anchor line and reason (`anchor not found` = upstream
-   drifted). Open `lclite/mods/<name>/patches/<file>.json`, fix the `find` array to the
-   new surrounding code (3+ lines of context), rerun. Ambiguity errors (`N matches`) mean
-   the anchor isn't unique — lengthen its context.
+3. Any hunk that fails prints the anchor line, the reason (`anchor not found` = upstream
+   drifted) and ↳ hints naming the line where its most distinctive context now lives —
+   open `lclite/mods/<name>/patches/<file>.json`, update the `find` array to the new
+   surrounding code, rerun. Ambiguity errors (`N matches`) mean the anchor isn't
+   unique — lengthen its context.
 4. When the apply is clean, `node lclite/regen.mjs` snapshots any reseating you did back
-   into the overlay and `git add lclite/ && git commit` — the overlay is now tracking
-   the new rev.
+   into the overlay (and refreshes `docs/HOOKS.md` + `docs/hooks.json`) and
+   `git add lclite/ && git commit` — the overlay is now tracking the new rev.
 
 **The acceptance test for any of this**: pristine clones at the new rev + `install apply`
 must reproduce your working tree byte-for-byte. (`t/` holds throwaway clones for exactly
@@ -158,9 +162,11 @@ lclite/
                        copied verbatim into the tree)
 ```
 
-Engine mods whose hunks share `Client.ts` keep their code in **isolated regions**
-(fields + methods parked ≥61 pristine lines from other mods' edits) so regen can
-never merge two mods into one hunk — see PLUGINS.md for why 61.
+Engine mods' edits in a shared file like `Client.ts` are separated by **markers**
+(every added block starts with `// lclite:<mod>`) and `git -U0` islands, so regen can
+never merge two mods into one hunk and `install.mjs doctor` machine-verifies no hunk's
+deletions can break another's anchor (exit code 3). The old "≥61 pristine lines apart"
+convention is retired — see PLUGINS.md.
 
 ## The panel (RuneLite-style)
 

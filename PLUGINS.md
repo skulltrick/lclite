@@ -113,20 +113,18 @@ Add the file to `MODS` in `lclite/regen.mjs` (new folder = new mod, e.g.
 ```
 node lclite/regen.mjs          # regenerates lclite/mods/*/patches/*.json from git diff
 ```
-Hunks are `{find:[old lines], replace:[new lines]}` — `find` gets auto-widened with
-context until unique in the *pristine* old file. If regen warns `AMBIGUOUS`, your edit is
-inside a region that appears multiple times — restructure the edit (anchor on a unique
-line) rather than fighting the tool. When one file hosts SEVERAL mods (Client.ts does —
-camera, xp-drops, stat-orbs, anti-cheat), `HUNK_OWNER` regexes route each hunk to its
-folder by argmax of token hits in the ADDED lines (camera is a scored rule too, so the
-settings-bus hunk stays with camera on score; a genuinely merged hunk like CYCLELOGIC7+
-clearPick goes to whichever side dominates). CRITICAL: edits closer than ~61 pristine
-lines merge into ONE git -U30 hunk, so each mod's fields/methods must live in an
-ISOLATED region clear of other mods' hooks — e.g. stat-orbs keeps its whole
-fields+drawStatOrbs+drawOrb block in one slot before gameDraw(); anti-cheat's field
-sits between the menu and midi field groups. If routing looks wrong after an edit,
-check the hunks didn't silently merge: `git diff -U30` and count blank context between
-your +/- blocks.
+Hunks are `{find:[old lines], replace:[new lines]}` — `find` is the MINIMAL unique
+window in the pristine old file (2-line context floor, expanded only while the anchor
+is non-unique). If regen warns `AMBIGUOUS`, your hook site's surroundings repeat in the
+file — widen your edit to include a unique line rather than fighting the tool. When one
+file hosts SEVERAL mods (Client.ts does), each added block MUST start with a
+`lclite:<mod>` marker (comment form matching the language, `<!-- lclite:mod -->` in
+EJS); regen routes by marker with 100% precision and warns loudly on any unmarked
+block (legacy regex fallback). The old ≥61-line isolation rule is RETIRED (2026-09-15):
+regen now extracts `git diff -U0` islands, so adjacent change blocks stay separate
+hunks automatically — but keep hunks' edit sites ≥3 untouched lines apart, and trust
+`node lclite/install.mjs doctor` (exit 3 = a hunk's deletions would break a sibling's
+anchor).
 
 ### 4. Prove it survives
 ```

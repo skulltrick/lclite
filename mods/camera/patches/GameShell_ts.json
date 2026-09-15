@@ -24,7 +24,12 @@
    ],
    "note": "src/client/GameShell.ts @ old line 37",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    37,
+    0,
+    35,
+    38
+   ]
   },
   {
    "find": [
@@ -49,7 +54,12 @@
    ],
    "note": "src/client/GameShell.ts @ old line 53",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    53,
+    0,
+    51,
+    54
+   ]
   },
   {
    "find": [
@@ -69,7 +79,12 @@
    ],
    "note": "src/client/GameShell.ts @ old line 111",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    111,
+    0,
+    109,
+    112
+   ]
   },
   {
    "find": [
@@ -97,7 +112,12 @@
    ],
    "note": "src/client/GameShell.ts @ old line 318",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    318,
+    0,
+    316,
+    319
+   ]
   },
   {
    "find": [
@@ -119,7 +139,12 @@
    ],
    "note": "src/client/GameShell.ts @ old line 335",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    335,
+    0,
+    333,
+    336
+   ]
   },
   {
    "find": [
@@ -140,7 +165,12 @@
    ],
    "note": "src/client/GameShell.ts @ old line 356",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    356,
+    0,
+    354,
+    357
+   ]
   },
   {
    "find": [
@@ -159,7 +189,12 @@
    ],
    "note": "src/client/GameShell.ts @ old line 401",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    401,
+    0,
+    399,
+    402
+   ]
   }
  ]
 }

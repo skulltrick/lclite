@@ -25,7 +25,12 @@
    ],
    "note": "src/dash3d/Pix3D.ts @ old line 34",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    34,
+    0,
+    32,
+    35
+   ]
   }
  ]
 }

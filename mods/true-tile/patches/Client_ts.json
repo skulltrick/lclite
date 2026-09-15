@@ -24,7 +24,12 @@
    ],
    "note": "src/client/Client.ts @ old line 4803",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    4803,
+    0,
+    4801,
+    4804
+   ]
   },
   {
    "find": [
@@ -192,7 +197,12 @@
    ],
    "note": "src/client/Client.ts @ old line 5073",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    5073,
+    0,
+    5071,
+    5074
+   ]
   }
  ]
 }

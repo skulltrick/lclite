@@ -19,7 +19,12 @@
    ],
    "note": "src/client/Client.ts @ old line 0",
    "occ": 1,
-   "ctx": 2
+   "pos": [
+    0,
+    0,
+    0,
+    1
+   ]
   }
  ]
 }

@@ -28,6 +28,7 @@ jobs:
           node --check install.mjs
           node --check lib.mjs
           node --check regen.mjs
+          node --check doctor.mjs
           node --check mods/control-panel/files/engine/public/lclite/panel.js
           for j in mods/*/patches/*.json; do node -e "JSON.parse(require('fs').readFileSync('$j','utf8'))" || exit 1; done
 
@@ -69,6 +70,10 @@ jobs:
       - name: Dry-run installer (anchor drift test)
         run: node install.mjs apply --check
         # exit 2 == some hunk's anchor drifted upstream; the log prints which
+
+      - name: "Doctor (structural canary: markers, overlap geometry, rev skew)"
+        run: node doctor.mjs
+        # exit 2 drift (same signal as above) · exit 3 = overlap/marker gap/rev skew
 
       - name: Apply for real + diff report
         run: |

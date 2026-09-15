@@ -28,7 +28,12 @@
    ],
    "note": "src/client/Client.ts @ old line 514",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    514,
+    0,
+    512,
+    515
+   ]
   },
   {
    "find": [
@@ -49,7 +54,12 @@
    ],
    "note": "src/client/Client.ts @ old line 2060",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    2060,
+    0,
+    2058,
+    2061
+   ]
   },
   {
    "find": [
@@ -69,7 +79,12 @@
    ],
    "note": "src/client/Client.ts @ old line 2063",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    2062,
+    1,
+    2060,
+    2064
+   ]
   },
   {
    "find": [
@@ -89,7 +104,12 @@
    ],
    "note": "src/client/Client.ts @ old line 2132",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    2131,
+    1,
+    2129,
+    2133
+   ]
   },
   {
    "find": [
@@ -109,7 +129,12 @@
    ],
    "note": "src/client/Client.ts @ old line 2173",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    2172,
+    1,
+    2170,
+    2174
+   ]
   },
   {
    "find": [
@@ -145,7 +170,12 @@
    ],
    "note": "src/client/Client.ts @ old line 2181",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    2180,
+    8,
+    2178,
+    2189
+   ]
   },
   {
    "find": [
@@ -167,7 +197,12 @@
    ],
    "note": "src/client/Client.ts @ old line 2307",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    2306,
+    1,
+    2304,
+    2308
+   ]
   },
   {
    "find": [
@@ -191,7 +226,12 @@
    ],
    "note": "src/client/Client.ts @ old line 2942",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    2941,
+    2,
+    2939,
+    2944
+   ]
   },
   {
    "find": [
@@ -215,7 +255,12 @@
    ],
    "note": "src/client/Client.ts @ old line 4271",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    4270,
+    2,
+    4268,
+    4273
+   ]
   },
   {
    "find": [
@@ -235,7 +280,12 @@
    ],
    "note": "src/client/Client.ts @ old line 4387",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    4386,
+    1,
+    4384,
+    4388
+   ]
   },
   {
    "find": [
@@ -255,7 +305,12 @@
    ],
    "note": "src/client/Client.ts @ old line 4868",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    4867,
+    1,
+    4865,
+    4869
+   ]
   },
   {
    "find": [
@@ -275,7 +330,12 @@
    ],
    "note": "src/client/Client.ts @ old line 5403",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    5402,
+    1,
+    5400,
+    5404
+   ]
   },
   {
    "find": [
@@ -295,7 +355,12 @@
    ],
    "note": "src/client/Client.ts @ old line 5572",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    5571,
+    1,
+    5569,
+    5573
+   ]
   },
   {
    "find": [
@@ -315,7 +380,12 @@
    ],
    "note": "src/client/Client.ts @ old line 8609",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    8608,
+    1,
+    8606,
+    8610
+   ]
   },
   {
    "find": [
@@ -335,7 +405,12 @@
    ],
    "note": "src/client/Client.ts @ old line 8627",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    8626,
+    1,
+    8624,
+    8628
+   ]
   },
   {
    "find": [
@@ -355,7 +430,12 @@
    ],
    "note": "src/client/Client.ts @ old line 8637",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    8636,
+    1,
+    8634,
+    8638
+   ]
   },
   {
    "find": [
@@ -375,7 +455,12 @@
    ],
    "note": "src/client/Client.ts @ old line 8796",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    8795,
+    1,
+    8793,
+    8797
+   ]
   },
   {
    "find": [
@@ -395,7 +480,12 @@
    ],
    "note": "src/client/Client.ts @ old line 8806",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    8805,
+    1,
+    8803,
+    8807
+   ]
   },
   {
    "find": [
@@ -415,7 +505,12 @@
    ],
    "note": "src/client/Client.ts @ old line 8862",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    8861,
+    1,
+    8859,
+    8863
+   ]
   },
   {
    "find": [
@@ -435,7 +530,12 @@
    ],
    "note": "src/client/Client.ts @ old line 8880",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    8879,
+    1,
+    8877,
+    8881
+   ]
   },
   {
    "find": [
@@ -455,7 +555,12 @@
    ],
    "note": "src/client/Client.ts @ old line 8913",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    8912,
+    1,
+    8910,
+    8914
+   ]
   },
   {
    "find": [
@@ -475,7 +580,12 @@
    ],
    "note": "src/client/Client.ts @ old line 8923",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    8922,
+    1,
+    8920,
+    8924
+   ]
   },
   {
    "find": [
@@ -495,7 +605,12 @@
    ],
    "note": "src/client/Client.ts @ old line 8993",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    8992,
+    1,
+    8990,
+    8994
+   ]
   },
   {
    "find": [
@@ -515,7 +630,12 @@
    ],
    "note": "src/client/Client.ts @ old line 9128",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    9127,
+    1,
+    9125,
+    9129
+   ]
   }
  ]
 }

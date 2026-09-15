@@ -23,7 +23,12 @@
    ],
    "note": "view/client.ejs @ old line 331",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    331,
+    0,
+    329,
+    332
+   ]
   },
   {
    "find": [
@@ -45,7 +50,12 @@
    ],
    "note": "view/client.ejs @ old line 392",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    392,
+    0,
+    390,
+    393
+   ]
   }
  ]
 }

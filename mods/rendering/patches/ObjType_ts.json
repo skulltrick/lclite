@@ -23,7 +23,12 @@
    ],
    "note": "src/config/ObjType.ts @ old line 428",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    428,
+    0,
+    426,
+    429
+   ]
   },
   {
    "find": [
@@ -43,7 +48,12 @@
    ],
    "note": "src/config/ObjType.ts @ old line 514",
    "occ": 1,
-   "ctx": 4
+   "pos": [
+    513,
+    1,
+    511,
+    515
+   ]
   }
  ]
 }
