@@ -75,3 +75,36 @@ tool scripts, docs.
 Working on LCLite from an AI session? [`FOR_AGENTS_README.md`](FOR_AGENTS_README.md)
 first — hard rules, loops, and the files that machine-check them. It pairs
 with the architecture dossier in [docs/hunk-system-assessment.md](docs/hunk-system-assessment.md).
+
+Starting a fresh agent on a new mod? Paste it this brief (swap in your idea;
+it bootstraps any competent model onto this machine's discipline):
+
+```
+You are building a mod for LCLite, the out-of-tree mod overlay for the
+Lost City / 2004Scape Build-289 webclient. The mod to build: <IDEA — one paragraph, what a player should notice>.
+
+Repo: <path-to>/Build-289/lclite (git: skulltrick/lclite, branch main). The game checkout is one level up:
+webclient/ and engine/ are upstream repos — NEVER commit modded state there.
+
+Boot in this order before touching anything:
+1. Read FOR_AGENTS_README.md (hard rules), then docs/MODS.md (TYPE A/B/C guide).
+2. cd lclite && node tools/lclite.mjs doctor   — exit 0 is your baseline; if not, stop and report.
+3. node tools/lclite.mjs new <mod-name>        — scaffold + recipe.
+
+Discipline (non-negotiable):
+- Every added code block starts with a `lclite:<mod>` marker comment.
+- After ANY source edit: node tools/regen.mjs BEFORE node tools/lclite.mjs apply.
+- Preserve CRLF on file writes; text-mode whole-file rewrites silently flatten and corrupt the overlay.
+- engine/public/client/client.js is built, never hand-edited.
+- Dev-test with the dev bundle (window.lostcityClient.<field> is probeable there).
+
+Done means ALL of: doctor exit 0 · apply --check 0 fails · the t/ pristine
+harness reproduces your tree byte-identical across all patched files
+(§Acceptance above) · tsc --noEmit clean · tools/lclite.mjs build succeeds ·
+lclite committed + pushed.
+
+When finished, report: what you built, what you verified (real outputs, not
+claims), what you're unsure of, and a short "what to check in-game" list —
+I test gameplay myself. If something must be aborted or redone, say so
+directly; honest aborts are welcome, heroics are not.
+```
