@@ -90,6 +90,8 @@
     document.head.appendChild(style);
 
     function build() {
+        window.__lctcgUi = 3;           // stamp the core checks (replace stale cached copies)
+        console.log('[lclite:tcg] ui v3');
         root = document.createElement('div');
         root.id = 'lctcg-root';
         root.innerHTML = `

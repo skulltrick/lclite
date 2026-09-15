@@ -44,7 +44,11 @@
 
     const KEY_STATE = 'lcliteTcg';      // { "username": save }
     const KEY_MASTER = 'tcg';           // this mod's master switch (its OWN key, rule 5)
-    const CAT_URL = '/lclite/tcg/cards.json';
+    // ?v= cache key: 'force-cache' happily serves a STALE catalog forever (Brave
+    // bit us exactly this way) — bump v with any cards.json format change.
+    const CAT_URL = '/lclite/tcg/cards.json?v=3';
+    const UI_SRC = '/lclite/tcg/ui.js?v=3';
+    const UI_VER = 3;                   // ui.js stamps window.__lctcgUi; stale UI is re-fetched+replaced
 
     const TIER_LABELS = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Godly'];
 
@@ -201,7 +205,7 @@
         const now = performance.now();
         if (fetching || (now - failedAt < 20000 && !cb)) { return; } // backoff between attempts
         fetching = true;
-        fetch(CAT_URL, { cache: 'force-cache' })
+        fetch(CAT_URL, { cache: 'no-cache' })   // revalidate (304 keeps it cheap)
             .then(r => (r.ok ? r.json() : Promise.reject(new Error('http ' + r['status']))))
             .then((arr: any) => {
                 CAT = { version: arr[0], cards: decodeCatalog(arr) };
@@ -568,16 +572,25 @@
     // ui.js normally arrives via the client.ejs hunk (before </body>). But that
     // tag lives in server-rendered HTML: a stale engine process or a cached page
     // can boot the core WITHOUT the DOM layer — HUD/clicks/album then do nothing
-    // and it looks like the whole mod is dead. The bundled core always survives,
-    // so it injects the script itself when it's missing (idempotent: ui.js sets
-    // tcgBumpToast synchronously when it runs).
+    // and it looks like the whole mod is dead. Worse, a cached *pre-repair*
+    // ui.js can load instead (viewport-right HUD eaten by the LCLite FAB, old
+    // catalog assumptions) — Brave served exactly that past hard refreshes. The
+    // bundled core always survives, so it verifies the UI stamp and (re)loads
+    // the version-keyed script itself when it's missing OR stale; the stamped
+    // URL cache-busts any poisoned copy. The detached old #lctcg-root is simply
+    // removed (its leftover setInterval writes invisible detached nodes).
     function ensureUiScript(): void {
-        if (W['tcgBumpToast']) { return; }
+        const stale = W['tcgBumpToast'] && W['__lctcgUi'] !== UI_VER;
+        if (W['tcgBumpToast'] && !stale) { return; }
+        if (stale) {
+            const oldRoot = W.document.getElementById('lctcg-root');
+            if (oldRoot) { oldRoot.remove(); }
+        }
         const tag = 'script[data-lctcg-ui]';
         if (!document.querySelector(tag)) {
             const s = document.createElement('script');
-            s.setAttribute('data-lctcg-ui', '1');
-            s.src = '/lclite/tcg/ui.js';
+            s.setAttribute('data-lctcg-ui', String(UI_VER));
+            s.src = UI_SRC;
             (document.body || document.head).appendChild(s);
         }
     }
