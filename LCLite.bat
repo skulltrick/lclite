@@ -1,31 +1,33 @@
 @echo off
 rem ============================================================================
-rem  LCLite installer - interactive mod picker for the Lost City webclient.
+rem  LCLite - the friendly way to set up and manage your mods.
 rem
-rem  Double-click this file (or run install.bat from a terminal) from anywhere:
+rem  Double-click this file (or run LCLite.bat from a terminal) from anywhere:
 rem  it works relative to its own folder, lclite/, which must sit in the root
 rem  of your Lost City checkout, next to webclient/ and engine/.
 rem
 rem  Everything is convergent: checked mods are applied, unchecked mods are
 rem  stripped back to pristine upstream code. Rerun it any time to change
 rem  your mod set; it also reseats itself after a Lost City rev update.
+rem  (The heavy lifting lives in tools\lclite.mjs - this is the double-click
+rem   face of it, kept pretty and simple on purpose.)
 rem ============================================================================
 setlocal
-title LCLite installer
+title LCLite
 cd /d "%~dp0"
 
 where node >nul 2>nul
 if errorlevel 1 goto :nonode
 
 :prompt
-node install.mjs pick %*
+node tools\lclite.mjs pick %*
 set EC=%ERRORLEVEL%
 if "%EC%"=="0" goto :done
 if "%EC%"=="2" goto :drift
 if "%EC%"=="3" exit /b 0
 
 echo.
-echo [!] The installer hit a problem (exit code %EC%).
+echo [!] LCLite hit a problem (exit code %EC%).
 goto :menu_after_fail
 
 :drift
@@ -43,24 +45,22 @@ echo   3 = exit
 choice /c 123 /n /m "  select> "
 if errorlevel 3 exit /b 1
 if errorlevel 2 (
-  node install.mjs %*
+  node tools\lclite.mjs %*
   goto :done
 )
 goto :prompt
 
+:menu
+choice /c 12 /n /m "  1 = retry picker   2 = exit> "
+if errorlevel 2 exit /b 2
+goto :prompt
+
 :done
-echo.
-if "%EC%"=="0" (
-  echo All done. Start Lost City (its start.bat / npm run quickstart) and
-  echo press F1 in the webclient for the LCLite panel.
-)
-pause
-exit /b %EC%
+endlocal & exit /b 0
 
 :nonode
-echo [!] Node.js was not found on PATH.
-echo     LCLite needs Node 18+ to run its installer: https://nodejs.org/
-echo     (the "LTS" installer, just double-click through it)
+echo.
+echo  LCLite needs Node.js 18+ - grab it from https://nodejs.org and rerun me.
 echo.
 pause
 exit /b 1

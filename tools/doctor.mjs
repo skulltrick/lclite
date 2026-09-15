@@ -17,7 +17,7 @@ import { LIB_DIR, meta, findMods, toLF } from './lib.mjs';
 
 const ROOT = path.resolve(process.env.LCLITE_ROOT || path.join(LIB_DIR, '..'));
 const asJson = process.argv.includes('--json');
-const mods = findMods(LIB_DIR);
+const mods = findMods(LIB_DIR);   // LIB_DIR = lclite/ root
 
 const issues = [];      // {sev:'drift'|'struct', msg}
 const report = { root: ROOT, mods: {}, files: {}, revs: {}, corpus: { hunks: 0, addedLines: 0, findLines: 0, markerHunks: 0 } };

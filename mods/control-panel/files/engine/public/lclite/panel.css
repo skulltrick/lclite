@@ -89,7 +89,7 @@
 .lcm-body::-webkit-scrollbar { width: 8px; }
 .lcm-body::-webkit-scrollbar-thumb { background: var(--lcm-bg-3); border-radius: 4px; }
 
-/* plugin rows (Plugins tab): name + real description + master switch */
+/* mod rows (Mods tab): name + real description + master switch */
 .lcm-prow {
     display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: 8px;
     border: 1px solid transparent;

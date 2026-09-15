@@ -1,17 +1,17 @@
-# Writing lclite plugins
+# Writing LCLite mods
 
 lclite is deliberately two kinds of mod, because the engine underneath is a compiled
 TypeScript bundle while this overlay is plain web files. Pick the kind you need:
 
 ```
-TYPE A — ui plugin        panel mods, DOM stuff, no engine code changes
+TYPE A — ui mod            panel mods, DOM stuff, no engine code changes
 TYPE B — engine mod       anything that touches the game client's internals (camera,
                           renderer, input, packets, interfaces)
 ```
 
 ---
 
-## TYPE A — UI-only plugin (start here if you can)
+## TYPE A — UI-only mod (start here if you can)
 
 The panel has two tabs (RuneLite's two surfaces): a **Mods** tab (one row per
 installed mod: name + description + master switch) and a **Settings** tab
@@ -36,7 +36,7 @@ clicks. Everything is driven by two registries in `panel.js`:
 ```
 
 2. **Single-toggle mods need no MODS row at all.** If the whole mod is one
-   on/off, give it just a `PLUGINS` entry — its master switch IS the setting:
+   on/off, give it just a `MOD_REGISTRY` entry — its master switch IS the setting:
 
 ```js
 { id: 'my-mod', name: 'My mod', desc: 'One line for the Mods tab.',
@@ -50,10 +50,10 @@ rows, and only camera has those today: its master `camera` is honored inside
 multi-setting mod, give its master the same treatment in its own hook site —
 do NOT route it through another mod.
 
-A mod folder missing from `PLUGINS` still appears in the panel: the plugin list
+A mod folder missing from `MOD_REGISTRY` still appears in the panel: the mod list
 is derived from `installed.json`, and unknown mods get a synthesized row
 (name = folder name, desc = joined row descs, master = the single toggle row's
-key when exactly one exists). Add the real `PLUGINS` entry when you care about
+key when exactly one exists). Add the real `MOD_REGISTRY` entry when you care about
 the label.
 
 Rows are single-line: `desc` is not subtext — `panel.js` surfaces it as a shared
@@ -73,7 +73,7 @@ that's the durable contract with the game (see "The contract" below).
 Re-copy into the tree and you're done (no rebuild for panel changes):
 
 ```
-node lclite/install.mjs apply     # rewrites engine/public/lclite/*
+node tools/lclite.mjs apply     # rewrites engine/public/lclite/*
 ```
 
 ---
@@ -108,10 +108,10 @@ Then in the browser console you can poke real fields (`window.lostcityClient.cam
 etc.). Use `bundle.ts` (prod) only for final builds.
 
 ### 3. Snapshot your edit as hunks
-Add the file to `MODS` in `lclite/regen.mjs` (new folder = new mod, e.g.
+Add the file to `MODS` in `tools/regen.mjs` (run from `lclite/`) (new folder = new mod, e.g.
 `mods/xp-drops`), then:
 ```
-node lclite/regen.mjs          # regenerates lclite/mods/*/patches/*.json from git diff
+node tools/regen.mjs          # regenerates lclite/mods/*/patches/*.json from git diff
 ```
 Hunks are `{find:[old lines], replace:[new lines]}` — `find` is the MINIMAL unique
 window in the pristine old file (2-line context floor, expanded only while the anchor
@@ -123,7 +123,7 @@ EJS); regen routes by marker with 100% precision and warns loudly on any unmarke
 block (legacy regex fallback). The old ≥61-line isolation rule is RETIRED (2026-09-15):
 regen now extracts `git diff -U0` islands, so adjacent change blocks stay separate
 hunks automatically — but keep hunks' edit sites ≥3 untouched lines apart, and trust
-`node lclite/install.mjs doctor` (exit 3 = a hunk's deletions would break a sibling's
+`node tools/lclite.mjs doctor` (exit 3 = a hunk's deletions would break a sibling's
 anchor).
 
 ### 4. Prove it survives
@@ -131,7 +131,7 @@ anchor).
 # fresh clones at base revs + apply must reproduce your tree byte-for-byte
 git clone --no-checkout ../webclient t/webclient && git clone --no-checkout ../engine t/engine
 (cd t/webclient && git checkout <base-rev>) && (cd t/engine && git checkout <base-rev>)
-cp -r lclite t && cd t && node lclite/install.mjs
+cp -r lclite t && cd t && node lclite/tools/lclite.mjs
 # diff every patched file against your live tree — must be empty
 ```
 
@@ -173,10 +173,10 @@ cp -r lclite t && cd t && node lclite/install.mjs
 
 1. commit modded trees (`git -C webclient add -A && …`) — safety net for manual reseating
 2. change rev via `start.bat`, or `git pull` per repo
-3. `node lclite/install.mjs` → clean? build+play. Failing hunks? each prints
+3. `node lclite/tools/lclite.mjs` → clean? build+play. Failing hunks? each prints
    `anchor not found` / `ambiguous` + the file and old-line number — open that patch JSON,
    find where the `find:` lines moved in the new upstream, reseat, rerun.
-4. `node lclite/regen.mjs` when you've since polished the edits in-tree.
+4. `node lclite/tools/regen.mjs` when you've since polished the edits in-tree.
 
 ## TYPE C blueprint — visual entities (model overrides, fake NPCs)
 
@@ -210,7 +210,7 @@ is for other people's servers and pure-local cosmetics.
 A third-party lclite mod IS just a folder — no new framework:
 1. `mods/<name>/patches/*.json` hunks, every added block marker-first (`lclite:<mod>`).
 2. optional `files/` payload (copied verbatim; stripped only if unedited).
-3. optional panel row (PLUGINS entry in control-panel's panel.js — or rely on the
+3. optional panel row (MOD_REGISTRY entry in control-panel's panel.js — or rely on the
    synthesized row; ship the row as your own files/ copy if you want rich UI).
 4. namespaced your keys: `localStorage` names prefixed with your mod (camelCase);
    read them at YOUR hook site, per frame.

@@ -10,9 +10,8 @@ on:
   pull_request:
     paths:
       - 'mods/**'
-      - 'install.mjs'
-      - 'lib.mjs'
-      - 'regen.mjs'
+      - 'tools/**'
+      - 'root.json'
 
 jobs:
   apply-check:
@@ -25,10 +24,10 @@ jobs:
 
       - name: Syntax check scripts
         run: |
-          node --check install.mjs
-          node --check lib.mjs
-          node --check regen.mjs
-          node --check doctor.mjs
+          node --check tools/lclite.mjs
+          node --check tools/lib.mjs
+          node --check tools/regen.mjs
+          node --check tools/doctor.mjs
           node --check mods/control-panel/files/engine/public/lclite/panel.js
           for j in mods/*/patches/*.json; do node -e "JSON.parse(require('fs').readFileSync('$j','utf8'))" || exit 1; done
 
@@ -58,7 +57,7 @@ jobs:
           ' | tee $GITHUB_OUTPUT
 
       - name: Clone upstreams beside the overlay
-        # install.mjs resolves the Lost City root as one level above its own
+        # tools/lclite.mjs resolves the Lost City root as one level above its own
         # folder, so the repos must be siblings of this checkout, not inside it
         run: |
           cd ..
@@ -68,16 +67,16 @@ jobs:
           git -C engine checkout ${{ steps.revs.outputs.engine }}
 
       - name: Dry-run installer (anchor drift test)
-        run: node install.mjs apply --check
+        run: node tools/lclite.mjs apply --check
         # exit 2 == some hunk's anchor drifted upstream; the log prints which
 
       - name: "Doctor (structural canary: markers, overlap geometry, rev skew)"
-        run: node doctor.mjs
+        run: node tools/doctor.mjs
         # exit 2 drift (same signal as above) · exit 3 = overlap/marker gap/rev skew
 
       - name: Apply for real + diff report
         run: |
-          node install.mjs apply --no-build
+          node tools/lclite.mjs apply --no-build
           git -C ../webclient diff --stat
           git -C ../engine diff --stat
           # the mod files must end up modified — a silent zero-diff means the

@@ -1,57 +1,63 @@
 # Contributing to LCLite
 
-LCLite is an **out-of-tree mod overlay**: mods live as anchor-based patch hunks
-in `mods/` and are applied to freshly cloned [Lost City](https://github.com/LostCityRS)
-repositories by `install.mjs`. The whole design exists so the overlay survives
-upstream rev updates without hand-merges. Contributions must keep that property.
+LCLite is an **out-of-tree mod overlay**: mods live as identity-anchored patch
+hunks in `mods/` and are applied to freshly cloned
+[Lost City](https://github.com/LostCityRS) repositories by
+`tools/lclite.mjs`. The whole design exists so the overlay survives upstream
+rev updates without hand-merges. Contributions must keep that property —
+`tree = f(upstream@rev, overlay)` is the invariant; everything else is detail.
 
 ## Dev setup
 
-1. Get a working Lost City checkout (run its own `start.bat` once so
-   `webclient/` and `engine/` exist) — **not** committed here.
-2. Clone this repo *into* that checkout so it reads
-   `<lost-city>/lclite/{install.mjs, mods/…}`.
-3. Node 18+ to install; [bun](https://bun.sh) to build the webclient bundle
-   (the installer will tell you how if it's missing).
+1. A working Lost City checkout (its `start.bat` once, so `webclient/` and
+   `engine/` exist) — **not** committed here.
+2. Clone this repo *into* it as `lclite/`.
+3. Node 18+ to install; [bun](https://bun.sh) only to build the webclient
+   bundle (the installer prints how to get it and self-serves `bun install`).
+
+Layout: player-facing entry `LCLite.bat` → everything else in
+[`tools/`](tools) (installer, regen, doctor, shared lib). Authoring guide for
+mods of every kind: [docs/MODS.md](docs/MODS.md).
 
 ## Authoring a mod
 
-Full walkthrough in [PLUGINS.md](PLUGINS.md) — TL;DR:
+- **TYPE A (UI-only)** — a panel row writing a `localStorage` key. No engine
+  patch, no rebuild: `node tools/lclite.mjs apply` re-copies the statics.
+- **TYPE B (engine mod)** — edit the upstream TS sources in your working tree,
+  **start every added block with a `lclite:<mod>` marker comment**, then
+  `node tools/regen.mjs` extracts the hunks into `mods/<name>/patches/*.json`.
+- **TYPE C (visual entities)** — model overrides / fake NPCs: files/ code + a
+  minimal import hunk; hook-site blueprint in docs/MODS.md.
 
-- **TYPE A (UI-only)**: a row in the panel's `MODS` registry
-  (`mods/control-panel/files/engine/public/lclite/panel.js`) writing a
-  `localStorage` key. No engine patch, no rebuild.
-- **TYPE B (engine mod)**: edit the upstream TS sources in your working tree,
-  test with the dev bundle, then `node regen.mjs` to re-extract your hunks
-  into `mods/<name>/patches/*.json`. Register your mod's folder name + label
-  in `MOD_META` (`lib.mjs`) — new folder = it appears in the installer's
-  mod picker automatically.
+Rules that keep hunks durable:
 
-Rules that make hunks durable:
-
-- Keep each mod's edits **≥ 61 pristine lines apart** from other mods' edits
-  in shared files (`Client.ts`!), or `git -U30` merges the hunks and regen
-  mis-routes ownership.
-- Never hand-edit *inside* an already-patched replacement region and then run
-  `install.mjs` without running `regen.mjs` first — that's how you get
-  duplicated blocks (TS2300). The stale-JSON guard helps, regen is the cure.
-- `find` anchors want 3+ lines of context and must stay unique.
+- Marker-first ownership (regen routes by `lclite:<mod>`, warns on unmarked
+  hunks). Keep a mod's blocks ≥3 untouched lines apart — the old ≥61-line
+  isolation rule is retired; `node tools/lclite.mjs doctor` (exit 3) now
+  machine-verifies no hunk's deletions can break a sibling's anchor.
+- Never hand-edit inside an already-patched region without regenerating right
+  after. `engine/public/client/client.js` is built, never hand-patched or
+  committed.
+- Never commit the modded state on the tracked upstream branch — regen diffs
+  the working tree against HEAD and pins `generated_from`; a committed modded
+  HEAD makes the overlay think there's nothing to apply.
 
 ## Acceptance test (required for PRs touching hunks)
 
-Pristine clones at the base revs + `node install.mjs apply` must reproduce
-the patched tree **byte-for-byte**:
+Pristine clones at the base revs + apply must reproduce the patched tree
+**byte-for-byte**:
 
 ```
 git clone https://github.com/LostCityRS/Client-TS  t/webclient
 git clone https://github.com/LostCityRS/Engine-TS  t/engine
-# checkout the revs printed in each mods/*/patches/*.json "generated_from"
-cp -r . t/lclite && cd t && node lclite/install.mjs apply --no-build
+# checkout the revs printed in mods/*/patches/*.json "generated_from"
+cp -r . t/lclite && cd t && node lclite/tools/lclite.mjs apply --no-build
 git -C webclient diff --stat     # must show exactly your hunks, clean
+node lclite/tools/lclite.mjs doctor   # exit 0 = structural checks pass
 ```
 
-Also prove mod independence: `node lclite/install.mjs apply --mods <yours>`
-applies your mod + the two required ones and strips the rest without errors.
+Also prove independence: `node tools/lclite.mjs apply --mods <yours>` applies
+your mod + the required ones and strips the rest without errors.
 
 ## Commit style
 
@@ -62,4 +68,10 @@ say *why* — the diff already says *what*. One logical change per commit.
 
 Game caches, map/npc/obj data, `node_modules`, built `client.js`, or the
 upstream repos themselves. Only the overlay: patch JSONs, panel statics,
-installer scripts, docs.
+tool scripts, docs.
+
+## AI agents
+
+Working on LCLite from an AI session? [`FOR_AGENTS_README.md`](FOR_AGENTS_README.md)
+first — hard rules, loops, and the files that machine-check them. It pairs
+with the architecture dossier in [docs/hunk-system-assessment.md](docs/hunk-system-assessment.md).

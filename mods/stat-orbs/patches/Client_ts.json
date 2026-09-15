@@ -206,7 +206,7 @@
    "replace": [
     "        Pix2D.fillRect(97, 78, 3, 3, Colour.WHITE);",
     "",
-    "        // custom: OSRS-style stat orbs (lclite TYPE B hook — see lclite/PLUGINS.md) lclite:stat-orbs",
+    "        // custom: OSRS-style stat orbs (lclite TYPE B hook — see lclite/docs/MODS.md) lclite:stat-orbs",
     "        // drawn into the minimap widget buffer so they ride ON TOP of the interface",
     "        if (this.orbsEnabled) {",
     "            this.drawStatOrbs();",

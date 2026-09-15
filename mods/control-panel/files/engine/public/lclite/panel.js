@@ -12,7 +12,7 @@
  *                  Clicking the row jumps to its section in Settings.
  *   SETTINGS tab — collapsible section per mod (only mods that HAVE sub-settings;
  *                  single-toggle mods live entirely on the Mods tab, like
- *                  RuneLite plugins with no config). Sections start collapsed;
+ *                  RuneLite mods with no config). Sections start collapsed;
  *                  a jump or header click expands them for the page session.
  * Master switch keys: a single-toggle mod's master IS its own engine key (no new
  * state). Camera is the only multi-setting mod, so its master 'camera' is the one
@@ -21,7 +21,7 @@
  *
  * Rows are tagged with their mod folder (`mod:`) and hidden when the installer's
  * manifest (engine/public/lclite/installed.json) says that mod was not selected.
- * The plugin list itself is derived from that manifest too; unknown-but-installed
+ * The mod list itself is derived from that manifest too; unknown-but-installed
  * mods get a synthesized row so a new mod folder still appears with zero panel
  * edits (it just has no master key until someone adds one).
  */
@@ -49,14 +49,14 @@
     const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const cap = s => String(s ?? '').replace(/(^|[-_ ]\w)/g, m => m.toUpperCase()).replace(/[-_]/g, ' ');
 
-    // plugin registry ---------------------------------------------------------
+    // mod registry ---------------------------------------------------------
     // id = the lclite/mods/<id> folder name (matches installed.json).
-    // master: {key, def} — the plugin's on/off. null = no engine master (the
+    // master: {key, def} — the mod's on/off. null = no engine master (the
     // panel itself). Mods absent from this list but present in the manifest get
     // synthesized entries (name/desc from their settings rows; master only if the
     // mod has exactly ONE toggle row, whose key then doubles as the master).
-    const PLUGINS = [
-        { id: 'camera', name: 'Camera', desc: 'Wheel zoom, middle-drag rotate, chat scroll. One of the first mods — it is the only plugin with sub-settings.', master: { key: 'camera', def: 'true' } },
+    const MOD_REGISTRY = [
+        { id: 'camera', name: 'Camera', desc: 'Wheel zoom, middle-drag rotate, chat scroll. One of the first mods — it is the only mod with sub-settings.', master: { key: 'camera', def: 'true' } },
         { id: 'gpu', name: 'GPU', desc: 'Draw the 3D world on your graphics card; chat, interfaces, orbs and walk-clicks stay pixel-exact on the CPU. Falls back to software automatically on any driver error.', master: { key: 'gpu', def: 'false' },
           status() {
               if (LS.get('gpu', 'false') !== 'true') return '';
@@ -117,15 +117,15 @@
         } }
     ];
 
-    // ---- effective plugin list (registry ∪ manifest ∪ rows) ------------------
-    // Built once per renderRows(manifest): known PLUGINS filtered to installed
+    // ---- effective mod list (registry ∪ manifest ∪ rows) ------------------
+    // Built once per renderRows(manifest): known registry mods filtered to installed
     // mods first, then synthesized entries for any installed mod folder the
     // registry doesn't know, then rows' own mods as a final safety net so a new
     // TYPE A row never renders into a section that can't exist.
-    function buildPluginList(installed) {
+    function buildModList(installed) {
         const rowsOf = m => MODS.filter(f => f.mod === m);
         const list = [];
-        for (const p of PLUGINS) {
+        for (const p of MOD_REGISTRY) {
             if (installed && !installed.has(p.id) && p.id !== 'control-panel') continue;
             list.push({ ...p, synthesized: false });
         }
@@ -133,19 +133,19 @@
         // manifest-only mods (a folder exists but this panel build predates it)
         if (installed) for (const id of installed) {
             if (known.has(id)) continue;
-            list.push(synthesizePlugin(id, rowsOf(id)));
+            list.push(synthesizeMod(id, rowsOf(id)));
             known.add(id);
         }
         // mods referenced by rows but absent from both registry and manifest
         // (manifest unreadable => installed===null: still show every row's mod)
         for (const f of MODS) if (!known.has(f.mod || 'control-panel')) {
             const m = f.mod || 'control-panel';
-            list.push(synthesizePlugin(m, rowsOf(m)));
+            list.push(synthesizeMod(m, rowsOf(m)));
             known.add(m);
         }
         return list;
     }
-    function synthesizePlugin(id, rows) {
+    function synthesizeMod(id, rows) {
         const single = rows.length === 1 && rows[0].kind === 'toggle' ? rows[0] : null;
         return {
             id,
@@ -182,7 +182,7 @@
                 <span class="lcm-x" id="lcm-close" title="Close (F1)">✕</span>
             </div>
             <div class="lcm-tabs" role="tablist">
-                <button class="lcm-tab" id="lcm-tab-plugins" role="tab">Mods</button>
+                <button class="lcm-tab" id="lcm-tab-mods" role="tab">Mods</button>
                 <button class="lcm-tab" id="lcm-tab-settings" role="tab">Settings</button>
             </div>
             <div class="lcm-search"><input id="lcm-search" type="search" placeholder="Search…" autocomplete="off"></div>
@@ -198,11 +198,12 @@
     const fab = root.querySelector('#lclite-fab');
     const body = root.querySelector('#lcm-body');
     const searchEl = root.querySelector('#lcm-search');
-    const tabPluginsEl = root.querySelector('#lcm-tab-plugins');
+    const tabModsEl = root.querySelector('#lcm-tab-mods');
     const tabSettingsEl = root.querySelector('#lcm-tab-settings');
     let toastTimer = 0;
-    let currentTab = LS.get('lclitePanelTab', 'plugins');
-    if (currentTab !== 'plugins' && currentTab !== 'settings') currentTab = 'plugins';
+    let currentTab = LS.get('lclitePanelTab', 'mods');
+    if (currentTab === 'mods') currentTab = 'mods';   // migrated from old builds
+    if (currentTab !== 'mods' && currentTab !== 'settings') currentTab = 'mods';
 
     function toast(msg) {
         toastEl.textContent = msg;
@@ -251,7 +252,7 @@
     window.addEventListener('scroll', hideTip, true);
     window.addEventListener('resize', hideTip);
 
-    // switch markup shared by plugin masters and setting toggles ----------------
+    // switch markup shared by mod masters and setting toggles ----------------
     function switchInput(checked) {
         const el = document.createElement('input');
         el.type = 'checkbox';
@@ -272,11 +273,11 @@
         if (f.id === 'legacy-bar') applyLegacyBar();
     };
 
-    // ---- PLUGINS tab ----------------------------------------------------------
-    function pluginRow(p) {
+    // ---- MODS tab ----------------------------------------------------------
+    function modRow(p) {
         const row = document.createElement('div');
         row.className = 'lcm-prow';
-        row.dataset.plugin = p.id;
+        row.dataset.mod = p.id;
         row.dataset.name = (p.name + ' ' + p.desc).toLowerCase();
         const badge = p.badge ? `<span class="lcm-badge">${esc(p.badge)}</span>` : '';
         const status = typeof p.status === 'function' ? '<span class="lcm-status" style="display:none"></span>' : '';
@@ -291,7 +292,7 @@
             const input = switchInput(LS.get(p.master.key, p.master.def) === 'true');
             input.addEventListener('change', () => {
                 LS.set(p.master.key, input.checked ? 'true' : 'false');
-                afterWrite({ id: 'plugin-master-' + p.id });
+                afterWrite({ id: 'mod-master-' + p.id });
                 toast(`${p.name}: ${input.checked ? 'enabled' : 'disabled'}`);
                 renderCurrentTab();          // section visibility can change
             });
@@ -304,7 +305,7 @@
             row.appendChild(chip);
         }
 
-        // RuneLite behaviour: clicking the plugin (not its switch) opens its config
+        // RuneLite behaviour: clicking the mod (not its switch) opens its config
         main.addEventListener('click', () => {
             const hasRows = MODS.some(f => f.mod === p.id);
             if (!hasRows) { toast(`${p.name}: this mod has no settings`); return; }
@@ -441,7 +442,7 @@
             const input = switchInput(LS.get(p.master.key, p.master.def) === 'true');
             input.addEventListener('change', () => {
                 LS.set(p.master.key, input.checked ? 'true' : 'false');
-                afterWrite({ id: 'plugin-master-' + p.id });
+                afterWrite({ id: 'mod-master-' + p.id });
                 toast(`${p.name}: ${input.checked ? 'enabled' : 'disabled'}`);
                 renderCurrentTab();
             });
@@ -452,7 +453,7 @@
         if (!masterOn) {
             const off = document.createElement('div');
             off.className = 'lcm-offnote';
-            off.textContent = 'Plugin disabled — enable it to change these settings.';
+            off.textContent = 'Mod disabled — enable it to change these settings.';
             gbody.appendChild(off);
         } else {
             for (const f of list) {
@@ -463,21 +464,21 @@
     }
 
     // ---- tab rendering ---------------------------------------------------------
-    let pluginsList = [];   // rebuilt by renderRows(manifest)
+    let modsList = [];   // rebuilt by renderRows(manifest)
     // Settings sections start COLLAPSED (the Mods tab is the entry point). An
     // expansion — from clicking a mod row, clicking a section header, or from
     // typing a search that hits it — is remembered only for this page session
     // (never persisted): reload/reopen starts clean, like RuneLite's accordion.
     const expandedSections = new Set();
 
-    function renderPluginsTab() {
+    function renderModsTab() {
         body.innerHTML = '';
-        for (const p of pluginsList) body.appendChild(pluginRow(p));
+        for (const p of modsList) body.appendChild(modRow(p));
     }
 
     function renderSettingsTab() {
         body.innerHTML = '';
-        for (const p of pluginsList) {
+        for (const p of modsList) {
             const rows = MODS.filter(f => f.mod === p.id);
             if (!rows.length) continue;   // RuneLite: no config => no section
             const { grp } = settingsSection(p, !expandedSections.has(p.id));
@@ -486,10 +487,10 @@
     }
 
     function renderCurrentTab() {
-        const isP = currentTab === 'plugins';
-        tabPluginsEl.classList.toggle('active', isP);
+        const isP = currentTab === 'mods';
+        tabModsEl.classList.toggle('active', isP);
         tabSettingsEl.classList.toggle('active', !isP);
-        if (isP) renderPluginsTab(); else renderSettingsTab();
+        if (isP) renderModsTab(); else renderSettingsTab();
         applySearch();
     }
 
@@ -507,14 +508,14 @@
             }
         }
     }
-    tabPluginsEl.addEventListener('click', () => setTab('plugins'));
+    tabModsEl.addEventListener('click', () => setTab('mods'));
     tabSettingsEl.addEventListener('click', () => setTab('settings'));
 
     // header-click expansion is recorded by the section's own toggle handler
     // (no deferred bookkeeping — it must be synchronous so tab switches and
     // master-switch re-renders see the current state)
 
-    // search filters whichever tab is showing; plugin-tab sections are flat so a
+    // search filters whichever tab is showing; mods-tab sections are flat so a
     // query also expands collapsed settings sections that would otherwise hide hits
     function applySearch() {
         const q = searchEl.value.trim().toLowerCase();
@@ -541,7 +542,7 @@
     function renderRows(installed) {
         // `installed` = Set of mod folder names from /lclite/installed.json, or
         // null (manifest unreadable = pre-selection install): show everything.
-        pluginsList = buildPluginList(installed);
+        modsList = buildModList(installed);
         renderCurrentTab();
     }
     renderRows(null);
@@ -599,11 +600,11 @@
     }
     applyLegacyBar();
 
-    // live sync for sliders + plugin status lines (engine wheel changes
+    // live sync for sliders + mod status lines (engine wheel changes
     // cameraZoom; gpu stats tick over) — keep UI honest
     setInterval(() => {
         for (const f of MODS) f._sync && f._sync();
-        for (const p of PLUGINS) p._sync && p._sync();
+        for (const p of MOD_REGISTRY) p._sync && p._sync();
     }, 400);
 
     // expose a tiny API for future mods

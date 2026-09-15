@@ -1,11 +1,12 @@
-// lclite shared helpers — used by install.mjs. Zero dependencies, node >= 18.
+// lclite shared helpers — used by tools/lclite.mjs et al. Zero deps, node >= 18.
 // Paths are POSIX-style relative to the LOST CITY root (the folder that
-// contains webclient/ and engine/).
+// contains webclient/ + engine/).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const LIB_DIR = path.dirname(fileURLToPath(import.meta.url));
+// LIB_DIR = the lclite/ overlay root (this file lives in lclite/tools/).
+export const LIB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // ---- mod metadata ----------------------------------------------------------
 // One entry per folder in mods/. The installer discovers mod folders from
@@ -83,7 +84,7 @@ export function sortMods(mods) {
     });
 }
 
-// ---- mod discovery (the contract install.mjs has always used) --------------
+// ---- mod discovery (the contract lclite.mjs has always used) --------------
 export function findMods(lcliteDir) {
     const modsDir = path.join(lcliteDir, 'mods');
     const mods = [];

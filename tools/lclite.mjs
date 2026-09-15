@@ -2,15 +2,15 @@
 // lclite install — apply the mod overlay onto clean upstream repos, then build + deploy.
 // Run from this folder (lclite/ inside a Lost City checkout):
 //
-//   node install.mjs                     # in a terminal: picker, then apply + build;
+//   node tools/lclite.mjs                     # in a terminal: picker, then apply + build;
 //                                        # piped/CI (no TTY): apply ALL mods + build
-//   node install.mjs apply               # apply ALL mods, no build (script-safe)
-//   node install.mjs --mods camera,xp-drops   # desired set: apply these, strip the others
-//   node install.mjs apply --check       # dry-run report (no writes)
-//   node install.mjs build               # bun bundle + deploy client.js only
-//   node install.mjs uninstall           # strip every mod back toward pristine
-//   node install.mjs pick                # picker only (what install.bat drives)
-//   node install.mjs list                # machine-readable: name|installed|label|desc
+//   node tools/lclite.mjs apply               # apply ALL mods, no build (script-safe)
+//   node tools/lclite.mjs --mods camera,xp-drops   # desired set: apply these, strip the others
+//   node tools/lclite.mjs apply --check       # dry-run report (no writes)
+//   node tools/lclite.mjs build               # bun bundle + deploy client.js only
+//   node tools/lclite.mjs uninstall           # strip every mod back toward pristine
+//   node tools/lclite.mjs pick                # picker only (what install.bat drives)
+//   node tools/lclite.mjs list                # machine-readable: name|installed|label|desc
 //
 // apply/uninstall are idempotent and always converge the tree to the DESIRED set:
 // selected mods get their hunks applied, deselected mods get their hunks stripped
@@ -19,9 +19,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { LIB_DIR, meta, findMods, countOccurrences, toLF, restoreEOL, stripPatchFile, loadRootManifest } from './lib.mjs';
 
-const __dirname = LIB_DIR;
+const __dirname = LIB_DIR;                       // lclite/ root (overlay)
+const TOOLS_DIR = path.dirname(fileURLToPath(import.meta.url));   // lclite/tools/
 // The Lost City root that holds webclient/ + engine/. Normally one level up
 // from lclite/; LCLITE_ROOT points the installer at a different install
 // (used by the t/ acceptance harness and by anyone keeping the overlay
@@ -226,11 +228,11 @@ function ensureBun() {
 function build() {
     const wc = path.join(ROOT, 'webclient');
     if (!fs.existsSync(wc)) { console.error('no webclient dir'); process.exit(1); }
-    if (!ensureBun()) { console.log('skipping build — run "node lclite/install.mjs build" once bun is installed.'); return false; }
+    if (!ensureBun()) { console.log('skipping build — run "node lclite/tools/lclite.mjs build" once bun is installed.'); return false; }
     if (!fs.existsSync(path.join(wc, 'node_modules'))) {
         console.log('webclient/node_modules missing — installing build deps (bun install)...');
         try { execSync(`"${BUN}" install`, { cwd: wc, stdio: 'inherit' }); }
-        catch { console.log('!! bun install failed — rerun "node lclite/install.mjs build" manually (network? bun version?).'); return false; }
+        catch { console.log('!! bun install failed — rerun "node lclite/tools/lclite.mjs build" manually (network? bun version?).'); return false; }
     }
     const out = execSync(`"${BUN}" run bundle.ts`, { cwd: wc, encoding: 'utf-8', stdio: 'pipe' }).toString();
     if (out.trim()) console.log(out);
@@ -353,12 +355,12 @@ function scaffold(name) {
         `## Settings contract\nlocalStorage key \`${name}\` (camelCase), read per-frame at this mod's OWN hook site.\n` +
         `Panel row: PLUGINS entry in mods/control-panel/files/engine/public/lclite/panel.js.\n`);
     console.log(`created mods/${name}/`);
-    console.log('\nnext steps (all verified by `node lclite/install.mjs doctor`):');
+    console.log('\nnext steps (all verified by `node lclite/tools/lclite.mjs doctor`):');
     console.log(`  1. edit webclient/src/... (or engine/view/...) directly — start every added block with "/* lclite:${name} */"`);
     console.log('  2. dev-test fast:   bun run bundle.ts dev   (unmangled names for console probes)');
     console.log(`  3. snapshot hunks:  add '${name}': ['<file>', ...] to MODS in regen.mjs, then node lclite/regen.mjs`);
     console.log('  4. prove it:        t/ pristine apply == live tree byte-for-byte (README "acceptance test")');
-    console.log('  5. panel row:       PLUGINS entry { id, name, desc, master:{key,def} } in panel.js (TYPE A if no hunks)');
+    console.log('  5. panel row:       MOD_REGISTRY entry { id, name, desc, master:{key,def} } in panel.js (TYPE A if no hunks)');
 }
 
 // ---- main ----------------------------------------------------------------------
@@ -393,7 +395,7 @@ async function main() {
     const mods = findMods(__dirname);
     if (!mods.length) { console.error(`no mods found under ${path.join(__dirname, 'mods')}`); process.exit(1); }
 
-    // bare `node install.mjs` at a real terminal = the friendly picker;
+    // bare `node tools/lclite.mjs` at a real terminal = the friendly picker;
     // with piped stdin (CI/scripts) it keeps the old apply-all + build meaning
     if (!args.length && process.stdin.isTTY) args.push('pick');
 
@@ -423,12 +425,12 @@ async function main() {
 
     if (args.includes('doctor')) {
         // forward ONLY the known-safe flag: never splice raw argv into a shell string
-        try { execSync(`node "${path.join(__dirname, 'doctor.mjs')}"${args.includes('--json') ? ' --json' : ''}`, { stdio: 'inherit' }); } catch { process.exitCode = 1; }
+        try { execSync(`"${process.execPath}" "${path.join(TOOLS_DIR, 'doctor.mjs')}"${args.includes('--json') ? ' --json' : ''}`, { stdio: 'inherit' }); } catch { process.exitCode = 1; }
         return;
     }
     if (args.includes('new')) {
         const name = args[args.indexOf('new') + 1];
-        if (!name || !/^[a-z][a-z0-9-]*$/.test(name)) { console.error('usage: node install.mjs new <mod-name>  (lowercase, hyphens)'); process.exitCode = 1; return; }
+        if (!name || !/^[a-z][a-z0-9-]*$/.test(name)) { console.error('usage: node tools/lclite.mjs new <mod-name>  (lowercase, hyphens)'); process.exitCode = 1; return; }
         scaffold(name);
         return;
     }

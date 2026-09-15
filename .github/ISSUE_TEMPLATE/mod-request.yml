@@ -16,7 +16,7 @@ body:
     attributes:
       label: Where would it hook?
       description: >-
-        Optional — see the hook-site table in PLUGINS.md. e.g. "draw over
+        Optional — see the hook-site map in docs/HOOKS.md / guide in docs/MODS.md. e.g. "draw over
         viewport -> after world.renderAll". Type A (localStorage-only) vs
         Type B (engine patch)?
   - type: textarea

@@ -1,19 +1,22 @@
 # Hunk system — architecture assessment
 
-Date: 2026-09-15. Companion: `docs/actions.md` (the fix list).
+Date: 2026-09-15. Companion: `docs/archive/actions-2026-09.md` — the fix list; ALL tracks shipped 2026-09-15, this file is now the living architecture reference.
 Audience: both the maintainer and AI agents working on lclite. Read this before
-touching install.mjs / regen.mjs / any patch JSON.
+touching tools/lclite.mjs / tools/regen.mjs / any patch JSON.
 
 ## What the system is
 
 lclite is a **declarative overlay**: `tree = f(upstream@rev, overlay)`.
 Hunks are `{find:[lines], replace:[lines]}` applied by exact-match, unique-anchor
-find/replace. regen.mjs extracts them from `git diff -U30` of the working tree;
-install.mjs converges the tree toward a desired mod set (apply/strip, idempotent);
+find/replace. tools/regen.mjs extracts them from `git diff -U0` islands, shrinking
+context to the minimum unique window;
+tools/lclite.mjs converges the tree toward a desired mod set (apply/strip, idempotent);
 CI (`drift-check.yml`) dry-runs `apply --check` against pinned base revs.
 
-Current corpus: **44 hunks / 830 added lines / 8 mods**, verified byte-identical
-from pristine clones.
+Corpus (post-P0): **81 island hunks / 857 added lines / 395 anchor lines / 8 mods**, all
+marker-routed — verified byte-identical from pristine clones. (Pre-P0: 44 fat-context
+hunks; the completed fix plan that closed the gaps below lives in
+`archive/actions-2026-09.md`.)
 
 ## What is correct (keep, do not regress)
 
@@ -81,7 +84,7 @@ a seam exists.
 The **control plane is correct** (purity, pinning, convergence, canary CI,
 graceful degradation). The **data plane is geographically anchored and
 inference-routed** — right answer wrong encoding. Fixing #1–#4 does not change
-what the system *is*; it changes what can silently break. See actions.md.
+what the system *is*; it changes what can silently break. See the (completed) archive/actions-2026-09.md.
 
 ## Javaclient: needed? No.
 Checked 2026-09-15: `javaclient/` = 74 files of readable **deobfuscated**
@@ -93,7 +96,7 @@ same hunk model. The webclient can't get runtime plugins either way (#5).
 formalizing the overlay into a stable mod contract (identity anchors + hooks
 registry + manifest) that third parties, other revs, and other 2004-flavored
 servers can target. Javaclient remains an OPTIONAL second overlay target
-(same install.mjs, a `mods-java/` tree) for desktop players — zero urgency,
+(same tools/lclite.mjs, a `mods-java/` tree) for desktop players — zero urgency,
 zero structural dependency. Do not block any action here on it.
 
 ## Custom 2004 server/client hookup: what actually enables it
