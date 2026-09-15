@@ -1,0 +1,32 @@
+{
+ "file": "webclient/src/client/Client.ts",
+ "mod": "rendering",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "bd6cad7147cc9f44d5eb12de93f0736c18e1c4d0"
+ },
+ "hunks": [
+  {
+   "find": [
+    "        Client.loopCycle++;",
+    "",
+    "        if (!this.ingame) {",
+    "            await this.titleScreenLoop();"
+   ],
+   "replace": [
+    "        Client.loopCycle++;",
+    "",
+    "        // custom (lclite \"rendering\" mod): smooth shading refreshed from our OWN",
+    "        // key once per frame here — Pix3D.lowDetail is a plain static with no",
+    "        // per-draw hook site of its own, and this keeps the mod off any settings",
+    "        // hub (same-value writes are no-ops; localStorage reads are cheap).",
+    "        Pix3D.lowDetail = localStorage.getItem('smoothShading') !== 'true';",
+    "",
+    "        if (!this.ingame) {",
+    "            await this.titleScreenLoop();"
+   ],
+   "note": "src/client/Client.ts @ old line 1231",
+   "occ": 1
+  }
+ ]
+}

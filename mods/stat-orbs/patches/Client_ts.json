@@ -151,8 +151,10 @@
    ],
    "replace": [
     "",
-    "        // custom: one-time wipe of orb pixels left in the widget buffer after the",
+    "        // custom (lclite \"stat-orbs\"): read our OWN key here (runs every frame);",
+    "        // one-time wipe of orb pixels left in the widget buffer after the",
     "        // toggle goes off mid-session (the stone strip is not redrawn per tick)",
+    "        this.orbsEnabled = localStorage.getItem('statOrbs') === 'true';",
     "        if (this.orbsWereOn && !this.orbsEnabled) {",
     "            this.orbsWereOn = false;",
     "            this.mapback?.plotSprite(0, 0);",

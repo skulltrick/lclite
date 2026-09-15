@@ -14,9 +14,10 @@
    "replace": [
     "",
     "    /// custom (lclite \"anti-cheat\" mod): gates every legacy RuneScope telemetry",
-    "    /// emission (EVENT_*/ANTICHEAT_*). localStorage 'antiCheat', read by the",
-    "    /// settings bus. Field sits here, far from the guards it enables, so the",
-    "    /// anti-cheat hunks stay independent of camera/xp edits.",
+    "    /// emission (EVENT_*/ANTICHEAT_*). localStorage 'antiCheat', read by this",
+    "    /// mod's own per-cycle hook at the top of gameLoop. Field sits far from the",
+    "    /// guards it enables, so the anti-cheat hunks stay independent of",
+    "    /// camera/xp edits.",
     "    public antiCheatEnabled: boolean = true;",
     "",
     "    private midiActive: boolean = true;"
@@ -26,16 +27,24 @@
   },
   {
    "find": [
+    "",
+    "        if (!this.mouseTracked) {",
     "            this.mouseTracking.length = 0;",
     "        } else if (this.mouseClickButton !== 0 || this.mouseTracking.length >= 40) {",
     "            this.out.p1Enc(ClientProt.EVENT_MOUSE_MOVE);"
    ],
    "replace": [
+    "",
+    "        // custom (lclite \"anti-cheat\"): read our OWN key once per cycle here (the",
+    "        // ~30 telemetry guards below stay plain field checks) — no settings hub.",
+    "        this.antiCheatEnabled = localStorage.getItem('antiCheat') !== 'false';",
+    "",
+    "        if (!this.mouseTracked) {",
     "            this.mouseTracking.length = 0;",
     "        } else if ((this.mouseClickButton !== 0 || this.mouseTracking.length >= 40) && this.antiCheatEnabled) {",
     "            this.out.p1Enc(ClientProt.EVENT_MOUSE_MOVE);"
    ],
-   "note": "src/client/Client.ts @ old line 2033",
+   "note": "src/client/Client.ts @ old line 2031",
    "occ": 1
   },
   {

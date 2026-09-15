@@ -298,6 +298,8 @@
     "        // replaces the old canvas-space composite + blanket !isMenuOpen hide that",
     "        // blanked the tracker on every right click. Auto-hides XP_HIDE_MS after the",
     "        // last gained xp (OSRS-style; the rows drain at ~4.2s, before it goes).",
+    "        // Reads our OWN key here (runs every frame) — no dependency on any hub.",
+    "        this.xpDropsEnabled = localStorage.getItem('xpDrops') !== 'false';",
     "        if (this.xpDropsEnabled && this.xpLastSkill >= 0) {",
     "            if (performance.now() - this.xpLastGainAt < XP_HIDE_MS) {",
     "                this.drawXpPanel();",

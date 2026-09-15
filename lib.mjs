@@ -31,6 +31,10 @@ export const MOD_META = {
         label: 'Stat orbs',
         desc: 'HP/Prayer/Energy orbs beside the minimap (off by default in-game)',
     },
+    'true-tile': {
+        label: 'True tile',
+        desc: 'OSRS-style outline on the real server tile (on by default)',
+    },
     'anti-cheat': {
         label: 'Anti-cheat telemetry toggle',
         desc: 'lets the panel mute legacy RuneScope packets (private-server friendly)',

@@ -44,6 +44,7 @@ rev-drift or removal in one can never take another down:
 |---|---|
 | `mods/camera/` | OSRS-style wheel zoom (0.4–2.6×, eased), middle-drag rotate, one-shot ground pick, live visibility probe, viewRadius/farPlane scaling with zoom, chatbox wheel-scroll |
 | `mods/xp-drops/` | OSRS-style XP drop rows (skill icon + `+N`) and a tan level-progress tracker in the viewport's top-right — burst-largest-gainer tracking, auto-hide after the last gain, drawn *under* interfaces so a right click never blanks it |
+| `mods/true-tile/` | OSRS-style **true tile**: an outline on the tile the server actually has you on (the route head the move codes push into), not the walk-interpolated model position that trails a tick. RuneLite Tile-Marking style options — color, border thickness 1–8px, translucent fill, only-when-desynced — all read per-frame from localStorage, live with no reload. On by default |
 | `mods/stat-orbs/` | HP/Prayer/Energy orbs down the lower-left of the minimap (OSRS layout), drawn into the minimap widget buffer so they ride on top of the interface; numbers always visible, ghost-wipe on toggle-off |
 | `mods/anti-cheat/` | Toggle for the legacy RuneScope telemetry (mouse/camera/anticheat packets) — whole-packet suppression keeps the ISAAC keystream aligned; harmless off on private servers |
 | `mods/rendering/` | Smooth (per-pixel Gouraud) vs blocky 4px shading option, saved/restored correctly through item-icon rendering |
@@ -163,14 +164,37 @@ never merge two mods into one hunk — see PLUGINS.md for why 61.
 
 ## The panel (RuneLite-style)
 
-FAB button docked **top-right** (RuneLite plugin-menu style); **F1** or click to open;
-`/` opens + focuses search. Groups: Camera / Display / Interface / Rendering /
-Compatibility. One-line rows — each setting's description is a hover **tooltip**
-(left of the panel, below the row on narrow windows) instead of per-row subtext, and
-tooltips still feed the search box. Toggles + a live zoom slider synced to in-game
-wheel zoom. The legacy green bar is hidden by default (re-enable via "Show legacy
-control bar"). Brand mark on the FAB/header: a Zanaris-blue crescent moon (the blue
-of the Lost City quest) cradling a gold lightning bolt — the "lite".
+FAB button docked **top-right** (RuneLite plugin-menu style); **F1** or click to
+open; `/` opens + focuses search. Two tabs, mirroring RuneLite's two surfaces:
+
+- **Mods** — one row per installed mod (derived from `installed.json`, so a
+  new mod folder appears with zero panel edits): name, real description, and a
+  **master switch**. Clicking the row jumps to its Settings section (and
+  expands it — sections open collapsed by default). Single-toggle
+  mods (stat orbs, xp drops, true tile, anti-cheat, rendering, gpu) live
+  entirely here — their master switch *is* their engine key, no redundant
+  section (RuneLite: plugin without config ⇒ no config screen).
+- **Settings** — collapsible sections per mod, only for mods that HAVE sub-settings
+  (currently Camera and the LCLite page section). A section expands when you
+  jump to it from the Mods tab or click its header; expansion is remembered for
+  the page session only — fresh loads start collapsed, no per-section persistence.
+  Search filters the visible tab and hides empty sections; tooltips still feed it.
+
+**Pin (lock) button** next to the ✕: while pinned, the panel survives in-game
+clicks (outside-click close is disabled) so you can tweak settings while
+playing; the ✕ and F1 still close it. Pin state persists
+(`lclitePanelPinned`); last-opened tab too (`lclitePanelTab`).
+
+Master switches: a single-toggle mod's master is its own engine key (the mod
+reads its key per-frame, so master-off is instant). Camera is the only
+multi-setting mod; its master key `camera` is honored live inside
+`applyCameraSettings()` (off ⇒ vanilla camera, zoom back to 1×). The panel
+calls `applyCameraSettings()` after every change as a cheap wake-up for mods
+that don't poll (zoom slider).
+
+The legacy green bar is hidden by default (re-enable via "Show legacy
+control bar"). Brand mark on the FAB/header: a Zanaris-blue crescent moon (the
+blue of the Lost City quest) cradling a gold lightning bolt — the "lite".
 
 ## Notes / invariants
 

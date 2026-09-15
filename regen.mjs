@@ -27,6 +27,15 @@ const MODS = {
     'xp-drops': [
         'webclient/src/client/Client.ts'
     ],
+    'true-tile': [
+        'webclient/src/client/Client.ts'
+    ],
+    'rendering': [
+        // the smoothShading localStorage read (mainloop, per-frame) — the
+        // ObjType.ts save/restore hunks belong to this mod too via MODS below
+        'webclient/src/client/Client.ts',
+        'webclient/src/config/ObjType.ts'
+    ],
     'gpu': [
         // ONLY the import line in Client.ts is a tracked upstream edit: the
         // renderer itself ships as a files/ copy (webclient/src/gpu/), and it
@@ -54,6 +63,7 @@ const HUNK_OWNER = {
         ['gpu', /GpuRenderer|lclite "gpu"/],
         ['xp-drops', /xpDrops|XP_DROP|XP_PANEL|XP_HIDE|XP_BURST|XP_MAX|drawXp|xpSkillLabel|xpLastSkill|xpLastGain|xpStatic|xpRates|areaXp|STAT_ICON_BY_SKILL|gained amount|skill icons|fresh xp-drop|Experience  /i],
         ['stat-orbs', /orbsEnabled|orbsWereOn|drawStatOrbs|drawOrb\b|stat orbs|Stat orbs|statOrbs|backing ring|glass highlight|procedural orb/i],
+        ['true-tile', /drawTrueTile|trueTileLine|trueTile\b|true tile|true-tile/i],
         ['anti-cheat', /antiCheatEnabled|antiCheat|ANTICHEAT_|telemetry|mouseTracking\.length|RuneScope/i],
         ['rendering', /lowDetail|smoothShading|smooth-shading/i],
         ['camera', /cameraZoom|wheelZoom|middleRotate|wheelScrollChat|rotateLastScreen|middleMouseDown|scrollChatbox|onwheel|camFollow|orbitCamera|setVisZoom|viewRadius|visTile|clearPick|World\.click|lostcityClient|applyCameraSettings/]
