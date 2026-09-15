@@ -18,6 +18,13 @@ extracts them from `git diff -U0` of the live tree. Deep context:
    objects). Tools must preserve them; regen trips a warning if flattened.
 5. New mods read their OWN localStorage key at their own hook site, per frame.
    No settings hub, no cross-mod key reads (the old applyCameraSettings hub is gone).
+6. **NEVER commit the modded state onto the tracked upstream branch** (webclient/
+   engine). Regen diffs working-tree vs HEAD and pins `generated_from` to HEAD:
+   a committed modded HEAD makes the diff empty → regen "proves" the tree is
+   unmodded and DELETES all hunks + docs/hooks.json. The working tree stays
+   dirty-by-design; only lclite/ gets commits. (README's "commit modded state
+   before upgrading" step is a manual-merge fallback for drift emergencies only —
+   run it, upgrade, reseat, then `git reset` back before the next regen.)
 
 ## Loop for a TYPE B (engine) change
 edit live tree (marker!) → `node lclite/regen.mjs` → `node lclite/install.mjs apply --check`
