@@ -29,15 +29,18 @@
     const style = document.createElement('style');
     style.id = 'lctcg-style';
     style.textContent = `
-#lctcg-root { position: fixed; inset: 0; z-index: 1200; pointer-events: none; font-family: 'Segoe UI', sans-serif; }
+/* z 9600: above #lclite-root (9000) + #lclite-tip (9500) — the reveal/album must
+   never land behind the LCLite chrome; the HUD itself is anchored to the canvas
+   top-LEFT by JS (tick) so it never fights the FAB at viewport top-right. */
+#lctcg-root { position: fixed; inset: 0; z-index: 9600; pointer-events: none; font-family: 'Segoe UI', sans-serif; }
 #lctcg-root input, #lctcg-root select, #lctcg-root button { font-family: inherit; }
-.lctcg-hud { position: absolute; top: 10px; right: 10px; display: none; flex-direction: column; align-items: flex-end;
+.lctcg-hud { position: fixed; top: 10px; left: 10px; display: none; flex-direction: column; align-items: flex-end;
     background: rgba(22,17,10,.92); border: 1px solid #6b5a3a; border-radius: 8px; padding: 7px 12px;
     color: #ffe7a8; pointer-events: auto; cursor: pointer; user-select: none; min-width: 118px; }
 .lctcg-hud .coins { font-size: 16px; font-weight: 600; letter-spacing: .3px; }
 .lctcg-hud .rate { font-size: 10px; color: #7fd07f; min-height: 12px; }
 .lctcg-hud .sub { font-size: 10px; color: #b8a67e; }
-.lctcg-toast { position: absolute; top: 74px; left: 50%; transform: translateX(-50%); background: rgba(22,17,10,.94);
+.lctcg-toast { position: fixed; top: 84px; left: 50%; transform: translateX(-50%); background: rgba(22,17,10,.94);
     border: 1px solid #6b5a3a; color: #ffe7a8; padding: 7px 16px; border-radius: 8px; font-size: 13px;
     opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 70vw; text-align: center; }
 .lctcg-toast.show { opacity: 1; }
@@ -124,12 +127,24 @@
     }
 
     // ── HUD: credits, lifetime credits/h, progress to the next pack ──────────
+    // pinned to the canvas top-left (8px inset): the game frame can be any size
+    // on the page, and viewport top-right belongs to the LCLite FAB + panel.
+    function anchorHud() {
+        const c = document.getElementById('canvas');
+        if (!c) { return; }
+        const r = c.getBoundingClientRect();
+        hud.style.left = (r.left + 8) + 'px';
+        hud.style.top = (r.top + 8) + 'px';
+        hud.style.right = 'auto';
+    }
+
     function tick() {
         if (!hud || !window.tcgInfo) { return; }
         if (!masterOn()) { hud.style.display = 'none'; return; }
         let i;
         try { i = window.tcgInfo(); } catch (e) { return; }   // core not ready
         hud.style.display = 'flex';
+        anchorHud();
         root.querySelector('#lctcg-credits').textContent = fmt(i[I_CREDITS]);
         const earned = i[I_EARN_XP] + i[I_EARN_LVL] + i[I_EARN_DUP];   // grants excluded
         const hours = Math.max(1 / 60, (Date.now() - i[I_SINCE]) / 3600000);

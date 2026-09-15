@@ -564,5 +564,24 @@
     };
     W['tcgTierLabel'] = function (i: number): string { return TIER_LABELS[i] || '?'; };
 
+    // ── UI-layer self-heal ───────────────────────────────────────────────────
+    // ui.js normally arrives via the client.ejs hunk (before </body>). But that
+    // tag lives in server-rendered HTML: a stale engine process or a cached page
+    // can boot the core WITHOUT the DOM layer — HUD/clicks/album then do nothing
+    // and it looks like the whole mod is dead. The bundled core always survives,
+    // so it injects the script itself when it's missing (idempotent: ui.js sets
+    // tcgBumpToast synchronously when it runs).
+    function ensureUiScript(): void {
+        if (W['tcgBumpToast']) { return; }
+        const tag = 'script[data-lctcg-ui]';
+        if (!document.querySelector(tag)) {
+            const s = document.createElement('script');
+            s.setAttribute('data-lctcg-ui', '1');
+            s.src = '/lclite/tcg/ui.js';
+            (document.body || document.head).appendChild(s);
+        }
+    }
+    W.setTimeout(ensureUiScript, 2500);
+
     ensureCatalog();
 })();
