@@ -1,15 +1,19 @@
 # Hunk system — action plan
 
-> **STATUS 2026-09-15: P0 + P1 shipped** (commits 4014add..). A1 markers 81/81,
+> **STATUS 2026-09-15: ALL TRACKS SHIPPED** (tip d69602f). P0: A1 markers 81/81,
 > A2 minimize-to-unique (find-lines 833→395, worst anchor 130→16), A3 overlap
-> geometry check, B1 `install.mjs doctor` (+CI step), B2 `install.mjs new`,
+> geometry check. P1: B1 `install.mjs doctor` (+CI step), B2 `install.mjs new`,
 > B3 AGENTS.md + generated docs/HOOKS.md + docs/hooks.json, B4 reseat hints
 > (proven: prints fuzzy line where anchor moved). The ≥61-line rule is RETIRED
-> (regen now -U0 islands). Two latent bugs found + fixed en route: pure-insertion
-> off-by-one at file start, trail-window swallowing the next island's anchor.
+> (regen now -U0 islands). C1 root.json host manifest (custom-host tested:
+> non-Lost-City dirs warn+skip cleanly) + C2 distribution contract + TYPE C
+> visual-entity blueprint in PLUGINS.md; README hero rewrite with live-captured
+> screenshot. Two latent bugs found + fixed en route: pure-insertion off-by-one
+> at file start, trail-window swallowing the next island's anchor.
 > Acceptance: pristine t/ apply byte-identical 8/8, regen idempotent, tsc green,
-> prod build deployed. Remaining: C-track (deferred by design), README screenshot
-> pass (newcomer polish, not structural).
+> prod build deployed, live in-game mod test by user = clean.
+> C3 stays trigger-based (javaclient overlay / AST applier / plugin SDK:
+> revisit only on rev-day pain or outside adoption).
 
 Date: 2026-09-15. Why: see `hunk-system-assessment.md`. Goal: **fast agent +
 human workflow** and **cheap integration onto any new Lost City build**.
