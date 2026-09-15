@@ -13,6 +13,7 @@
 | webclient/src/client/GameShell.ts | 356 | camera | `// custom: middle button release ends camera rotation drag lclite:camera` |
 | webclient/src/client/GameShell.ts | 401 | camera | `// custom: stop rotating if the mouse leaves the canvas mid-drag lclite:camera` |
 | webclient/src/client/Client.ts | 0 | gpu | `// lclite:gpu` |
+| webclient/src/client/Client.ts | 4 | tcg | `// lclite:tcg` |
 | webclient/src/client/Client.ts | 87 | xp-drops | `/* ─── custom (lclite "xp-drops" mod) tunables ──────────────────────────────── ` |
 | webclient/src/client/Client.ts | 121 | xp-drops | `/// custom (lclite "xp-drops"): skill id -> staticons sprite index. Pack order i` |
 | webclient/src/client/Client.ts | 355 | camera | `/// custom: OSRS-style camera zoom + middle-button rotate lclite:camera` |
@@ -22,6 +23,7 @@
 | webclient/src/client/Client.ts | 588 | camera | `// lclite:camera` |
 | webclient/src/client/Client.ts | 1015 | xp-drops | `// custom: skill icons for xp-drops (staticons = skills 0-17 in the SAME lclite:` |
 | webclient/src/client/Client.ts | 1260 | rendering | `// custom (lclite "rendering" mod): smooth shading refreshed from our OWN lclite` |
+| webclient/src/client/Client.ts | 1728 | tcg | `// lclite:tcg — tell the (window) core who just logged in; it loads that` |
 | webclient/src/client/Client.ts | 1819 | xp-drops | `// custom: fresh xp-drop feed per session (world hop / re-login). lclite:xp-drop` |
 | webclient/src/client/Client.ts | 2060 | anti-cheat | `// custom (lclite "anti-cheat"): read our OWN key once per cycle here (the lclit` |
 | webclient/src/client/Client.ts | 2062 | anti-cheat | `// lclite:anti-cheat` |
@@ -32,6 +34,7 @@
 | webclient/src/client/Client.ts | 2315 | camera | `// custom: the ground pick stays armed (World.click) after a walk click and lcli` |
 | webclient/src/client/Client.ts | 2325 | camera | `// custom: pick expiry is handled inside World.renderAll (clearPick / clickCycle` |
 | webclient/src/client/Client.ts | 2941 | anti-cheat | `// lclite:anti-cheat` |
+| webclient/src/client/Client.ts | 3090 | tcg | `// lclite:tcg — ::tcg opens the album; staff subcommands (give/roll)` |
 | webclient/src/client/Client.ts | 3226 | camera | `// custom: smooth the wheel zoom toward its target (OSRS-style easing) lclite:ca` |
 | webclient/src/client/Client.ts | 3887 | stat-orbs | `/// custom (lclite "stat-orbs" mod): fields + methods live in this one lclite:st` |
 | webclient/src/client/Client.ts | 4192 | camera | `// custom: uniform zoom — the entire camera-relative geometry (orbit distance lc` |
@@ -46,6 +49,7 @@
 | webclient/src/client/Client.ts | 5402 | anti-cheat | `// lclite:anti-cheat` |
 | webclient/src/client/Client.ts | 5571 | anti-cheat | `// lclite:anti-cheat` |
 | webclient/src/client/Client.ts | 6684 | xp-drops | `// custom: a gained amount (xp > stored) = drop; equal/below = login lclite:xp-d` |
+| webclient/src/client/Client.ts | 6694 | tcg | `// custom (lclite "tcg"): feed the credit economy from real xp — 100c/1k xp lcli` |
 | webclient/src/client/Client.ts | 8608 | anti-cheat | `// lclite:anti-cheat` |
 | webclient/src/client/Client.ts | 8626 | anti-cheat | `// lclite:anti-cheat` |
 | webclient/src/client/Client.ts | 8636 | anti-cheat | `// lclite:anti-cheat` |
@@ -81,8 +85,10 @@
 | webclient/src/dash3d/World.ts | 1367 | camera | `// custom: live probe when zoomed (table stale), else cached row lclite:camera` |
 | webclient/src/dash3d/Pix3D.ts | 34 | camera | `/// custom: depth clip planes, scaled with camera zoom (defaults match original ` |
 | webclient/src/dash3d/Model.ts | 1722 | camera | `// lclite:camera` |
-| webclient/src/config/ObjType.ts | 428 | rendering | `// custom: save/restore instead of hard-resetting, so the smooth-shading setting` |
-| webclient/src/config/ObjType.ts | 513 | rendering | `// lclite:rendering` |
+| webclient/bundle.ts | 59 | tcg | `// lclite:tcg — the window['tcg*'] surface shared between the bundled core` |
 | webclient/bundle.ts | 131 | control-panel | `'id',  // lclite:control-panel` |
 | engine/view/client.ejs | 331 | control-panel | `<!-- lclite:control-panel -->` |
 | engine/view/client.ejs | 392 | control-panel | `<!-- lclite:control-panel -->` |
+| engine/view/client.ejs | 401 | tcg | `<!-- lclite:tcg -->` |
+| webclient/src/config/ObjType.ts | 428 | rendering | `// custom: save/restore instead of hard-resetting, so the smooth-shading setting` |
+| webclient/src/config/ObjType.ts | 513 | rendering | `// lclite:rendering` |

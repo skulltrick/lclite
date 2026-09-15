@@ -1,0 +1,41 @@
+{
+ "file": "webclient/bundle.ts",
+ "mod": "tcg",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "bd6cad7147cc9f44d5eb12de93f0736c18e1c4d0"
+ },
+ "hunks": [
+  {
+   "find": [
+    "            properties: {",
+    "                reserved: [",
+    "                    // stdlib",
+    "                    'willReadFrequently',"
+   ],
+   "replace": [
+    "            properties: {",
+    "                reserved: [",
+    "                    // lclite:tcg — the window['tcg*'] surface shared between the bundled core",
+    "                    // (tcg_core.ts) and the page-side DOM layer (lclite/tcg/ui.js), plus the",
+    "                    // Client.ts hunk call sites. The property mangler rewrites string-keyed",
+    "                    // access too, so every cross-realm name must be reserved here.",
+    "                    'tcgSetAccount', 'tcgOnXp', 'tcgOpenPack', 'tcgRevealClosed',",
+    "                    'tcgSellDuplicates', 'tcgCommand', 'tcgInfo', 'tcgAlbum',",
+    "                    'tcgCatalogMeta', 'tcgEnsureCatalog', 'tcgCardBy', 'tcgTierLabel',",
+    "                    'tcgHudDirty', 'tcgBumpToast', 'tcgShowReveal', 'tcgShowAlbum',",
+    "",
+    "                    // stdlib",
+    "                    'willReadFrequently',"
+   ],
+   "note": "bundle.ts @ old line 59",
+   "occ": 1,
+   "pos": [
+    59,
+    0,
+    57,
+    60
+   ]
+  }
+ ]
+}

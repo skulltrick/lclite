@@ -60,6 +60,11 @@ const MODS = {
     'stat-orbs': [
         'webclient/src/client/Client.ts'
     ],
+    'tcg': [
+        'webclient/src/client/Client.ts',
+        'webclient/bundle.ts',
+        'engine/view/client.ejs'
+    ],
     'anti-cheat': [
         'webclient/src/client/Client.ts'
     ],

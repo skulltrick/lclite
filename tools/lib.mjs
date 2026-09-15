@@ -32,6 +32,10 @@ export const MOD_META = {
         label: 'Stat orbs',
         desc: 'HP/Prayer/Energy orbs beside the minimap (off by default in-game)',
     },
+    'tcg': {
+        label: 'TCG card packs',
+        desc: 'earn credits from xp/level-ups, open booster packs, collect 6,376 OSRS cards',
+    },
     'true-tile': {
         label: 'True tile',
         desc: 'OSRS-style outline on the real server tile (on by default)',

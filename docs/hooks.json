@@ -57,6 +57,12 @@
     "marker": true
    },
    {
+    "mod": "tcg",
+    "note": "src/client/Client.ts @ old line 4",
+    "line": 4,
+    "marker": true
+   },
+   {
     "mod": "xp-drops",
     "note": "src/client/Client.ts @ old line 87",
     "line": 87,
@@ -108,6 +114,12 @@
     "mod": "rendering",
     "note": "src/client/Client.ts @ old line 1260",
     "line": 1260,
+    "marker": true
+   },
+   {
+    "mod": "tcg",
+    "note": "src/client/Client.ts @ old line 1728",
+    "line": 1728,
     "marker": true
    },
    {
@@ -168,6 +180,12 @@
     "mod": "anti-cheat",
     "note": "src/client/Client.ts @ old line 2942",
     "line": 2941,
+    "marker": true
+   },
+   {
+    "mod": "tcg",
+    "note": "src/client/Client.ts @ old line 3090",
+    "line": 3090,
     "marker": true
    },
    {
@@ -252,6 +270,12 @@
     "mod": "xp-drops",
     "note": "src/client/Client.ts @ old line 6684",
     "line": 6684,
+    "marker": true
+   },
+   {
+    "mod": "tcg",
+    "note": "src/client/Client.ts @ old line 6694",
+    "line": 6694,
     "marker": true
    },
    {
@@ -471,21 +495,13 @@
     "marker": true
    }
   ],
-  "webclient/src/config/ObjType.ts": [
+  "webclient/bundle.ts": [
    {
-    "mod": "rendering",
-    "note": "src/config/ObjType.ts @ old line 428",
-    "line": 428,
+    "mod": "tcg",
+    "note": "bundle.ts @ old line 59",
+    "line": 59,
     "marker": true
    },
-   {
-    "mod": "rendering",
-    "note": "src/config/ObjType.ts @ old line 514",
-    "line": 513,
-    "marker": true
-   }
-  ],
-  "webclient/bundle.ts": [
    {
     "mod": "control-panel",
     "note": "bundle.ts @ old line 132",
@@ -504,6 +520,26 @@
     "mod": "control-panel",
     "note": "view/client.ejs @ old line 392",
     "line": 392,
+    "marker": true
+   },
+   {
+    "mod": "tcg",
+    "note": "view/client.ejs @ old line 401",
+    "line": 401,
+    "marker": true
+   }
+  ],
+  "webclient/src/config/ObjType.ts": [
+   {
+    "mod": "rendering",
+    "note": "src/config/ObjType.ts @ old line 428",
+    "line": 428,
+    "marker": true
+   },
+   {
+    "mod": "rendering",
+    "note": "src/config/ObjType.ts @ old line 514",
+    "line": 513,
     "marker": true
    }
   ]

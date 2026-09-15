@@ -1,0 +1,36 @@
+{
+ "file": "engine/view/client.ejs",
+ "mod": "tcg",
+ "generated_from": {
+  "repo": "engine",
+  "head": "0c7cf6555d0cf92d2348999b2fd27c6ceff5ffbf"
+ },
+ "hunks": [
+  {
+   "find": [
+    "        loadSettings();",
+    "    </script>",
+    "</body>",
+    ""
+   ],
+   "replace": [
+    "        loadSettings();",
+    "    </script>",
+    "    <!-- lclite:tcg -->",
+    "    <!-- lclite tcg mod (DOM layer; the engine side is bundled into client.js) -->",
+    "    <script src=\"/lclite/tcg/ui.js\" defer></script>",
+    "",
+    "</body>",
+    ""
+   ],
+   "note": "view/client.ejs @ old line 401",
+   "occ": 1,
+   "pos": [
+    401,
+    0,
+    399,
+    402
+   ]
+  }
+ ]
+}

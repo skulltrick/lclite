@@ -1,0 +1,119 @@
+{
+ "file": "webclient/src/client/Client.ts",
+ "mod": "tcg",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "bd6cad7147cc9f44d5eb12de93f0736c18e1c4d0"
+ },
+ "hunks": [
+  {
+   "find": [
+    "",
+    "import ClientBuild from '#/client/ClientBuild.js';",
+    "import { ClientCode } from '#/client/ClientCode.js';",
+    "import GameShell from '#/client/GameShell.js';"
+   ],
+   "replace": [
+    "",
+    "import ClientBuild from '#/client/ClientBuild.js';",
+    "// lclite:tcg",
+    "import '#/tcg/tcg_core.js'; // custom (lclite \"tcg\" mod): credits/packs/collection minigame — side-effect import installs the window['tcg*'] API",
+    "import { ClientCode } from '#/client/ClientCode.js';",
+    "import GameShell from '#/client/GameShell.js';"
+   ],
+   "note": "src/client/Client.ts @ old line 4",
+   "occ": 1,
+   "pos": [
+    4,
+    0,
+    2,
+    5
+   ]
+  },
+  {
+   "find": [
+    "            this.stream = new ClientStream(await ClientStream.openSocket(window.location.host, window.location.protocol === 'https:'));",
+    "",
+    "            const userhash = JString.toUserhash(username);",
+    "            const loginServer = Number(userhash >> 16n) & 0x1f;"
+   ],
+   "replace": [
+    "            this.stream = new ClientStream(await ClientStream.openSocket(window.location.host, window.location.protocol === 'https:'));",
+    "",
+    "            // lclite:tcg — tell the (window) core who just logged in; it loads that",
+    "            // account's save and opens its settle window (login burst rebases silently).",
+    "            (window as any)['tcgSetAccount']?.(username);",
+    "            const userhash = JString.toUserhash(username);",
+    "            const loginServer = Number(userhash >> 16n) & 0x1f;"
+   ],
+   "note": "src/client/Client.ts @ old line 1728",
+   "occ": 1,
+   "pos": [
+    1728,
+    0,
+    1726,
+    1729
+   ]
+  },
+  {
+   "find": [
+    "                                    // empty",
+    "                                }",
+    "                            } else if (this.chatInput.startsWith('::')) {",
+    "                                this.out.p1Enc(ClientProt.CLIENT_CHEAT);"
+   ],
+   "replace": [
+    "                                    // empty",
+    "                                }",
+    "                                // lclite:tcg — ::tcg opens the album; staff subcommands (give/roll)",
+    "                                // are gated on staffmodlevel inside the core.",
+    "                            } else if (this.chatInput === '::tcg' || this.chatInput.startsWith('::tcg ')) {",
+    "                                (window as any)['tcgCommand']?.(this.chatInput.substring(5).trim(), this.staffmodlevel);",
+    "                            } else if (this.chatInput.startsWith('::')) {",
+    "                                this.out.p1Enc(ClientProt.CLIENT_CHEAT);"
+   ],
+   "note": "src/client/Client.ts @ old line 3090",
+   "occ": 1,
+   "pos": [
+    3090,
+    0,
+    3088,
+    3091
+   ]
+  },
+  {
+   "find": [
+    "                        this.statBaseLevel[stat] = i + 2;",
+    "                    }",
+    "                }",
+    "",
+    "                this.ptype = -1;",
+    "                return true;",
+    "            }"
+   ],
+   "replace": [
+    "                        this.statBaseLevel[stat] = i + 2;",
+    "                    }",
+    "                }",
+    "",
+    "                // custom (lclite \"tcg\"): feed the credit economy from real xp — 100c/1k xp lclite:tcg",
+    "                // + level-up bonus. The core owns ALL dedupe: first-sight adopts the",
+    "                // baseline, the post-login settle window rebases the burst silently,",
+    "                // and offline-trained jumps (or drains) never retro-pay or flood chunks.",
+    "                (window as any)['tcgOnXp']?.(stat, xp);",
+    "",
+    "                this.ptype = -1;",
+    "                return true;",
+    "            }"
+   ],
+   "note": "src/client/Client.ts @ old line 6694",
+   "occ": 1,
+   "pos": [
+    6694,
+    0,
+    6690,
+    6696
+   ]
+  }
+ ]
+}
