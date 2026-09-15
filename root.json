@@ -1,0 +1,7 @@
+{
+    "$comment": "Host project layout for the lclite overlay. Delete this file to use the built-in Lost City defaults (same content). A custom 2004-lineage server adapts lclite by editing ONLY this file (plus reseating patch JSONs to its own code).",
+    "repos": [
+        { "dir": "webclient", "remote": "https://github.com/LostCityRS/Client-TS", "required": true },
+        { "dir": "engine", "remote": "https://github.com/LostCityRS/Engine-TS", "required": true }
+    ]
+}

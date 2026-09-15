@@ -19,7 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import { execSync } from 'node:child_process';
-import { LIB_DIR, meta, findMods, countOccurrences, toLF, restoreEOL, stripPatchFile } from './lib.mjs';
+import { LIB_DIR, meta, findMods, countOccurrences, toLF, restoreEOL, stripPatchFile, loadRootManifest } from './lib.mjs';
 
 const __dirname = LIB_DIR;
 // The Lost City root that holds webclient/ + engine/. Normally one level up
@@ -203,10 +203,14 @@ function buildManifest(mods) {
 }
 
 // ---- preflight ---------------------------------------------------------------
+// Which sibling repos must exist comes from root.json (C1) so the overlay can
+// target any 2004Scape-lineage client/server combo, not just Lost City.
 function preflight() {
     const problems = [];
-    for (const repo of ['webclient', 'engine']) {
-        if (!fs.existsSync(path.join(ROOT, repo))) problems.push(`${repo}/ not found — clone Lost City first (run its start.bat), then place lclite/ in that folder next to the repos.`);
+    const manifest = loadRootManifest(__dirname);
+    for (const repo of manifest.repos) {
+        if (!repo.required) continue;
+        if (!fs.existsSync(path.join(ROOT, repo.dir))) problems.push(`${repo.dir}/ not found — clone the host client first${repo.remote ? ` (${repo.remote})` : ''}, then place lclite/ in that folder next to the repos.`);
     }
     return problems;
 }

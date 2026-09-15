@@ -51,6 +51,30 @@ export const MOD_META = {
 
 export const meta = name => MOD_META[name] || { label: name, desc: '', required: false };
 
+// ---- root manifest (C1) ------------------------------------------------------
+// The overlay normally installs into a Lost City checkout (webclient/ + engine/
+// one level up). root.json declares what THIS host project looks like so lclite
+// can be dropped onto any 2004Scape-lineage server's client with a tiny edit
+// instead of a code search. Missing file = the original hardcoded defaults.
+export const DEFAULT_ROOT = {
+    repos: [
+        { dir: 'webclient', remote: 'https://github.com/LostCityRS/Client-TS', required: true },
+        { dir: 'engine', remote: 'https://github.com/LostCityRS/Engine-TS', required: true }
+    ]
+};
+export function loadRootManifest(lcliteDir) {
+    const f = path.join(lcliteDir, 'root.json');
+    if (!fs.existsSync(f)) return { ...DEFAULT_ROOT, source: 'builtin' };
+    try {
+        const j = JSON.parse(fs.readFileSync(f, 'utf-8'));
+        if (!Array.isArray(j.repos) || !j.repos.every(r => typeof r.dir === 'string')) throw new Error('repos[] with dir strings required');
+        return { repos: j.repos.map(r => ({ remote: '', required: true, ...r })), source: 'root.json' };
+    } catch (e) {
+        console.error(`!! root.json invalid (${e.message}) — using built-in Lost City defaults`);
+        return { ...DEFAULT_ROOT, source: 'builtin' };
+    }
+}
+
 export function sortMods(mods) {
     const order = Object.keys(MOD_META);
     return [...mods].sort((a, b) => {

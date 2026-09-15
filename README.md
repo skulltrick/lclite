@@ -1,12 +1,18 @@
 # LCLite — a RuneLite-style plugin layer for the Lost City webclient
 
 **LCLite** brings the RuneLite idea to 2004Scape / Lost City: a growing
-collection of quality-of-life mods (OSRS-style XP tracker, camera overhaul, a
-settings panel…) layered on top of the vanilla webclient — **without forking it**.
+collection of quality-of-life mods — OSRS-style camera, XP tracker, stat orbs,
+true tile, F1 settings panel, WebGPU renderer — layered on top of the vanilla
+webclient **without forking it**.
 
-The goal is *build-agnostic*: Lost City keeps shipping new revs, new content, and new
-cache packs, and you should be able to hop to the latest build and have every LCLite
-mod ride along with you. Nothing is hand-merged into upstream code.
+![The LCLite panel over the game](docs/lclite-panel.png)
+
+Double-click `install.bat`, pick your mods, press **F1** in-game. That's the
+whole user story. The goal is *build-agnostic*: Lost City keeps shipping new
+revs and new cache packs, and you should be able to hop to the latest build and
+have every LCLite mod ride along with you — nothing is hand-merged into
+upstream code, and a mod that can't reseat simply goes quiet instead of
+breaking the client.
 
 ## How it works
 
@@ -84,7 +90,10 @@ This repo is an *overlay*, not a fork: clone it **into** a Lost City checkout
 point elsewhere), needs Node 18+, and [bun](https://bun.sh) only to build the
 bundle (the installer prints how to get it and self-serves `bun install` for
 missing webclient deps). After it finishes: start the server and press **F1**
-in the webclient.
+in the webclient. Running a **custom 2004-lineage server**? The host layout
+(repo directory names + remotes) is declared in `lclite/root.json` — edit that
+one file and the tooling targets your project; hunks then reseat to *your*
+code per `PLUGINS.md`.
 
 Mods you didn't select don't leave dead controls behind — the installer writes
 `engine/public/lclite/installed.json` and the panel hides rows (and whole

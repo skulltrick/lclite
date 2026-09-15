@@ -19,9 +19,11 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadRootManifest } from './lib.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
+const ROOT_REPOS = loadRootManifest(__dirname).repos.map(r => r.dir + '/');
 
 // Files each mod's hunks may come from. With markers (A1) this is only "which files to
 // diff" — routing is decided per island by its marker, not by which mod listed the file.
@@ -114,11 +116,17 @@ function parseIslands(diffText) {
 }
 
 let total = 0, ambiguous = 0;
+// manifest check: every patched file must live in a repo root.json declares
+for (const [mod, files] of Object.entries(MODS))
+    for (const f of files)
+        if (!ROOT_REPOS.some(d => f.startsWith(d)))
+            console.log(`  !! MODS['${mod}'] lists ${f} — no matching repo dir in root.json (${ROOT_REPOS.join(' ')}); skipping`);
 const processed = new Set();
 const out = new Map();                // mod -> [ {file, hunks, repo, head} ]
 for (const [mod, filesOf] of Object.entries(MODS)) {
     for (const f of filesOf) {
         if (IGNORE.some(rx => rx.test(f))) continue;
+        if (!ROOT_REPOS.some(d => f.startsWith(d))) continue;   // warned above; not this host's repo
         if (processed.has(f)) continue;
         processed.add(f);
         const repo = f.split('/')[0];

@@ -178,6 +178,51 @@ cp -r lclite t && cd t && node lclite/install.mjs
    find where the `find:` lines moved in the new upstream, reseat, rerun.
 4. `node lclite/regen.mjs` when you've since polished the edits in-tree.
 
+## TYPE C blueprint — visual entities (model overrides, fake NPCs)
+
+Researched against bd6cad7 (2026-09-15). The engine's rendering model is friendly here:
+models are *derived* from data every frame, so client-side visuals can lie safely.
+
+**Worn items / player appearance** — `ClientPlayer.appearance` is a `Uint16Array(12)`
+decoded from the wire; `getTempModel2()` rebuilds the combined model each frame from
+those slot IDs (body ≥256, equipment `slot-512` → ObjType). Override **at the model
+getter, not the field**: `appearance[]` is re-decoded on every appearance-update
+packet, so field writes get stomped; a `getTempModel2` prototype-patch from files/
+code (gpu-style, ONE import hunk) survives. Precedent in-tree: transmog already
+replaces the entity model wholesale (`this.transmog.getTempModel(...)` at
+ClientPlayer.ts ~426) — proven to compose with anims/spotanims/picking. Other
+players see vanilla (local-visual lie, same as RuneLite model swaps).
+
+**Fake NPCs** — do NOT insert into `npc[]`/`npcCount`: the server update loop owns
+those (assigns entries, area-clear resets). Keep a parallel `fakeNpcs[]` and hook
+the four places that iterate entities: draw loop (~Client.ts 4947, `index < playerCount
++ npcCount`), entity sort/depth, picking (`World.click`/`mouseCheck` resolution), and
+tick/cull (despawn on teleport/area change). Everything else (spawn API, menu actions
+via MiniMenuAction, despawn rules) is files/ code. Limits: no server gameplay (no
+talk/attack resolution, no collision) — decorative/marker NPCs only. For YOUR OWN
+server, a real engine-side NPC with normal update packets is the better lane; TYPE C
+is for other people's servers and pure-local cosmetics.
+
+---
+
+## Authoring for distribution (a mod folder others can install)
+
+A third-party lclite mod IS just a folder — no new framework:
+1. `mods/<name>/patches/*.json` hunks, every added block marker-first (`lclite:<mod>`).
+2. optional `files/` payload (copied verbatim; stripped only if unedited).
+3. optional panel row (PLUGINS entry in control-panel's panel.js — or rely on the
+   synthesized row; ship the row as your own files/ copy if you want rich UI).
+4. namespaced your keys: `localStorage` names prefixed with your mod (camelCase);
+   read them at YOUR hook site, per frame.
+5. degrade gracefully: `typeof window.lostcityClient?.foo === 'function'` before any
+   engine call; fall back when a cache pack lacks icons/sprites.
+6. target a host with `root.json` (repo dirs/remotes) — patch JSONs reseat per host;
+   hunks against Lost City apply as-is to revs near the pinned `generated_from.head`.
+
+Distributing = publishing a repo with this layout; users point `LCLITE_ROOT` at it or
+drop it beside their repos like any other overlay. A mods *registry* is deliberately
+NOT a thing yet — folders + git remotes are enough until someone installs one.
+
 ## Ideas register (parking lot)
 
 - [x] wheel zoom + middle-drag rotate + one-shot walk pick + far-plane/viewRadius fix — `mods/camera`

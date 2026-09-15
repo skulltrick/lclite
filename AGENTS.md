@@ -39,7 +39,8 @@ edit `mods/control-panel/files/engine/public/lclite/panel.{js,css}` →
 `node lclite/install.mjs apply` (re-copies files) → browser check. No rebuild.
 
 ## Files
-install.mjs applier/picker/build · regen.mjs hunk extractor (+docs/hooks.json,
-docs/HOOKS.md) · doctor.mjs health report (exit 2 drift / 3 structural) ·
-lib.mjs shared helpers · mods/<name>/{patches/*.json, files/, README.md}.
+install.mjs applier/picker/build (+`doctor`, `new <mod>`) · regen.mjs hunk extractor
+(+docs/hooks.json, docs/HOOKS.md) · doctor.mjs health report (exit 2 drift / 3
+structural) · lib.mjs shared helpers · root.json host layout (repo dirs/remotes —
+edit for custom 2004-lineage servers) · mods/<name>/{patches/*.json, files/, README.md}.
 Commands: `node install.mjs [apply|build|pick|list|doctor|new <mod>|uninstall]`.
