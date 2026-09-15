@@ -8,31 +8,42 @@
  "hunks": [
   {
    "find": [
+    "        const _b: number = Pix2D.clipMaxY;",
     "",
-    "        Pix3D.lowDetail = false;"
+    "        Pix3D.lowDetail = false;",
+    "        Pix2D.setPixels(icon.data, 32, 32);"
    ],
    "replace": [
+    "        const _b: number = Pix2D.clipMaxY;",
     "",
-    "        // custom: save/restore instead of hard-resetting, so the smooth-shading setting survives icon renders",
+    "        // custom: save/restore instead of hard-resetting, so the smooth-shading setting survives icon renders lclite:rendering",
     "        const _lowDetail: boolean = Pix3D.lowDetail;",
-    "        Pix3D.lowDetail = false;"
+    "        Pix3D.lowDetail = false;",
+    "        Pix2D.setPixels(icon.data, 32, 32);"
    ],
-   "note": "src/config/ObjType.ts @ old line 399",
-   "occ": 1
+   "note": "src/config/ObjType.ts @ old line 428",
+   "occ": 1,
+   "ctx": 4
   },
   {
    "find": [
+    "        Pix3D.originY = _cy;",
     "        Pix3D.scanline = _loff;",
     "        Pix3D.lowDetail = true;",
-    ""
+    "",
+    "        if (obj.stackable) {"
    ],
    "replace": [
+    "        Pix3D.originY = _cy;",
     "        Pix3D.scanline = _loff;",
+    "        // lclite:rendering",
     "        Pix3D.lowDetail = _lowDetail;",
-    ""
+    "",
+    "        if (obj.stackable) {"
    ],
-   "note": "src/config/ObjType.ts @ old line 484",
-   "occ": 1
+   "note": "src/config/ObjType.ts @ old line 514",
+   "occ": 1,
+   "ctx": 4
   }
  ]
 }

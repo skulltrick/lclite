@@ -8,26 +8,35 @@
  "hunks": [
   {
    "find": [
+    "",
     "    private coordArrow(): void {",
-    "        if (this.hintType !== 2 || !this.headicons[2]) {"
+    "        if (this.hintType !== 2 || !this.headicons[2]) {",
+    "            return;"
    ],
    "replace": [
+    "",
     "    private coordArrow(): void {",
+    "        // lclite:true-tile",
     "        this.drawTrueTile(); // custom (lclite \"true-tile\") — method lives after getOverlayPos",
     "",
-    "        if (this.hintType !== 2 || !this.headicons[2]) {"
+    "        if (this.hintType !== 2 || !this.headicons[2]) {",
+    "            return;"
    ],
-   "note": "src/client/Client.ts @ old line 4774",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 4803",
+   "occ": 1,
+   "ctx": 4
   },
   {
    "find": [
+    "    }",
     "",
-    "    private getAvH(sceneX: number, sceneZ: number, level: number): number {"
+    "    private getAvH(sceneX: number, sceneZ: number, level: number): number {",
+    "        if (!this.groundh) {"
    ],
    "replace": [
+    "    }",
     "",
-    "    /// custom (lclite \"true-tile\" mod): OSRS-style true tile — an outline on",
+    "    /// custom (lclite \"true-tile\" mod): OSRS-style true tile — an outline on lclite:true-tile",
     "    /// the tile the SERVER currently has the player on (routeX/routeZ[0], the",
     "    /// head of the move queue the local move codes push into), not the",
     "    /// walk-interpolated model position (player.x/z), which trails up to a full",
@@ -178,10 +187,12 @@
     "        }",
     "    }",
     "",
-    "    private getAvH(sceneX: number, sceneZ: number, level: number): number {"
+    "    private getAvH(sceneX: number, sceneZ: number, level: number): number {",
+    "        if (!this.groundh) {"
    ],
-   "note": "src/client/Client.ts @ old line 5044",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 5073",
+   "occ": 1,
+   "ctx": 4
   }
  ]
 }

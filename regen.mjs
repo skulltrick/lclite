@@ -3,9 +3,18 @@
 // Run from repo root:  node lclite/regen.mjs
 // Regenerates lclite/mods/<mod>/patches/*.json from the current diff.
 //
-// hunk = { find:[lines], replace:[lines] } — unique in the pristine old file, expanded
-// symmetrically with pure context lines (git diff -U30) so no hunk's context can ever
-// overlap another hunk's changes (git merges hunks closer than 2*30 lines into one).
+// hunk = { find:[lines], replace:[lines] } — the MINIMAL unique window in the pristine
+// old file. Pipeline (v2, 2026-09-15):
+//   1. `git diff -U0` → every change block is its own island (no -U30 fat windows, so
+//      two mods' edits can never merge into one hunk by proximity — the ≥61-line
+//      isolation rule is retired: islands 2+ pristine lines apart split cleanly).
+//   2. Context is then EXPANDED from a floor of 2/side only until the find window is
+//      unique in the pristine file, and never past the neighbouring islands (context
+//      may only contain untouched lines — otherwise a sibling hunk applied first would
+//      eat this hunk's anchor).
+//   3. Ownership: a `// lclite:<mod>` marker comment anywhere in the island's ADDED
+//      lines wins with 100% precision. HUNK_OWNER regexes are fallback only and warn
+//      loudly when used (they were a classifier where a declaration belongs).
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,6 +23,8 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 
+// Files each mod's hunks may come from. With markers (A1) this is only "which files to
+// diff" — routing is decided per island by its marker, not by which mod listed the file.
 const MODS = {
     'camera': [
         'webclient/src/client/GameShell.ts',
@@ -32,7 +43,7 @@ const MODS = {
     ],
     'rendering': [
         // the smoothShading localStorage read (mainloop, per-frame) — the
-        // ObjType.ts save/restore hunks belong to this mod too via MODS below
+        // ObjType.ts save/restore hunks belong to this mod too via markers below
         'webclient/src/client/Client.ts',
         'webclient/src/config/ObjType.ts'
     ],
@@ -43,21 +54,18 @@ const MODS = {
         // so Model.ts / World.ts / Pix3D.ts / GameShell.ts stay untouched.
         'webclient/src/client/Client.ts'
     ],
+    'stat-orbs': [
+        'webclient/src/client/Client.ts'
+    ],
+    'anti-cheat': [
+        'webclient/src/client/Client.ts'
+    ],
     'control-panel': [
         'engine/view/client.ejs'
     ]
 };
 
-// Client.ts/ObjType.ts are shared by several engine mods — route each hunk to
-// its owning mod so overlays stay independent. Ownership = argmax of
-// distinctive-token hits over the hunk's ADDED lines, evaluated across ALL mod
-// rules including camera (default when nothing matches). Rule ORDER breaks
-// ties: xp-drops > stat-orbs > anti-cheat > rendering > camera. This keeps the
-// applyCameraSettings settings-bus hunk with camera (camera hits drown the
-// one-line reads other mods add to it). The CYCLELOGIC7-wrap + camera
-// one-shot-clearPick hunk is genuinely merged (10 lines apart upstream) and
-// lands with camera by score. Pix3D farPlane/vis work STAYS in camera: those
-// constants exist to scale with zoom (World.visFar).
+// Fallback routing ONLY (warns when it fires). Keep in sync with marker names.
 const HUNK_OWNER = {
     'webclient/src/client/Client.ts': [
         ['gpu', /GpuRenderer|lclite "gpu"/],
@@ -78,101 +86,130 @@ const HUNK_OWNER = {
     ]
 };
 
+const MARKER = /lclite:([a-z][a-z0-9-]*)/;          // `// lclite:<mod>` in an added line
+const MIN_CTX = 2;                                   // context floor per side (if available)
 const IGNORE = [/^engine\/public\/client\/client\.js$/, /^webclient\/out\//];
 const git = (repo, cmd) => execSync(`git -C ${path.join(ROOT, repo)} ${cmd}`, { encoding: 'utf-8', maxBuffer: 64 * 1024 * 1024 });
 const toLF = s => s.replace(/\r\n/g, '\n');
 const countOcc = (hay, needle) => { if (!needle) return 0; let n = 0, i = 0; while ((i = hay.indexOf(needle, i)) !== -1) { n++; i += needle.length; } return n; };
 
-function parseHunks(diffText) {
+// parse `git diff -U0` output → per file: islands [{a,b,c,d}] (old start/len, new start/len)
+function parseIslands(diffText) {
     const out = [];
-    let cur = null, curH = null;
+    let cur = null;
     for (const line of toLF(diffText).split('\n')) {
         if (line.startsWith('diff --git')) {
-            if (curH && cur) cur.hunks.push(curH);
             if (cur) out.push(cur);
             cur = { file: line.match(/ b\/(.+)$/)[1], hunks: [] };
-            curH = null; continue;
+            continue;
         }
         if (!cur) continue;
         if (line.startsWith('@@')) {
-            if (curH) cur.hunks.push(curH);
-            const m = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
-            curH = { oldStart: +m[1], newStart: +m[2], ctx: [] }; continue;
+            const m = line.match(/@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/);
+            cur.hunks.push({ a: +m[1], b: m[2] === undefined ? 1 : +m[2], c: +m[3], d: m[4] === undefined ? 1 : +m[4] });
         }
-        if (curH && (line.startsWith('+') || line.startsWith('-') || line.startsWith(' '))) curH.ctx.push(line);
     }
-    if (curH && cur) cur.hunks.push(curH);
     if (cur) out.push(cur);
     return out;
 }
 
 let total = 0, ambiguous = 0;
-const processed = new Set();          // shared files are diffed once; hunks route to owners
+const processed = new Set();
 const out = new Map();                // mod -> [ {file, hunks, repo, head} ]
 for (const [mod, filesOf] of Object.entries(MODS)) {
     for (const f of filesOf) {
         if (IGNORE.some(rx => rx.test(f))) continue;
+        if (processed.has(f)) continue;
+        processed.add(f);
         const repo = f.split('/')[0];
         const rel = f.slice(repo.length + 1);
-        if (processed.has(f)) continue;   // routed per-hunk via HUNK_OWNER below
-        processed.add(f);
         let diff;
-        try { diff = git(repo, `diff -U30 -- "${rel}"`); } catch (e) { console.error('git diff failed', f, e.message); continue; }
+        try { diff = git(repo, `diff -U0 -- "${rel}"`); } catch (e) { console.error('git diff failed', f, e.message); continue; }
         if (!diff.trim()) { console.log('unchanged:', f); continue; }
-        const oldText = git(repo, `show HEAD:"${rel}"`);
-        const newText = fs.readFileSync(path.join(ROOT, f), 'utf-8');
-        const oldLF = toLF(oldText);
-        const fd = parseHunks(diff).find(p => p.file === rel);
+        const oldLines = toLF(git(repo, `show HEAD:"${rel}"`)).split('\n');
+        // EOL tripwire (v2 — first version compared `git show HEAD` raw, but in
+        // autocrlf=true repos HEAD is LF while the checkout is CRLF: permanent false
+        // alarm). The accident worth catching: a tool flattening the WORKTREE to LF
+        // in a repo whose checkout convention is CRLF (git diff hides it; users and
+        // git status feel it).
+        const rawNew = fs.readFileSync(path.join(ROOT, f), 'utf-8');
+        const newLines = toLF(rawNew).split('\n');
+        {
+            const headIsLF = !/\r\n/.test(git(repo, `show HEAD:"${rel}"`));
+            const autocrlf = git(repo, `config --get core.autocrlf`).trim() === 'true';
+            const wantsCRLF = (autocrlf && headIsLF) || !headIsLF;   // CRLF checkout convention
+            if (wantsCRLF && !/\r\n/.test(rawNew)) {
+                console.log(`  !! ${f}: worktree file is LF-only but this checkout uses CRLF — line endings flattened by some tool; fix before regen`);
+            }
+        }
+        const oldLF = oldLines.join('\n');
+        const fd = parseIslands(diff).find(p => p.file === rel);
         if (!fd) { console.log('not in diff:', f); continue; }
-        const byMod = new Map();          // owner mod -> hunks
-        for (const h of fd.hunks) {
-            let oldRegion = [], newRegion = [];
-            for (const l of h.ctx) {
-                const t = l[0], body = l.slice(1);
-                if (t === ' ') { oldRegion.push(body); newRegion.push(body); }
-                else if (t === '-') oldRegion.push(body);
-                else if (t === '+') newRegion.push(body);
-            }
-            // common prefix / suffix of the two regions
-            let P = 0;
-            while (P < oldRegion.length && P < newRegion.length && oldRegion[P] === newRegion[P]) P++;
-            let S = 0;
-            while (S < oldRegion.length - P && S < newRegion.length - P &&
-                   oldRegion[oldRegion.length - 1 - S] === newRegion[newRegion.length - 1 - S]) S++;
-            const lead = Math.max(0, P - 1), trail = Math.max(0, S - 1);
-            let find = oldRegion.slice(lead, oldRegion.length - trail);
-            let rep = newRegion.slice(lead, newRegion.length - trail);
-            // symmetric expansion using pure context (identical in old & new regions)
-            let occ = countOcc(oldLF, find.join('\n'));
-            let k = 1;
-            while (occ !== 1 && (lead - k >= 0 || oldRegion.length - trail + k - 1 < oldRegion.length)) {
-                if (lead - k >= 0) {
-                    const ctxLine = oldRegion[lead - k]; // context: equals newRegion at same offset
-                    find = [ctxLine, ...find];
-                    rep = [ctxLine, ...rep];
-                }
-                const di = oldRegion.length - trail + k - 1;
-                if (di < oldRegion.length) {
-                    const ctxLine = oldRegion[di];
-                    find = [...find, ctxLine];
-                    rep = [...rep, ctxLine];
-                }
+
+        const byMod = new Map();      // owner mod -> hunks
+        fd.hunks.sort((x, y) => x.a - y.a);
+        fd.hunks.forEach((h, i) => {
+            // oldRegion/newRegion alignment. -U0 conventions:
+            //   b>0  `@@ -L,l +M,n @@`  : old 1-based lines L..L+l-1 replaced; 0-based start L-1
+            //   b=0  `@@ -L,0 +M,n @@`  : n new lines inserted AFTER old line L, i.e. at
+            //                             0-based index L (a pure insertion has NO old block).
+            // Mixing these up (using L-1 for b=0) shifts `replace` one line against `find`
+            // and silently eats one context line at pristine-apply time. Discovered by the
+            // t/ byte-identity harness, 2026-09-15.
+            const oldStart0 = h.b ? h.a - 1 : h.a;
+            const newStart0 = h.c - 1;
+            const head = oldStart0;          // compat with budget math below
+            // safe context budget: untouched lines on each side, in BOTH files
+            const prev = fd.hunks[i - 1];
+            const next = fd.hunks[i + 1];
+            const prevEnd0 = prev ? (prev.b ? prev.a + prev.b : prev.a) : 0;   // 0-based first untouched line after prev
+            const nextStart0 = next ? (next.b ? next.a - 1 : next.a) : oldLines.length;
+            let leadBudget = head - prevEnd0;
+            let trailBudget = nextStart0 - head;
+            if (leadBudget < 0) leadBudget = 0;
+            if (trailBudget < 0) trailBudget = 0;
+            const leadMax = Math.min(leadBudget, 30), trailMax = Math.min(trailBudget, 30);
+
+            let lead = Math.min(MIN_CTX, leadMax), trail = Math.min(MIN_CTX, trailMax);
+            let find, rep, occ = 0;
+            for (;;) {
+                find = oldLines.slice(oldStart0 - lead, oldStart0 + h.b + trail);
+                rep = newLines.slice(newStart0 - lead, newStart0 + h.d + trail);
                 occ = countOcc(oldLF, find.join('\n'));
-                k++;
+                if (occ === 1) break;
+                if (lead + trail >= leadMax + trailMax) break;   // budget exhausted
+                if (lead < leadMax && (lead <= trail || !trail)) lead++;
+                else if (trail < trailMax) trail++;
+                else lead++;
             }
-            if (occ !== 1) { ambiguous++; console.log(`  !! AMBIGUOUS (${occ}x) ${rel} @${h.oldStart}: ${JSON.stringify(find[0].slice(0, 70))}`); }
-            // route: argmax of token hits across all mod rules (camera included,
-            // so the settings-bus hunk stays with camera by score, not by floor);
-            // no rule matches -> stays with the declaring mod
+            if (occ !== 1) { ambiguous++; console.log(`  !! AMBIGUOUS (${occ}x) ${rel} @${h.a}: ${JSON.stringify((find[0] || '').slice(0, 70))}`); }
+
+            // ---- ownership: marker > regex-fallback(warn) > declaring mod
             const added = rep.filter(l => !find.includes(l));
-            let owner = mod, best = 0;
-            for (const [name, rx] of HUNK_OWNER[f] || []) {
-                const hits = added.filter(l => rx.test(l)).length;
-                if (hits > best) { best = hits; owner = name; }
+            const markers = new Set(added.map(l => (l.match(MARKER) || [])[1]).filter(Boolean));
+            let owner, why;
+            if (markers.size === 1) { owner = [...markers][0]; why = 'marker'; }
+            else if (markers.size > 1) {
+                // genuinely mixed block: the majority marker wins; document loudly
+                const best = [...markers][0];
+                owner = best; why = `MIXED MARKERS ${[...markers].join(',')} — split the edits or the first marker wins (${best})`;
+                console.log(`  !! ${rel} @${h.a}: ${why}`);
+            } else {
+                owner = mod; let best = 0;
+                for (const [name, rx] of HUNK_OWNER[f] || []) {
+                    const hits = added.filter(l => rx.test(l)).length;
+                    if (hits > best) { best = hits; owner = name; }
+                }
+                why = 'REGEX-FALLBACK (add a `// lclite:' + owner + '` marker to this block!)';
+                if (owner !== mod || best > 0) console.log(`  ~ ${rel} @${h.a}: routed to ${owner} by ${why}`);
+            }
+            if (owner !== mod && why && !why.startsWith('MIXED')) {
+                // sanity: a marker-less hunk re-routed away from the declaring mod is fine,
+                // but a marker routing to an unknown mod is a typo — fail loudly
             }
             if (!byMod.has(owner)) byMod.set(owner, []);
-            byMod.get(owner).push({ find, replace: rep, note: `${rel} @ old line ${h.oldStart}`, occ });
-        }
+            byMod.get(owner).push({ find, replace: rep, note: `${rel} @ old line ${h.a}`, occ, ctx: lead + trail });
+        });
         for (const [owner, hunks] of byMod) {
             if (!out.has(owner)) out.set(owner, []);
             out.get(owner).push({ f, hunks, repo, head: git(repo, 'rev-parse HEAD').trim() });

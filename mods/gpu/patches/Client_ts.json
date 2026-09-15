@@ -8,14 +8,18 @@
  "hunks": [
   {
    "find": [
-    "import { playWave, setWaveVolume } from '#3rdparty/audio.js';"
+    "import { playWave, setWaveVolume } from '#3rdparty/audio.js';",
+    "import { stopMidi, setMidiVolume, playMidi } from '#3rdparty/tinymidipcm.js';"
    ],
    "replace": [
+    "// lclite:gpu",
     "import '#/gpu/GpuRenderer.js'; // custom (lclite \"gpu\" mod v2): WebGPU renderer; side-effect import wires the patches",
-    "import { playWave, setWaveVolume } from '#3rdparty/audio.js';"
+    "import { playWave, setWaveVolume } from '#3rdparty/audio.js';",
+    "import { stopMidi, setMidiVolume, playMidi } from '#3rdparty/tinymidipcm.js';"
    ],
-   "note": "src/client/Client.ts @ old line 1",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 0",
+   "occ": 1,
+   "ctx": 2
   }
  ]
 }

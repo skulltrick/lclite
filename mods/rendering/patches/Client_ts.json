@@ -16,7 +16,7 @@
    "replace": [
     "        Client.loopCycle++;",
     "",
-    "        // custom (lclite \"rendering\" mod): smooth shading refreshed from our OWN",
+    "        // custom (lclite \"rendering\" mod): smooth shading refreshed from our OWN lclite:rendering",
     "        // key once per frame here — Pix3D.lowDetail is a plain static with no",
     "        // per-draw hook site of its own, and this keeps the mod off any settings",
     "        // hub (same-value writes are no-ops; localStorage reads are cheap).",
@@ -25,8 +25,9 @@
     "        if (!this.ingame) {",
     "            await this.titleScreenLoop();"
    ],
-   "note": "src/client/Client.ts @ old line 1231",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 1260",
+   "occ": 1,
+   "ctx": 4
   }
  ]
 }

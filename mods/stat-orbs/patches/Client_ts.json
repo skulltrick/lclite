@@ -16,7 +16,7 @@
    "replace": [
     "    }",
     "",
-    "    /// custom (lclite \"stat-orbs\" mod): fields + methods live in this one",
+    "    /// custom (lclite \"stat-orbs\" mod): fields + methods live in this one lclite:stat-orbs",
     "    /// isolated slot (far from any other mod's hunks) so regen routes the whole",
     "    /// block to mods/stat-orbs; the minimapDraw hooks stay separate hunks.",
     "    /// OSRS-style HP/Prayer/Run orbs overlaid on top of the interface.",
@@ -128,30 +128,21 @@
     "    // todo: order",
     "    private gameDraw(): void {"
    ],
-   "note": "src/client/Client.ts @ old line 3858",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 3887",
+   "occ": 1,
+   "ctx": 4
   },
   {
    "find": [
+    "        this.areaMap?.setPixels();",
     "",
     "        if (this.minimapState == 2) {",
-    "            if (this.mapback !== null) {",
-    "                const mask = this.mapback.data;",
-    "                const pixels = Pix2D.pixels;",
-    "                const len = mask.length;",
-    "                for (let i = 0; i < len; i++) {",
-    "                    if (mask[i] === 0) {",
-    "                        pixels[i] = 0;",
-    "                    }",
-    "                }",
-    "            }",
-    "",
-    "            this.compass?.scanlineRotatePlotSprite(0, 0, 33, 33, 25, 25, this.orbitCameraYaw, 256, this.compassMaskLineOffsets, this.compassMaskLineLengths);",
-    ""
+    "            if (this.mapback !== null) {"
    ],
    "replace": [
+    "        this.areaMap?.setPixels();",
     "",
-    "        // custom (lclite \"stat-orbs\"): read our OWN key here (runs every frame);",
+    "        // custom (lclite \"stat-orbs\"): read our OWN key here (runs every frame); lclite:stat-orbs",
     "        // one-time wipe of orb pixels left in the widget buffer after the",
     "        // toggle goes off mid-session (the stone strip is not redrawn per tick)",
     "        this.orbsEnabled = localStorage.getItem('statOrbs') === 'true';",
@@ -161,28 +152,34 @@
     "        }",
     "",
     "        if (this.minimapState == 2) {",
-    "            if (this.mapback !== null) {",
-    "                const mask = this.mapback.data;",
-    "                const pixels = Pix2D.pixels;",
-    "                const len = mask.length;",
-    "                for (let i = 0; i < len; i++) {",
-    "                    if (mask[i] === 0) {",
-    "                        pixels[i] = 0;",
-    "                    }",
-    "                }",
-    "            }",
-    "",
+    "            if (this.mapback !== null) {"
+   ],
+   "note": "src/client/Client.ts @ old line 11320",
+   "occ": 1,
+   "ctx": 4
+  },
+  {
+   "find": [
     "            this.compass?.scanlineRotatePlotSprite(0, 0, 33, 33, 25, 25, this.orbitCameraYaw, 256, this.compassMaskLineOffsets, this.compassMaskLineLengths);",
     "",
-    "            // custom: orbs survive the hidden-minimap state too",
+    "            this.areaGame?.setPixels();",
+    "            return;"
+   ],
+   "replace": [
+    "            this.compass?.scanlineRotatePlotSprite(0, 0, 33, 33, 25, 25, this.orbitCameraYaw, 256, this.compassMaskLineOffsets, this.compassMaskLineLengths);",
+    "",
+    "            // custom: orbs survive the hidden-minimap state too lclite:stat-orbs",
     "            if (this.orbsEnabled) {",
     "                this.drawStatOrbs();",
     "                this.orbsWereOn = true;",
     "            }",
-    ""
+    "",
+    "            this.areaGame?.setPixels();",
+    "            return;"
    ],
-   "note": "src/client/Client.ts @ old line 11291",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 11334",
+   "occ": 1,
+   "ctx": 4
   },
   {
    "find": [
@@ -194,7 +191,7 @@
    "replace": [
     "        Pix2D.fillRect(97, 78, 3, 3, Colour.WHITE);",
     "",
-    "        // custom: OSRS-style stat orbs (lclite TYPE B hook — see lclite/PLUGINS.md)",
+    "        // custom: OSRS-style stat orbs (lclite TYPE B hook — see lclite/PLUGINS.md) lclite:stat-orbs",
     "        // drawn into the minimap widget buffer so they ride ON TOP of the interface",
     "        if (this.orbsEnabled) {",
     "            this.drawStatOrbs();",
@@ -204,8 +201,9 @@
     "        this.areaGame?.setPixels();",
     "    }"
    ],
-   "note": "src/client/Client.ts @ old line 11406",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 11435",
+   "occ": 1,
+   "ctx": 4
   }
  ]
 }

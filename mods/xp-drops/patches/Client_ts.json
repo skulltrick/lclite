@@ -8,46 +8,15 @@
  "hunks": [
   {
    "find": [
+    "const SCROLLBAR_GRIP_LOWLIGHT = 0x332d25;",
     "",
     "export class Client extends GameShell {",
-    "    static nodeId: number = 10;",
-    "    static memServer: boolean = true;",
-    "    static lowMem: boolean = false;",
-    "",
-    "    static cyclelogic1: number = 0;",
-    "    static cyclelogic2: number = 0;",
-    "    static cyclelogic3: number = 0;",
-    "    static cyclelogic4: number = 0;",
-    "    static cyclelogic5: number = 0;",
-    "    static cyclelogic6: number = 0;",
-    "    static cyclelogic7: number = 0;",
-    "    static cyclelogic8: number = 0;",
-    "    static cyclelogic9: number = 0;",
-    "    static cyclelogic10: number = 0;",
-    "",
-    "    static oplogic1: number = 0;",
-    "    static oplogic2: number = 0;",
-    "    static oplogic3: number = 0;",
-    "    static oplogic4: number = 0;",
-    "    static oplogic5: number = 0;",
-    "    static oplogic6: number = 0;",
-    "    static oplogic7: number = 0;",
-    "    static oplogic8: number = 0;",
-    "    static oplogic9: number = 0;",
-    "    static oplogic10: number = 0;",
-    "",
-    "    static loopCycle: number = 0;",
-    "    static drawCycle: number = 0;",
-    "",
-    "    static CHARSET: string = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!\\\"£$%^&*()-_=+[{]};:'@#~,<.>/?\\\\| \";",
-    "",
-    "    static readbit = new Int32Array(32);",
-    "    static levelExperience: number[] = [];",
-    ""
+    "    static nodeId: number = 10;"
    ],
    "replace": [
+    "const SCROLLBAR_GRIP_LOWLIGHT = 0x332d25;",
     "",
-    "/* ─── custom (lclite \"xp-drops\" mod) tunables ────────────────────────────────",
+    "/* ─── custom (lclite \"xp-drops\" mod) tunables ──────────────────────────────── lclite:xp-drops",
     "   Rows AND tracker panel render straight into the areaGame game buffer (512x334 ==",
     "   the viewport rect (4,4)-(516,338) of the 765x503 frame), hooked at the top of",
     "   entityOverlays() — so the crosshair, private messages, modals and the",
@@ -74,58 +43,46 @@
     "/**/",
     "",
     "export class Client extends GameShell {",
-    "    static nodeId: number = 10;",
-    "    static memServer: boolean = true;",
-    "    static lowMem: boolean = false;",
-    "",
-    "    static cyclelogic1: number = 0;",
-    "    static cyclelogic2: number = 0;",
-    "    static cyclelogic3: number = 0;",
-    "    static cyclelogic4: number = 0;",
-    "    static cyclelogic5: number = 0;",
-    "    static cyclelogic6: number = 0;",
-    "    static cyclelogic7: number = 0;",
-    "    static cyclelogic8: number = 0;",
-    "    static cyclelogic9: number = 0;",
-    "    static cyclelogic10: number = 0;",
-    "",
-    "    static oplogic1: number = 0;",
-    "    static oplogic2: number = 0;",
-    "    static oplogic3: number = 0;",
-    "    static oplogic4: number = 0;",
-    "    static oplogic5: number = 0;",
-    "    static oplogic6: number = 0;",
-    "    static oplogic7: number = 0;",
-    "    static oplogic8: number = 0;",
-    "    static oplogic9: number = 0;",
-    "    static oplogic10: number = 0;",
-    "",
-    "    static loopCycle: number = 0;",
-    "    static drawCycle: number = 0;",
-    "",
-    "    static CHARSET: string = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!\\\"£$%^&*()-_=+[{]};:'@#~,<.>/?\\\\| \";",
-    "",
+    "    static nodeId: number = 10;"
+   ],
+   "note": "src/client/Client.ts @ old line 87",
+   "occ": 1,
+   "ctx": 4
+  },
+  {
+   "find": [
     "    static readbit = new Int32Array(32);",
     "    static levelExperience: number[] = [];",
-    "    /// custom (lclite \"xp-drops\"): skill id -> staticons sprite index. Pack order is",
+    "",
+    "    static {"
+   ],
+   "replace": [
+    "    static readbit = new Int32Array(32);",
+    "    static levelExperience: number[] = [];",
+    "    /// custom (lclite \"xp-drops\"): skill id -> staticons sprite index. Pack order is lclite:xp-drops",
     "    /// NOT skill order — it is the stats.if grid order (attack,strength,defence,",
     "    /// ranged,prayer,magic,hitpoints,agility,herblore,thieving,crafting,fletching,",
     "    /// mining,smithing,fishing,cooking,firemaking,woodcutting); index 18 =",
     "    /// staticons2#0 (runecraft); -1 = skill has no icon in this pack (slayer,farming)",
     "    static readonly STAT_ICON_BY_SKILL: number[] = [0, 2, 1, 6, 3, 4, 5, 15, 17, 11, 14, 16, 10, 13, 12, 8, 7, 9, -1, -1, 18, -1, -1, -1, -1];",
-    ""
+    "",
+    "    static {"
    ],
-   "note": "src/client/Client.ts @ old line 58",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 121",
+   "occ": 1,
+   "ctx": 4
   },
   {
    "find": [
+    "    private statBaseLevel: Int32Array = new Int32Array(Skill.count);",
     "    private statXP: Int32Array = new Int32Array(Skill.count);",
-    ""
+    "",
+    "    private oneMouseButton: number = 0;"
    ],
    "replace": [
+    "    private statBaseLevel: Int32Array = new Int32Array(Skill.count);",
     "    private statXP: Int32Array = new Int32Array(Skill.count);",
-    "    /// custom (lclite \"xp-drops\" mod): OSRS-style xp drops + level progress panel.",
+    "    /// custom (lclite \"xp-drops\" mod): OSRS-style xp drops + level progress panel. lclite:xp-drops",
     "    /// Ported from the build-225 community guide, re-anchored and icon-mapped for 289.",
     "    public xpDropsEnabled: boolean = true;",
     "    private xpDrops: { skill: number; xp: number; y: number }[] = [];",
@@ -133,29 +90,36 @@
     "    private xpLastGainAt: number = 0;   // performance.now() of the last real gain (auto-hide)",
     "    private xpRates: Int32Array = new Int32Array(Skill.count); // xp per skill inside the current burst",
     "    private xpStaticons: (Pix8 | null)[] = new Array(19).fill(null);",
-    ""
+    "",
+    "    private oneMouseButton: number = 0;"
    ],
-   "note": "src/client/Client.ts @ old line 393",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 422",
+   "occ": 1,
+   "ctx": 4
   },
   {
    "find": [
+    "            }",
     "",
-    "            this.compass = Pix32.depack(media, 'compass', 0);"
+    "            this.compass = Pix32.depack(media, 'compass', 0);",
+    ""
    ],
    "replace": [
+    "            }",
     "",
-    "            // custom: skill icons for xp-drops (staticons = skills 0-17 in the SAME",
+    "            // custom: skill icons for xp-drops (staticons = skills 0-17 in the SAME lclite:xp-drops",
     "            // slot order the stats panel uses, staticons2#0 = runecraft)",
     "            for (let i: number = 0; i < 18; i++) {",
     "                this.xpStaticons[i] = Pix8.depack(media, 'staticons', i);",
     "            }",
     "            this.xpStaticons[18] = Pix8.depack(media, 'staticons2', 0);",
     "",
-    "            this.compass = Pix32.depack(media, 'compass', 0);"
+    "            this.compass = Pix32.depack(media, 'compass', 0);",
+    ""
    ],
-   "note": "src/client/Client.ts @ old line 986",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 1015",
+   "occ": 1,
+   "ctx": 4
   },
   {
    "find": [
@@ -167,7 +131,7 @@
    "replace": [
     "                this.idleTimer = performance.now();",
     "",
-    "                // custom: fresh xp-drop feed per session (world hop / re-login).",
+    "                // custom: fresh xp-drop feed per session (world hop / re-login). lclite:xp-drops",
     "                // statXP = -1 sentinel: the login UPDATE_STAT burst adopts silently",
     "                // (the server re-syncs every stat, lastStats.fill(-1) on Player init)",
     "                this.xpDrops.length = 0;",
@@ -179,19 +143,21 @@
     "                for (let i: number = 0; i < 100; i++) {",
     "                    this.chatText[i] = null;"
    ],
-   "note": "src/client/Client.ts @ old line 1790",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 1819",
+   "occ": 1,
+   "ctx": 4
   },
   {
    "find": [
+    "    }",
     "",
     "    private entityOverlays(): void {",
-    "        this.chatCount = 0;",
-    ""
+    "        this.chatCount = 0;"
    ],
    "replace": [
+    "    }",
     "",
-    "    /// custom (lclite \"xp-drops\" mod): \"Skill +N\" rows drifting up from the bottom of",
+    "    /// custom (lclite \"xp-drops\" mod): \"Skill +N\" rows drifting up from the bottom of lclite:xp-drops",
     "    /// the band, one XP_DROP_SPEED per drawn frame; queued rows park below the",
     "    /// previous one so bursts stack instead of overlapping (OSRS behaviour).",
     "    private drawXpDrops(): void {",
@@ -289,9 +255,23 @@
     "    }",
     "",
     "    private entityOverlays(): void {",
+    "        this.chatCount = 0;"
+   ],
+   "note": "src/client/Client.ts @ old line 4571",
+   "occ": 1,
+   "ctx": 4
+  },
+  {
+   "find": [
     "        this.chatCount = 0;",
     "",
-    "        // custom (lclite \"xp-drops\"): tracker panel + drop rows into the game buffer.",
+    "        for (let index: number = -1; index < this.playerCount + this.npcCount; index++) {",
+    "            let entity: ClientEntity | null = null;"
+   ],
+   "replace": [
+    "        this.chatCount = 0;",
+    "",
+    "        // custom (lclite \"xp-drops\"): tracker panel + drop rows into the game buffer. lclite:xp-drops",
     "        // Drawn here (Pix2D bound to areaGame, right after the world render) so every",
     "        // interface composited later in the frame — entity chat, crosshair, private",
     "        // messages, modals, the right-click minimenu — paints OVER the tracker. This",
@@ -310,19 +290,25 @@
     "                this.xpDrops.length = 0;",
     "            }",
     "        }",
-    ""
+    "",
+    "        for (let index: number = -1; index < this.playerCount + this.npcCount; index++) {",
+    "            let entity: ClientEntity | null = null;"
    ],
-   "note": "src/client/Client.ts @ old line 4542",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 4574",
+   "occ": 1,
+   "ctx": 4
   },
   {
    "find": [
+    "                const level: number = this.in.g1();",
     "",
-    "                this.statXP[stat] = xp;"
+    "                this.statXP[stat] = xp;",
+    "                this.statEffectiveLevel[stat] = level;"
    ],
    "replace": [
+    "                const level: number = this.in.g1();",
     "",
-    "                // custom: a gained amount (xp > stored) = drop; equal/below = login",
+    "                // custom: a gained amount (xp > stored) = drop; equal/below = login lclite:xp-drops",
     "                // sync or drain -> no drop. statXP starts 0 so real gains are detected.",
     "                const xpPrev: number = this.statXP[stat];",
     "                if (xpPrev >= 0 && xp > xpPrev) {",
@@ -350,10 +336,12 @@
     "                    this.xpLastGainAt = now;",
     "                }",
     "",
-    "                this.statXP[stat] = xp;"
+    "                this.statXP[stat] = xp;",
+    "                this.statEffectiveLevel[stat] = level;"
    ],
-   "note": "src/client/Client.ts @ old line 6655",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 6684",
+   "occ": 1,
+   "ctx": 4
   }
  ]
 }

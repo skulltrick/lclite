@@ -8,32 +8,53 @@
  "hunks": [
   {
    "find": [
+    "    private sendCamera: boolean = false;",
     "    private cameraPitchClamp: number = 0;",
-    ""
+    "",
+    "    private chatCount: number = 0;"
    ],
    "replace": [
+    "    private sendCamera: boolean = false;",
     "    private cameraPitchClamp: number = 0;",
-    "    /// custom: OSRS-style camera zoom + middle-button rotate",
+    "    /// custom: OSRS-style camera zoom + middle-button rotate lclite:camera",
     "    private cameraZoom: number = 1; // smoothed, applied to render distance",
     "    private cameraZoomTarget: number = 1; // stepped target from the wheel",
     "    public wheelScrollChatEnabled: boolean = true;",
     "    private rotateLastScreenX: number = 0;",
     "    private rotateLastScreenY: number = 0;",
-    ""
+    "",
+    "    private chatCount: number = 0;"
    ],
-   "note": "src/client/Client.ts @ old line 326",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 355",
+   "occ": 1,
+   "ctx": 4
   },
   {
    "find": [
+    "        }",
     "",
-    "        this.run();",
-    "    }"
+    "        this.run();"
    ],
    "replace": [
+    "        }",
     "",
+    "        // lclite:camera",
     "        this.applyCameraSettings();",
+    "        this.run();"
+   ],
+   "note": "src/client/Client.ts @ old line 587",
+   "occ": 1,
+   "ctx": 3
+  },
+  {
+   "find": [
     "        this.run();",
+    "    }",
+    ""
+   ],
+   "replace": [
+    "        this.run();",
+    "        // lclite:camera",
     "",
     "        // custom: expose to the page controls (client.ejs) for settings toggles",
     "        (window as any).lostcityClient = this;",
@@ -66,75 +87,64 @@
     "            this.cameraZoomTarget = saved;",
     "            World.setVisZoom(saved);",
     "        }",
-    "    }"
+    "    }",
+    ""
    ],
-   "note": "src/client/Client.ts @ old line 558",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 588",
+   "occ": 1,
+   "ctx": 3
   },
   {
    "find": [
-    "",
-    "            this.out.p1Enc(ClientProt.ANTICHEAT_CYCLELOGIC7);",
-    "        }",
-    "",
-    "        if (World.groundX !== -1) {",
-    "            if (this.localPlayer) {",
-    "                const x: number = World.groundX;",
-    "                const z: number = World.groundZ;",
     "                const success: boolean = this.tryMove(this.localPlayer.routeX[0], this.localPlayer.routeZ[0], x, z, true, 0, 0, 0, 0, 0, 0);",
     "                World.groundX = -1;",
     "",
-    "                if (success) {",
-    "                    this.crossX = this.mouseClickX;",
-    "                    this.crossY = this.mouseClickY;",
-    "                    this.crossMode = 1;",
-    "                    this.crossCycle = 0;",
-    "                }",
-    "            }",
-    "        }",
-    ""
+    "                if (success) {"
    ],
    "replace": [
-    "",
-    "            if (this.antiCheatEnabled) {",
-    "                this.out.p1Enc(ClientProt.ANTICHEAT_CYCLELOGIC7);",
-    "            }",
-    "        }",
-    "",
-    "        if (World.groundX !== -1) {",
-    "            if (this.localPlayer) {",
-    "                const x: number = World.groundX;",
-    "                const z: number = World.groundZ;",
     "                const success: boolean = this.tryMove(this.localPlayer.routeX[0], this.localPlayer.routeZ[0], x, z, true, 0, 0, 0, 0, 0, 0);",
     "                World.groundX = -1;",
-    "                // custom: the ground pick stays armed (World.click) after a walk click and",
+    "                // custom: the ground pick stays armed (World.click) after a walk click and lclite:camera",
     "                // re-resolves every frame; with a rotating camera (arrows or middle-drag)",
     "                // the destination chases the stale click pixel. Consume it as one-shot.",
     "                World.clearPick();",
     "",
-    "                if (success) {",
-    "                    this.crossX = this.mouseClickX;",
-    "                    this.crossY = this.mouseClickY;",
-    "                    this.crossMode = 1;",
-    "                    this.crossCycle = 0;",
-    "                }",
-    "            }",
-    "        }",
-    "",
-    "        // custom: pick expiry is handled inside World.renderAll (clearPick / clickCycle).",
-    ""
+    "                if (success) {"
    ],
-   "note": "src/client/Client.ts @ old line 2277",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 2315",
+   "occ": 1,
+   "ctx": 4
   },
   {
    "find": [
-    "        const orbitX: number = this.localPlayer.x + this.macroCameraX;",
-    "        const orbitZ: number = this.localPlayer.z + this.macroCameraZ;"
+    "        }",
+    "",
+    "        if (this.mouseClickButton === 1 && this.tutComMessage) {",
+    "            this.tutComMessage = null;"
    ],
    "replace": [
+    "        }",
+    "",
+    "        // custom: pick expiry is handled inside World.renderAll (clearPick / clickCycle). lclite:camera",
+    "",
+    "        if (this.mouseClickButton === 1 && this.tutComMessage) {",
+    "            this.tutComMessage = null;"
+   ],
+   "note": "src/client/Client.ts @ old line 2325",
+   "occ": 1,
+   "ctx": 4
+  },
+  {
+   "find": [
+    "",
     "        const orbitX: number = this.localPlayer.x + this.macroCameraX;",
-    "        // custom: smooth the wheel zoom toward its target (OSRS-style easing)",
+    "        const orbitZ: number = this.localPlayer.z + this.macroCameraZ;",
+    ""
+   ],
+   "replace": [
+    "",
+    "        const orbitX: number = this.localPlayer.x + this.macroCameraX;",
+    "        // custom: smooth the wheel zoom toward its target (OSRS-style easing) lclite:camera",
     "        if (this.cameraZoom !== this.cameraZoomTarget) {",
     "            const zdelta: number = this.cameraZoomTarget - this.cameraZoom;",
     "            if (zdelta > -0.002 && zdelta < 0.002) {",
@@ -144,20 +154,25 @@
     "            }",
     "        }",
     "",
-    "        const orbitZ: number = this.localPlayer.z + this.macroCameraZ;"
+    "        const orbitZ: number = this.localPlayer.z + this.macroCameraZ;",
+    ""
    ],
-   "note": "src/client/Client.ts @ old line 3197",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 3226",
+   "occ": 1,
+   "ctx": 4
   },
   {
    "find": [
+    "",
     "            if (this.localPlayer) {",
     "                this.camFollow(pitch, yaw, this.orbitCameraX, this.getAvH(this.localPlayer.x, this.localPlayer.z, this.minusedlevel) - 50, this.orbitCameraZ, pitch * 3 + 600);",
-    "            }"
+    "            }",
+    "        }"
    ],
    "replace": [
+    "",
     "            if (this.localPlayer) {",
-    "                // custom: uniform zoom — the entire camera-relative geometry (orbit distance",
+    "                // custom: uniform zoom — the entire camera-relative geometry (orbit distance lclite:camera",
     "                // AND the 50-unit aim offset above the player) scales by z, so the player",
     "                // projects to the IDENTICAL pixel at every zoom (OSRS framing) and the world",
     "                // just magnifies. Anchoring only the distance (upstream tutorial style) made",
@@ -165,19 +180,44 @@
     "                this.camFollow(pitch, yaw, this.orbitCameraX, this.getAvH(this.localPlayer.x, this.localPlayer.z, this.minusedlevel) - (50 * this.cameraZoom), this.orbitCameraZ, ((pitch * 3 + 600) * this.cameraZoom) | 0);",
     "",
     "",
-    "            }"
+    "            }",
+    "        }"
    ],
-   "note": "src/client/Client.ts @ old line 4163",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 4193",
+   "occ": 1,
+   "ctx": 4
   },
   {
    "find": [
-    "    private dragging: boolean = false;",
-    "    private panning: boolean = false;"
+    "    }",
+    "",
+    "    private addPlayers(self: boolean): void {",
+    "        if (!this.localPlayer) {"
    ],
    "replace": [
+    "    }",
+    "",
+    "// lclite:camera",
+    "",
+    "",
+    "    private addPlayers(self: boolean): void {",
+    "        if (!this.localPlayer) {"
+   ],
+   "note": "src/client/Client.ts @ old line 4258",
+   "occ": 1,
+   "ctx": 4
+  },
+  {
+   "find": [
+    "    private ny: number = 0;",
     "    private dragging: boolean = false;",
-    "    /// custom: OSRS-style mouse wheel zoom. Scroll up = zoom in, scroll down = zoom out.",
+    "    private panning: boolean = false;",
+    ""
+   ],
+   "replace": [
+    "    private ny: number = 0;",
+    "    private dragging: boolean = false;",
+    "    /// custom: OSRS-style mouse wheel zoom. Scroll up = zoom in, scroll down = zoom out. lclite:camera",
     "    /// Wheel over the chatbox scrolls chat history instead (when enabled).",
     "    protected override onwheel(e: WheelEvent) {",
     "        if (!this.ingame || this.sceneState !== 2) {",
@@ -279,10 +319,12 @@
     "        }",
     "    }",
     "",
-    "    private panning: boolean = false;"
+    "    private panning: boolean = false;",
+    ""
    ],
-   "note": "src/client/Client.ts @ old line 11643",
-   "occ": 1
+   "note": "src/client/Client.ts @ old line 11672",
+   "occ": 1,
+   "ctx": 4
   }
  ]
 }

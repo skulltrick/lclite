@@ -8,19 +8,24 @@
  "hunks": [
   {
    "find": [
+    "    static trans: number = 0;",
     "",
-    "    static {"
+    "    static {",
+    "        for (let i: number = 1; i < 512; i++) {"
    ],
    "replace": [
+    "    static trans: number = 0;",
     "",
-    "    /// custom: depth clip planes, scaled with camera zoom (defaults match original 50/3500)",
+    "    /// custom: depth clip planes, scaled with camera zoom (defaults match original 50/3500) lclite:camera",
     "    static nearPlane: number = 50;",
     "    static farPlane: number = 3500;",
     "",
-    "    static {"
+    "    static {",
+    "        for (let i: number = 1; i < 512; i++) {"
    ],
-   "note": "src/dash3d/Pix3D.ts @ old line 5",
-   "occ": 1
+   "note": "src/dash3d/Pix3D.ts @ old line 34",
+   "occ": 1,
+   "ctx": 4
   }
  ]
 }

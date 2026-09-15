@@ -16,28 +16,36 @@
    "replace": [
     "            canvas.style.imageRendering = filterSelect;",
     "        }",
+    "        <!-- lclite:control-panel -->",
     "",
     "    </script>",
     "</head>"
    ],
-   "note": "view/client.ejs @ old line 302",
-   "occ": 1
+   "note": "view/client.ejs @ old line 331",
+   "occ": 1,
+   "ctx": 4
   },
   {
    "find": [
+    "    </script>",
     "",
-    "    <script type=\"module\">"
+    "    <script type=\"module\">",
+    "        import { Client } from './client/client.js';"
    ],
    "replace": [
+    "    </script>",
     "",
+    "    <!-- lclite:control-panel -->",
     "    <!-- lclite control panel -->",
     "    <link rel=\"stylesheet\" href=\"/lclite/panel.css\">",
     "    <script src=\"/lclite/panel.js\" defer></script>",
     "",
-    "    <script type=\"module\">"
+    "    <script type=\"module\">",
+    "        import { Client } from './client/client.js';"
    ],
-   "note": "view/client.ejs @ old line 363",
-   "occ": 1
+   "note": "view/client.ejs @ old line 392",
+   "occ": 1,
+   "ctx": 4
   }
  ]
 }

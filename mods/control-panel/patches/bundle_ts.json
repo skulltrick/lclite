@@ -8,13 +8,16 @@
  "hunks": [
   {
    "find": [
+    "                    'failCount',",
     "                    'error',",
     "                    'id'",
-    "                ]"
+    "                ]",
+    "            }"
    ],
    "replace": [
+    "                    'failCount',",
     "                    'error',",
-    "                    'id',",
+    "                    'id',  // lclite:control-panel",
     "",
     "                    // custom: page-facing settings API (engine/view/client.ejs)",
     "                    'lostcityClient',",
@@ -32,10 +35,12 @@
     "                    'swFrames',",
     "                    'hud',",
     "                    'cpuMs'",
-    "                ]"
+    "                ]",
+    "            }"
    ],
-   "note": "bundle.ts @ old line 102",
-   "occ": 1
+   "note": "bundle.ts @ old line 132",
+   "occ": 1,
+   "ctx": 4
   }
  ]
 }

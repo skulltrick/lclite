@@ -8,17 +8,23 @@
  "hunks": [
   {
    "find": [
+    "",
     "        const maxZ: number = midZ + radiusCosEyePitch;",
     "        if (maxZ <= 50 || midZ >= 3500) {",
-    "            return;"
+    "            return;",
+    "        }"
    ],
    "replace": [
+    "",
     "        const maxZ: number = midZ + radiusCosEyePitch;",
+    "        // lclite:camera",
     "        if (maxZ <= 50 || midZ >= Pix3D.farPlane) {",
-    "            return;"
+    "            return;",
+    "        }"
    ],
-   "note": "src/dash3d/Model.ts @ old line 1693",
-   "occ": 1
+   "note": "src/dash3d/Model.ts @ old line 1723",
+   "occ": 1,
+   "ctx": 4
   }
  ]
 }
