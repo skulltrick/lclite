@@ -25,6 +25,12 @@ extracts them from `git diff -U0` of the live tree. Deep context:
    dirty-by-design; only lclite/ gets commits. (README's "commit modded state
    before upgrading" step is a manual-merge fallback for drift emergencies only —
    run it, upgrade, reseat, then `git reset` back before the next regen.)
+7. **Update `mods/<name>/README.md` in the same commit as any behavior change.**
+   It is the ONLY handoff the next agent's resume reads (design intent, what's
+   in the box, the settings contract, deliberate divergences — see mods/tcg for
+   the layout). A stale README is a stale map: one honest line costs less than
+   the next agent's re-derivation. Mods predating the scaffold have no README —
+   the first nontrivial change to one writes it.
 
 ## Loop for a TYPE B (engine) change
 edit live tree (marker!) → `node tools/regen.mjs` → `node tools/lclite.mjs apply --check`

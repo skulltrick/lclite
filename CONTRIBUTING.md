@@ -97,6 +97,7 @@ Discipline (non-negotiable):
 - Preserve CRLF on file writes; text-mode whole-file rewrites silently flatten and corrupt the overlay.
 - engine/public/client/client.js is built, never hand-edited.
 - Dev-test with the dev bundle (window.lostcityClient.<field> is probeable there).
+- mods/<mod>/README.md is updated in the same commit as any behavior change (rule 7).
 
 Done means ALL of: doctor exit 0 · apply --check 0 fails · the t/ pristine
 harness reproduces your tree byte-identical across all patched files
