@@ -185,3 +185,27 @@
     transition: .2s; pointer-events: none; white-space: nowrap;
 }
 #lclite-toast.show { opacity: 1; transform: none; }
+
+
+/* ---- alt-drag placement (RuneLite movable overlays) ------------------------ */
+/* snap markers: 9 anchor points on the game-canvas rect, shown only mid-drag;
+   .hot = the point currently winning the snap. Body child at z 9700 so the
+   dots survive above #lctcg-root (9600) while a tcg HUD is being dragged. */
+#lcm-snap { position: fixed; inset: 0; z-index: 9700; pointer-events: none; display: none; }
+#lcm-snap.on { display: block; }
+.lcm-dot {
+    position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 3px;
+    background: rgba(59,130,246,.30); border: 1.5px solid var(--lcm-accent);
+    box-shadow: 0 0 8px rgba(59,130,246,.55); transition: transform .1s, background .1s;
+}
+.lcm-dot.hot { background: var(--lcm-accent); transform: scale(1.45); }
+/* affordance: while Alt is held, draggable surfaces advertise themselves */
+body.lcm-alt [data-lcm-surface] { cursor: move; outline: 1px dashed rgba(59,130,246,.65); outline-offset: 2px; }
+
+/* drag ghost for canvas-drawn surfaces (xp tracker): the real thing keeps
+   drawing at its live anchor, this frame is what you drag */
+#lcm-ghost {
+    position: fixed; z-index: 9700; pointer-events: none; display: none;
+    border: 2px solid var(--lcm-accent); border-radius: 4px;
+    background: rgba(59,130,246,.15); box-shadow: 0 0 14px rgba(59,130,246,.4);
+}

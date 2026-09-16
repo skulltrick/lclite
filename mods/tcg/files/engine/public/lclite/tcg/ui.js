@@ -90,8 +90,8 @@
     document.head.appendChild(style);
 
     function build() {
-        window.__lctcgUi = 4;           // stamp the core checks (replace stale cached copies)
-        console.log('[lclite:tcg] ui v4');
+        window.__lctcgUi = 5;           // stamp the core checks (replace stale cached copies)
+        console.log('[lclite:tcg] ui v5');
         root = document.createElement('div');
         root.id = 'lctcg-root';
         root.innerHTML = `
@@ -109,12 +109,18 @@
         scrim = root.querySelector('#lctcg-scrim');
         albumEl = root.querySelector('#lctcg-album');
 
-        hud.addEventListener('click', () => window.tcgOpenPack && window.tcgOpenPack());
-        hud.addEventListener('contextmenu', e => { e.preventDefault(); openAlbum(); });
+        hud.addEventListener('click', e => { if (e.altKey) return; if (window.tcgOpenPack) window.tcgOpenPack(); });
+        hud.addEventListener('contextmenu', e => { if (e.altKey) return; e.preventDefault(); openAlbum(); });
 
         window.tcgBumpToast = bumpToast;
         window.tcgShowReveal = showReveal;
         window.tcgShowAlbum = openAlbum;
+        // offer the HUD to the control panel's alt-drag layer (absent panel =>
+        // no drag, anchorHud keeps paying attention to the keys anyway)
+        if (window.lcmAnchor && window.lcmAnchor.register) {
+            window.lcmAnchor.register({ id: 'tcg-hud', el: hud, anchorKey: 'lcmTcgHudAnchor', offsetKey: 'lcmTcgHudOffset', defA: 'TL', defO: '8,8', owner: true });
+        }
+        addEventListener('lcm-anchor-changed', e => { if (e.detail === 'tcg-hud') anchorHud(); });
         window.addEventListener('keydown', e => { if (e.key === 'Escape') { closeAlbum(); } });
         setInterval(tick, 500);
         tick();
@@ -129,14 +135,41 @@
     }
 
     // ── HUD: credits, lifetime credits/h, progress to the next pack ──────────
-    // pinned to the canvas top-left (8px inset): the game frame can be any size
-    // on the page, and viewport top-right belongs to the LCLite FAB + panel.
+    // default: canvas top-LEFT (8px inset) — the game frame can be any size on
+    // the page, and viewport top-right belongs to the LCLite FAB. The FAB may
+    // itself be alt-dragged (lcmAnchor): when it is, the HUD parks opposite the
+    // FAB on the same row, so the two never overlap and both stay visible.
+    // OWN placement via the lcmTcgHudAnchor/Offset keys (rule 5: we read our own
+    // key at our own hook; the panel's drag layer is the only WRITER). Paused
+    // mid-drag (lcm-drag) so the drag ghost doesn't fight this tick.
+    let draggingHud = false;
+    addEventListener('lcm-drag', e => { if (e.detail === 'tcg-hud') draggingHud = true; });
+    addEventListener('lcm-drag-end', () => { draggingHud = false; });
+    const ANCH9 = { TL: [0, 0], TC: [.5, 0], TR: [1, 0], ML: [0, .5], MC: [.5, .5], MR: [1, .5], BL: [0, 1], BC: [.5, 1], BR: [1, 1] };
     function anchorHud() {
+        if (draggingHud) { return; }
         const c = document.getElementById('canvas');
         if (!c) { return; }
         const r = c.getBoundingClientRect();
-        hud.style.left = (r.left + 8) + 'px';
-        hud.style.top = (r.top + 8) + 'px';
+        const A = localStorage.getItem('lcmTcgHudAnchor');
+        let x, y;
+        if (A && ANCH9[A]) {
+            const o = (localStorage.getItem('lcmTcgHudOffset') || '0,0').split(',');
+            const k = ANCH9[A];
+            x = r.left + r.width * k[0] + (parseFloat(o[0]) || 0);
+            y = r.top + r.height * k[1] + (parseFloat(o[1]) || 0);
+        } else {
+            const fab = document.getElementById('lclite-fab');
+            const fr = fab && fab.getBoundingClientRect();
+            const fabLeft = !!(fr && r.width && (fr.left + fr.width / 2 - r.left) < r.width / 2);
+            x = r.left + (fabLeft ? r.width - hud.offsetWidth - 8 : 8);
+            y = r.top + 8;
+            if (fr && r.width && x < fr.right && x + hud.offsetWidth > fr.left && y < fr.bottom) {
+                y = fr.bottom + 6;              // same row collides with a dragged FAB: park below it
+            }
+        }
+        hud.style.left = Math.round(Math.max(r.left + 4, Math.min(x, r.right - hud.offsetWidth - 4))) + 'px';
+        hud.style.top = Math.round(Math.max(r.top + 4, Math.min(y, r.bottom - hud.offsetHeight - 4))) + 'px';
         hud.style.right = 'auto';
     }
 

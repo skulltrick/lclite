@@ -11,8 +11,12 @@
    grinding doesn't double-dip, exactly like the beta's COMBAT_SKILLS rule).
    Reimplemented for this client, not
    ported: persistence is localStorage keyed per username, the card catalog is
-   the bundled /lclite/tcg/cards.json (art streams from the OSRS wiki CDN), and
+   `/lclite/tcg/cards.json` (art streams from the OSRS wiki CDN), and
    all visuals live in the DOM layer (mods/tcg/files/engine/public/.../ui.js).
+   The credits HUD is MOVABLE: hold Alt and drag it to any of the 9 anchor
+   points (control-panel's placement layer writes lcmTcgHudAnchor/Offset; the
+   HUD reads its own keys per tick, dodges a relocated FAB by default, and
+   pauses while the drag ghost owns it — see docs/MODS.md "Placement").
 
    BUNDLED into client.js via one side-effect import hunk in Client.ts. Terser
    rules that shaped this file (each learned the hard way):
@@ -60,9 +64,9 @@
     const KEY_MASTER = 'tcg';           // this mod's master switch (its OWN key, rule 5)
     // ?v= cache key: 'force-cache' happily serves a STALE catalog forever (Brave
     // bit us exactly this way) — bump v with any cards.json format change.
-    const CAT_URL = '/lclite/tcg/cards.json?v=4';
-    const UI_SRC = '/lclite/tcg/ui.js?v=4';
-    const UI_VER = 4;                   // ui.js stamps window.__lctcgUi; stale UI is re-fetched+replaced
+    const CAT_URL = '/lclite/tcg/cards.json?v=5';
+    const UI_SRC = '/lclite/tcg/ui.js?v=5';
+    const UI_VER = 5;                   // ui.js stamps window.__lctcgUi; stale UI is re-fetched+replaced
 
     const TIER_LABELS = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Godly'];
 

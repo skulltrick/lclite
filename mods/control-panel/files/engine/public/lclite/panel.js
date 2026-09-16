@@ -118,8 +118,11 @@
         { id: 'hide-controls', mod: 'control-panel', name: 'Hide page controls', desc: 'Hide the legacy bar countdown-style (F1 still opens this panel).', kind: 'action', run() {
             if (typeof hideControls === 'function') hideControls(); else toast('No legacy bar present');
         } },
-        { id: 'reset-all', mod: 'control-panel', name: 'Reset all lclite settings', desc: 'Clears every toggle/zoom and reloads.', kind: 'action', run() {
-            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'smoothShading', 'antiCheat', 'gpu', 'statOrbs', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'lcliteLegacyBar', 'tcg'].forEach(k => localStorage.removeItem(k));
+        { id: 'reset-all', mod: 'control-panel', name: 'Reset all lclite settings', desc: 'Clears every toggle/zoom/placement and reloads.', kind: 'action', run() {
+            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'smoothShading', 'antiCheat', 'gpu', 'statOrbs', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'lcliteLegacyBar', 'tcg', 'lclitePanelTab', 'lclitePanelPinned'].forEach(k => localStorage.removeItem(k));
+            // placement keys are namespaced lcm* (drag layer + owners): wipe by
+            // prefix so every current AND future movable surface resets too
+            Object.keys(localStorage).filter(k => k.startsWith('lcm')).forEach(k => localStorage.removeItem(k));
             toast('Settings cleared — reloading'); setTimeout(() => location.reload(), 500);
         } }
     ];
@@ -563,9 +566,12 @@
         panel.classList.toggle('open', v);
         fab.classList.toggle('active', v);
         if (!v) hideTip();
-        if (v) { searchEl.value = ''; renderCurrentTab(); searchEl.focus(); }
+        if (v) { searchEl.value = ''; renderCurrentTab(); searchEl.focus(); layoutPanel(); }
     };
-    fab.addEventListener('click', () => open(!panel.classList.contains('open')));
+    fab.addEventListener('click', () => {
+        if (performance.now() < suppressClick) return;   // drag-release echo
+        open(!panel.classList.contains('open'));
+    });
     root.querySelector('#lcm-close').addEventListener('click', () => open(false));
     document.addEventListener('keydown', e => {
         if (e.key === 'F1') { e.preventDefault(); open(!panel.classList.contains('open')); }
@@ -573,6 +579,7 @@
         if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName) && !panel.classList.contains('open')) { e.preventDefault(); open(true); searchEl.focus(); }
     });
     document.addEventListener('click', e => {
+        if (performance.now() < suppressClick) return;   // release lands after this listener: swallow the drag-echo click too
         if (!root.contains(e.target) && panel.classList.contains('open') && !pinned) open(false);
     });
     // stop clicks at the root host: a mod-row click re-renders the body, which
@@ -597,6 +604,294 @@
         toast(pinned ? 'Panel pinned open' : 'Panel unpinned');
     });
     renderLock();
+
+    // ---- alt-drag placement (RuneLite movable overlays) ---------------------
+    // Contract: the DRAG LAYER is the only writer of anchor keys; each surface's
+    // OWNER mod reads its own keys at its own hook (rule 5 intact — placement is
+    // settings-with-a-UI, not a settings hub). Surfaces register via
+    // window.lcmAnchor.register({id, el, anchorKey, offsetKey, defA, defO});
+    // a mod that loads without the panel simply has no writer and keeps its
+    // default spot. Anchor = one of 9 points on the GAME CANVAS rect + a px
+    // offset to the element's top-left, always clamped inside the rect, so a
+    // dragged overlay can never be lost off-screen. Alt+drag moves, Alt+right-
+    // click resets, Escape cancels — same gestures as RuneLite.
+    const ANCH = { TL: [0, 0], TC: [.5, 0], TR: [1, 0], ML: [0, .5], MC: [.5, .5], MR: [1, .5], BL: [0, 1], BC: [.5, 1], BR: [1, 1] };
+    const SPECS = [];
+    const SNAP_HIT = 34;          // px from an anchor point that snaps to it
+    let suppressClick = 0;        // ts until which a surface click is drag-echo
+
+    function gameRect() {
+        const c = document.getElementById('canvas');
+        if (c) {
+            const b = c.getBoundingClientRect();
+            if (b.width > 60 && b.height > 60) return b;
+        }
+        const f = { left: 0, top: 0, width: innerWidth, height: innerHeight };
+        f.right = f.left + f.width; f.bottom = f.top + f.height;
+        return f;
+    }
+    function placeXY(el, x, y) {
+        el.style.left = Math.round(x) + 'px';
+        el.style.top = Math.round(y) + 'px';
+        el.style.right = 'auto';
+        el.style.bottom = 'auto';
+    }
+    function clampInto(r, x, y, w, h) {
+        return [
+            w + 8 < r.width ? Math.max(r.left + 4, Math.min(x, r.left + r.width - w - 4)) : x,
+            h + 8 < r.height ? Math.max(r.top + 4, Math.min(y, r.top + r.height - h - 4)) : y
+        ];
+    }
+    function specPos(spec, rect) {
+        const a = LS.get(spec.anchorKey, '') || spec.defA;
+        const o = String(LS.get(spec.offsetKey, '') || spec.defO).split(',');
+        const k = ANCH[a] || ANCH[spec.defA] || ANCH.TR;
+        const r = rect || gameRect();
+        const w = spec.el.offsetWidth || 44, h = spec.el.offsetHeight || 44;
+        const [x, y] = clampInto(r, r.left + r.width * k[0] + (parseFloat(o[0]) || 0),
+            r.top + r.height * k[1] + (parseFloat(o[1]) || 0), w, h);
+        return { x, y, w, h, a };
+    }
+    function touched(spec) {
+        return localStorage.getItem(spec.anchorKey) !== null || localStorage.getItem(spec.offsetKey) !== null;
+    }
+    function applySpec(spec) {
+        if (spec.canvas) { return; }            // canvas surfaces have no DOM box — the OWNER draws them from the same keys (live while held)
+        if (spec.owner) { return; }             // the OWNER mod positions this one (reads its own keys per rule 5); the panel only drag-tests + resets
+        if (!touched(spec)) {
+            if (spec.el === fab) { fab.style.left = fab.style.top = fab.style.right = fab.style.bottom = ''; }
+            return;                             // pristine default: CSS (fab) / owner's own calc
+        }
+        const p = specPos(spec);
+        placeXY(spec.el, p.x, p.y);
+    }
+    function layoutAll() { for (const s of SPECS) applySpec(s); layoutPanel(); }
+    // The settings panel follows its FAB handle (drop down from it, up if the
+    // FAB lives low; side-aligned to whichever half of the screen it sits in).
+    function layoutPanel() {
+        if (!touched(fabSpec)) {
+            panel.style.left = panel.style.top = panel.style.right = panel.style.bottom = '';
+            return;
+        }
+        const f = fab.getBoundingClientRect();
+        const pw = panel.offsetWidth || 420, ph = panel.offsetHeight || 320;
+        let left = (f.left + f.width / 2 > innerWidth / 2) ? f.right - pw : f.left;
+        left = Math.max(8, Math.min(left, innerWidth - pw - 8));
+        let top = f.bottom + 8;
+        if (top + ph > innerHeight - 8) top = Math.max(8, f.top - ph - 8);
+        panel.style.left = Math.round(left) + 'px';
+        panel.style.top = Math.round(top) + 'px';
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+    }
+
+    window.lcmAnchor = {
+        register(s) {
+            const i = SPECS.findIndex(x => x.id === s.id);
+            s.el.setAttribute('data-lcm-surface', s.id);
+            if (i >= 0) SPECS[i] = s; else SPECS.push(s);   // replace-on-id: ui.js self-heal re-registers a NEW element
+            applySpec(s);
+            return true;
+        },
+        // canvas-buffer surfaces (xp tracker): registered BY THE OWNER from the
+        // bundle with a POSITIONAL array (terser mangles object-literal keys —
+        // same boundary law as tcg's info()). No element: the drag layer shows
+        // a ghost box sized by the owner's getBounds() (positional [x,y,w,h] in
+        // logical canvas units, 765x503 space) and persists anchor/offset in
+        // those same logical units; the owner re-reads its own keys per frame.
+        registerCanvas(a) {
+            const s = { id: a[0], el: null, canvas: true, anchorKey: a[1], offsetKey: a[2], defA: a[3], defO: a[4], getBounds: a[5] };
+            const i = SPECS.findIndex(x => x.id === s.id);
+            if (i >= 0) SPECS[i] = s; else SPECS.push(s);
+            return true;
+        }
+    };
+    const fabSpec = { id: 'fab', el: fab, anchorKey: 'lcmFabAnchor', offsetKey: 'lcmFabOffset', defA: 'TR', defO: '-62,14' };
+    SPECS.push(fabSpec);
+
+    // snap markers layer (body child: z 9700 rides above #lctcg-root's 9600)
+    let snapLayer = null;
+    function showDots(r, on) {
+        if (!snapLayer && on) {
+            snapLayer = document.createElement('div');
+            snapLayer.id = 'lcm-snap';
+            for (const name in ANCH) {
+                const d = document.createElement('div');
+                d.className = 'lcm-dot';
+                d.dataset.anch = name;
+                snapLayer.appendChild(d);
+            }
+            document.body.appendChild(snapLayer);
+        }
+        if (!snapLayer) return;
+        snapLayer.classList.toggle('on', !!on);
+        if (on) [...snapLayer.children].forEach(d => {
+            const k = ANCH[d.dataset.anch];
+            d.style.left = Math.round(r.left + r.width * k[0]) + 'px';
+            d.style.top = Math.round(r.top + r.height * k[1]) + 'px';
+        });
+    }
+    // The GAME VIEWPORT sub-rect of the canvas (areaGame occupies (4,4)-(516,338)
+    // of the 765x503 logical frame; the sidebar/chat are other buffers a canvas
+    // overlay cannot be dragged into). Canvas-owned surfaces snap inside THIS
+    // rect, in buffer px — the owner applies the same 9-anchor math per frame.
+    function vpRect() {
+        const b = gameRect();
+        return {
+            left: b.left + b.width * (4 / 765), top: b.top + b.height * (4 / 503),
+            width: b.width * (512 / 765), height: b.height * (334 / 503)
+        };
+    }
+    function ghostBox() {
+        let g = document.getElementById('lcm-ghost');
+        if (!g) {
+            g = document.createElement('div');
+            g.id = 'lcm-ghost';
+            document.body.appendChild(g);
+        }
+        return g;
+    }
+
+    let ds = null;   // active drag session
+    function hitCanvasSpec(e) {
+        if (!e.target || e.target.id !== 'canvas') return null;
+        const vp = vpRect(), sx = vp.width / 512, sy = vp.height / 334;
+        for (const spec of SPECS) {
+            if (!spec.canvas) continue;
+            let b = null;
+            try { b = spec.getBounds && spec.getBounds(); } catch (err) { /* not visible */ }
+            if (!b) continue;
+            const r = { left: vp.left + b[0] * sx, top: vp.top + b[1] * sy, width: b[2] * sx, height: b[3] * sy };
+            if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+                return { spec, r, sx, sy };
+            }
+        }
+        return null;
+    }
+    document.addEventListener('pointerdown', e => {
+        if (!e.altKey || e.button !== 0) return;
+        let spec = null, rect = null, sx = 1, sy = 1;
+        const el = e.target.closest && e.target.closest('[data-lcm-surface]');
+        if (el) {
+            spec = SPECS.find(s => s.el === el);
+            if (!spec) return;
+        } else {
+            const hit = hitCanvasSpec(e);
+            if (!hit) return;
+            spec = hit.spec; rect = hit.r; sx = hit.sx; sy = hit.sy;
+        }
+        // stop game interaction with the press: capture-phase + preventDefault
+        // suppresses the compat mousedown the client binds on the canvas
+        e.preventDefault();
+        e.stopPropagation();
+        const r = rect || spec.el.getBoundingClientRect();
+        const box = spec.canvas ? ghostBox() : spec.el;
+        box.style.display = '';
+        placeXY(box, r.left, r.top);
+        if (spec.canvas) {                      // ghost only: real elements keep their CSS size
+            box.style.width = Math.round(r.width) + 'px';
+            box.style.height = Math.round(r.height) + 'px';
+            window.lcmHeld = spec.id;           // owner keeps drawing while held
+        }
+        ds = {
+            spec, box, w: r.width, h: r.height, sx, sy, moved: false, snap: null,
+            grabX: e.clientX - r.left, grabY: e.clientY - r.top, origX: e.clientX, origY: e.clientY,
+            orig: { left: spec.el ? spec.el.style.left : '', top: spec.el ? spec.el.style.top : '', right: spec.el ? spec.el.style.right : '', bottom: spec.el ? spec.el.style.bottom : '' }
+        };
+        showDots(spec.canvas ? vpRect() : gameRect(), true);
+        window.dispatchEvent(new CustomEvent('lcm-drag', { detail: spec.id }));
+        try { (spec.el || box).setPointerCapture(e.pointerId); } catch (err) { /* window listeners still fire */ }
+    }, true);
+    window.addEventListener('pointermove', e => {
+        if (!ds) return;
+        if (Math.abs(e.clientX - ds.origX) + Math.abs(e.clientY - ds.origY) > 3) ds.moved = true;
+        const r = ds.spec.canvas ? vpRect() : gameRect();
+        const [x, y] = clampInto(r, e.clientX - ds.grabX, e.clientY - ds.grabY, ds.w, ds.h);
+        placeXY(ds.box, x, y);
+        let best = null, bd = SNAP_HIT;
+        for (const name in ANCH) {
+            const k = ANCH[name];
+            const d = Math.hypot(x - (r.left + r.width * k[0]), y - (r.top + r.height * k[1]));
+            if (d < bd) { bd = d; best = name; }
+        }
+        ds.snap = best;
+        if (snapLayer) [...snapLayer.children].forEach(d => d.classList.toggle('hot', d.dataset.anch === best));
+    });
+    window.addEventListener('pointerup', e => {
+        if (!ds) return;
+        const spec = ds.spec, box = ds.box;
+        if (spec.canvas && box.parentNode) box.parentNode.removeChild(box);
+        if (spec.canvas) window.lcmHeld = null;
+        showDots(null, false);
+        window.dispatchEvent(new CustomEvent('lcm-drag-end', { detail: spec.id }));
+        if (ds.moved) {
+            const r = spec.canvas ? vpRect() : gameRect();
+            const x = parseFloat(box.style.left) || 0, y = parseFloat(box.style.top) || 0;
+            let a = ds.snap;
+            if (!a) {   // free placement: anchor named by the element centre's region
+                const cx = x + ds.w / 2 - r.left, cy = y + ds.h / 2 - r.top;
+                a = (cy < r.height / 3 ? 'T' : cy > r.height * 2 / 3 ? 'B' : 'M') +
+                    (cx < r.width / 3 ? 'L' : cx > r.width * 2 / 3 ? 'R' : 'C');
+            }
+            const k = ANCH[a] || ANCH.TR;
+            // canvas: store offsets in buffer px (x/sx, y/sy per-axis)
+            LS.set(spec.anchorKey, a);
+            LS.set(spec.offsetKey, Math.round((x - (r.left + r.width * k[0])) / ds.sx) + ',' + Math.round((y - (r.top + r.height * k[1])) / ds.sy));
+            if (!spec.canvas) applySpec(spec);
+            suppressClick = performance.now() + 300;
+            toast(`${spec.id === 'fab' ? 'FAB' : spec.id} → ${a}`);
+            window.dispatchEvent(new CustomEvent('lcm-anchor-changed', { detail: spec.id }));
+        } else if (!spec.canvas && spec.el) {     // click without motion: hand the style back to its owner
+            spec.el.style.left = ds.orig.left; spec.el.style.top = ds.orig.top;
+            spec.el.style.right = ds.orig.right; spec.el.style.bottom = ds.orig.bottom;
+            suppressClick = performance.now() + 300;
+        } else if (spec.canvas) {
+            suppressClick = performance.now() + 300;
+        }
+        layoutPanel();
+        ds = null;
+    }, true);
+    function cancelDrag() {
+        if (!ds) return;
+        if (ds.spec.canvas) {
+            if (ds.box.parentNode) ds.box.parentNode.removeChild(ds.box);
+            window.lcmHeld = null;
+        }
+        if (ds.spec.el) {
+            const el = ds.spec.el;
+            el.style.left = ds.orig.left; el.style.top = ds.orig.top; el.style.right = ds.orig.right; el.style.bottom = ds.orig.bottom;
+        }
+        showDots(null, false);
+        window.dispatchEvent(new CustomEvent('lcm-drag-end', { detail: ds.spec.id }));
+        suppressClick = performance.now() + 300;
+        ds = null;
+    }
+    // Alt+right-click: reset one surface to its default corner
+    document.addEventListener('contextmenu', e => {
+        if (!e.altKey) return;
+        let spec = null;
+        const el = e.target.closest && e.target.closest('[data-lcm-surface]');
+        if (el) spec = SPECS.find(s => s.el === el);
+        else { const hit = hitCanvasSpec(e); if (hit) spec = hit.spec; }
+        if (!spec) return;
+        e.preventDefault();
+        e.stopPropagation();
+        localStorage.removeItem(spec.anchorKey);
+        localStorage.removeItem(spec.offsetKey);
+        applySpec(spec);
+        window.dispatchEvent(new CustomEvent('lcm-anchor-changed', { detail: spec.id }));
+        layoutPanel();
+        toast(`${spec.id === 'fab' ? 'FAB' : spec.id}: position reset`);
+    }, true);
+    // alt-hot cursor hints + escape-cancel
+    window.addEventListener('keydown', e => {
+        if (e.key === 'Alt' && !e.repeat) { document.body.classList.add('lcm-alt'); window.lcmAlt = true; }
+        if (e.key === 'Escape' && ds) { e.stopPropagation(); cancelDrag(); }
+    }, true);
+    window.addEventListener('keyup', e => { if (e.key === 'Alt') { document.body.classList.remove('lcm-alt'); window.lcmAlt = false; } });
+    window.addEventListener('blur', () => { document.body.classList.remove('lcm-alt'); window.lcmAlt = false; cancelDrag(); });
+    window.addEventListener('resize', layoutAll);
+    applySpec(fabSpec);
 
     // legacy bar coordination ----------------------------------------------------
     function applyLegacyBar() {

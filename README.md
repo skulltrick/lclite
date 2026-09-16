@@ -71,7 +71,7 @@ node lclite/tools/lclite.mjs uninstall    # back toward pristine upstreams
 | 🛡 **Anti-cheat toggle** | Mute legacy RuneScope telemetry — keep it ON on public worlds, OFF on your private one |
 | 🚀 **GPU** (beta) | WebGPU render of the 3D world at software-exact parity; auto-falls back on any driver error, reason in the panel |
 | 🃏 **TCG** (beta) | Earn credits from non-combat xp, level-ups and monster kills (combat level), open 5-card booster packs (7 rarity tiers, foils, rare apex packs), browse a 6,376-card collection album — the OSRS TCG plugin's economy, for 2004 |
-| ⚙ **Control panel** *(required)* | The F1 popover itself: Mods/Settings tabs, search, pin, fullscreen, screenshot |
+| ⚙ **Control panel** *(required)* | The F1 popover itself: Mods/Settings tabs, search, pin, fullscreen, screenshots — and the Alt+drag placement layer that lets you move the FAB, panel, XP tracker and any mod HUD to 9 snap anchors (RuneLite-style; Alt+right-click resets) |
 
 ## How it works (the honest version)
 

@@ -28,8 +28,11 @@ counts, discovery silhouettes, rarity colors and per-tier collection progress.
   property-mangled; saves likewise use array shapes so rebuilds never orphan
   collections).
 - `files/engine/public/lclite/tcg/ui.js` — credits HUD (canvas top-left
-  anchor, recomputed per tick so canvas scaling can't fight it), pack reveal
-  overlay, collection album: a plain page script next to panel.js (client.ejs
+  anchor by default, recomputed per tick so canvas scaling can't fight it;
+  ALT-DRAGGABLE via the control panel's placement layer — reads its own
+  `lcmTcgHudAnchor`/`Offset` keys, parks opposite a relocated FAB), pack
+  reveal overlay, collection album: a plain page script next to panel.js
+  (client.ejs
   hunk). No engine coupling beyond the `window['tcg*']` API + the `tcg` key.
   Lays over the LCLite chrome (z 9600 > panel 9000) so the FAB never eats
   its clicks. **Page assets are version-keyed** (`ui.js?v=3`,

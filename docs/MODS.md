@@ -177,10 +177,39 @@ cp -r lclite t && cd t && node lclite/tools/lclite.mjs
   AND in the core's self-heal injection, `window.__lctcgUi` stamp so the core
   detects a stale UI and removes+replaces it. Also never `fetch(..., {cache:
   'force-cache'})` a mod data file — 'no-cache' revalidates and stays 304-cheap.
-- **The FAB owns viewport top-right** (44px at top:14 right:18, z 9000; the
-  panel drops from top:66). Page overlays must anchor elsewhere (tcg pins its
-  HUD to the canvas top-left rect per tick) and, when they need to cover the
-  whole frame, layer above: `z-index > 9500`.
+- **Placement (alt-drag movable overlays) is the one cross-mod WRITE, by
+  design.** RuneLite parity: hold **Alt** and drag any movable surface to one of
+  9 anchor points on the game-canvas rect (TL/TC/TR/ML/MC/MR/BL/BC/BR) plus a
+  px offset; snap dots appear mid-drag; Alt+right-click resets a surface;
+  panel → Reset all wipes every `lcm*` key. The DRAG LAYER (control-panel's
+  panel.js) is the only WRITER of `lcm<Surface>Anchor` / `lcm<Surface>Offset`
+  localStorage keys; each surface's OWNER still READS its own keys at its own
+  hook (rule 5 untouched — placement is settings-with-a-UI, not a hub). DOM
+  surfaces (FAB, tcg HUD) call `window.lcmAnchor.register(spec)` — if the panel
+  isn't installed there's simply no drag, and the owner's own read still honors
+  the keys. Canvas-buffer surfaces (xp tracker) are the harder kind: the owner
+  computes its live origin per frame from the same keys (see `xpAnchorFrame()`
+  in Client.ts — anchor + buffer-px offset mapped onto the 512×334 viewport,
+  clamped, drop-band derived from the panel edges), exposes bounds for
+  hit-testing through a terser-reserved `window['lcmXpBounds']()` returning a
+  POSITIONAL `[x,y,w,h]`, and self-registers via
+  `lcmAnchor.registerCanvas([...])` (positional args — object literals across
+  the bundle boundary arrive key-mangled). The panel never positions canvas
+  surfaces itself; it drags a ghost box and, while held, flags
+  `window['lcmHeld'] = id` (plus `window['lcmAlt']` while Alt is down) so the
+  owner keeps painting the real thing at the live anchor — the ghost and the
+  element agree because both derive from the same keys + the same viewport
+  rect (`panel.js vpRect()`: canvas × 512/765, 4/765 offset, 334/503).
+  A new movable DOM surface = one `register()` call; a new movable canvas
+  surface = that same pattern (live origin, bounds fn, registerCanvas, reserve
+  the names). Everything clamps inside the viewport rect, so a dragged overlay
+  can never be lost off-screen; F1 works regardless of FAB position.
+- **The FAB lives at viewport top-right BY DEFAULT** (44px at top:14 right:18,
+  z 9000; the panel drops from top:66) — but it is movable (see above), so page
+  overlays must not assume that corner is theirs either: tcg's HUD defaults to
+  canvas top-left and dodges a relocated FAB automatically. When an overlay
+  needs to cover the whole frame, layer above: `z-index > 9500` (snap dots and
+  the drag ghost ride at 9700, above tcg's 9600 chrome).
 
 ## Rev-upgrade day, the short version
 
