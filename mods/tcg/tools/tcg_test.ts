@@ -1,7 +1,9 @@
 // lclite:tcg functional test — runs the REAL tcg_core.ts under a stubbed browser,
-// against the REAL cards.json. Checks: xp→credit chunking, level-up curve, login
-// burst adoption, pack roll distribution vs beta odds, foil/apex, dup-sell price,
-// collection persistence, deterministic seed replay, catalog tier sanity.
+// against the REAL cards.json. Checks: xp→credit chunking (non-combat only),
+// level-up curve, login burst adoption, kill credits (engage/death/timeout/
+// respawn grace/settle), pack roll distribution vs beta odds, foil/apex,
+// dup-sell price, collection persistence, deterministic seed replay, catalog
+// tier sanity.
 //   bun tools/tcg_test.ts   (from webclient/)
 const LS: Record<string, string> = {};
 (globalThis as any).window = globalThis;
@@ -55,6 +57,8 @@ ok(meta[4][6][1] < meta[4][0][1], 'Godly pool smaller than Common', { g: meta[4]
 // pick a base xp where +2500 does NOT cross a level threshold, so the level-up
 // bonus (tested separately below) can't pollute the chunk arithmetic. Same xp
 // curve as the core (mirrors Client.levelExperience).
+// stat 8 = woodcutting: a NON-combat skill (combat xp pays chunks no more —
+// kills cover that, beta parity).
 const LVL: number[] = [];
 { let acc = 0; for (let i = 0; i < 99; i++) { const level = i + 1; acc += (level + Math.pow(2.0, level / 7.0) * 300.0) | 0; LVL[i] = (acc / 4) | 0; } }
 let XPB = 0;
@@ -63,17 +67,87 @@ outer2: for (let x = 1000; x < 12_000_000; x += 1000) {
     let l1 = 1; for (let i = 0; i < 98; i++) if (x + 2500 >= LVL[i]) l1 = i + 2;
     if (l0 === l1) { XPB = x; break; }
 }
-W.tcgOnXp(0, XPB);          // stat 0 (attack) adopt baseline
-W.tcgOnXp(0, XPB + 999);    // +999 → below one chunk, no payout yet
+W.tcgOnXp(8, XPB);           // stat 8 (woodcutting) adopt baseline
+W.tcgOnXp(8, XPB + 999);     // +999 → below one chunk, no payout yet
 let info = W.tcgInfo();
 ok(info[0] === 0, '999 xp pays 0 (chunk is 1000)', info[0]);
 ok(info[1] === 999, '999 xp banks to the pool', info[1]);
-W.tcgOnXp(0, XPB + 1000);   // +1 → crosses one chunk
+W.tcgOnXp(8, XPB + 1000);    // +1 → crosses one chunk
 ok(W.tcgInfo()[0] === 100, '1,000 xp pays 100 credits', W.tcgInfo()[0]);
 ok(W.tcgInfo()[1] === 0, 'pool flushes at the boundary', W.tcgInfo()[1]);
-W.tcgOnXp(0, XPB + 2500);   // +1500 → 1 chunk, 500 carries
+W.tcgOnXp(8, XPB + 2500);    // +1500 → 1 chunk, 500 carries
 ok(W.tcgInfo()[0] === 200, '1,500 xp pays 100, banks 500', W.tcgInfo()[0]);
 ok(W.tcgInfo()[1] === 500, '500 xp carries to next chunk', W.tcgInfo()[1]);
+
+// ── combat-skill xp pays NO chunks (kills cover combat earning) ──────────────
+const beforeCombat = W.tcgInfo()[0];
+W.tcgOnXp(0, XPB);           // attack adopt
+W.tcgOnXp(0, XPB + 2500);    // 2,500 combat xp in one non-level-crossing jump
+let ci = W.tcgInfo();
+ok(ci[0] === beforeCombat, 'combat xp pays 0 chunks', ci[0] - beforeCombat);
+ok(ci[1] === 500, 'combat xp never enters the pool', ci[1]);
+
+// ── kill credits: engagement→death pays combat level, guards the fat hands ───
+{
+    const before = W.tcgInfo()[0];
+    W.tcgEngageNpc(50, 1000);
+    W.tcgNpcHit(50, 0, 21, 1100, 21, 'Guard');      // beta example: Varrock guard = 21c
+    let k = W.tcgInfo();
+    ok(k[0] === before + 21, 'engaged kill pays combat level', k[0] - before);
+    ok(k[15] === 21 && k[16] === 1, 'kill stats surface in info()', [k[15], k[16]]);
+
+    W.tcgNpcHit(51, 0, 3, 1101, 3, 'Chicken');
+    ok(W.tcgInfo()[0] === before + 21, 'unengaged death pays 0');
+
+    W.tcgEngageNpc(52, 2000);
+    W.tcgNpcHit(52, 0, 5, 2401, 5, 'Rat');          // 401 cycles > 400 timeout
+    ok(W.tcgInfo()[0] === before + 21, 'engagement older than timeout pays 0');
+    W.tcgNpcHit(52, 0, 5, 2402, 5, 'Rat');
+    ok(W.tcgInfo()[0] === before + 21, 'expired engagement stays cleared');
+
+    // respawn farming: a credited death keeps engagement warm (auto-retarget
+    // sends no new FACEENTITY); corpse re-emits are eaten by the re-grace
+    W.tcgEngageNpc(53, 3000);
+    W.tcgNpcHit(53, 12, 30, 3010, 30, 'Cow');       // partial hit keeps it warm
+    W.tcgNpcHit(53, 0, 30, 3020, 30, 'Cow');        // death → pay 30
+    ok(W.tcgInfo()[0] === before + 51, 'death after warm hits pays', W.tcgInfo()[0]);
+    W.tcgNpcHit(53, 0, 30, 3025, 30, 'Cow');        // same corpse re-emitted
+    ok(W.tcgInfo()[0] === before + 51, 're-grace blocks the double-pay');
+    W.tcgNpcHit(53, 0, 30, 3160, 30, 'Cow');        // respawned, still engaged
+    ok(W.tcgInfo()[0] === before + 81, 'respawn kill pays again');
+
+    // level fallback chain: no vislevel + unknown name → total-hp proxy, then floor 1
+    W.tcgEngageNpc(60, 5000);
+    W.tcgNpcHit(60, 0, 117, 5005, -1, 'Zzz nothing');
+    ok(W.tcgInfo()[0] === before + 198, 'unknown npc falls back to full-hp proxy');
+    W.tcgEngageNpc(61, 5000);
+    W.tcgNpcHit(61, 0, 0, 5005, -1, 'Zzz nothing');
+    ok(W.tcgInfo()[0] === before + 199, 'hp-less unknown npc pays the floor (1)');
+
+    // OSRS card level drives the payout when the cache def has no vislevel
+    const sample: any = JSON.parse(catRaw)[1].find((c: any) =>
+        c[4] > 0 && c[4] < 200 && /goblin/i.test(String(c[0])));
+    if (sample) {
+        const b2 = W.tcgInfo()[0];
+        W.tcgEngageNpc(70, 6000);
+        W.tcgNpcHit(70, 0, 999, 6005, -1, sample[0]);
+        ok(W.tcgInfo()[0] === b2 + sample[4], 'card-name level fallback pays card level', [sample[0], sample[4]]);
+    } else { ok(false, 'no goblin-ish card with level found in catalog'); }
+}
+
+// ── settle window covers kills too (login mid-combat never retro-pays) ───────
+W.tcgSetAccount('fresh');
+await Bun.sleep(50);
+{
+    const fb = W.tcgInfo()[0];
+    W.tcgEngageNpc(80, 7000);
+    W.tcgNpcHit(80, 0, 50, 7005, 50, 'Man');
+    ok(W.tcgInfo()[0] === fb, 'kill during login settle pays nothing');
+    await Bun.sleep(5200);
+    W.tcgEngageNpc(81, 7100);
+    W.tcgNpcHit(81, 0, 50, 7105, 50, 'Man');
+    ok(W.tcgInfo()[0] === fb + 50, 'the same kill after settle pays');
+}
 
 // ── level-up bonus: the curve pays at thresholds (attack lvl 3 = 83xp) ────────
 W.tcgSetAccount('ladder');

@@ -359,14 +359,18 @@
     //                             server-facing player during combat keeps it
     //                             warm for npcs we never targeted);
     //                             hp===0 is the death — credit if engaged and
-    //                             valid. Respawn farming: engagement SURVIVES a
-    //                             credited death (auto-retarget on the respawned
-    //                             npc sends no new FACEENTITY update), but a
-    //                             re-emitted corpse death can't double-pay —
+    //                             valid. Respawn farming: a credited death
+    //                             RE-STAMPS the engagement window (beta clears
+    //                             engagement at death, but it also sees per-hit
+    //                             hitsplat ownership; we don't — auto-retarget
+    //                             on a respawned npc sends no new FACEENTITY
+    //                             update, so clearing would kill the farming
+    //                             loop). A re-emitted corpse can't double-pay:
     //                             KILL_REGRACE is the minimum cycle gap between
-    //                             two credits on one index (~2s < any respawn).
-    //                             A death we never engaged (someone else's kill,
-    //                             despawn, quest script) just clears state.
+    //                             two credits on one index (~2s, below any
+    //                             respawn). A death we never engaged (someone
+    //                             else's kill, despawn, quest script) is
+    //                             ignored.
     // Combat level: NpcType.vislevel from the cache (code 103; -1 unless the
     // def ships it — 2004-era caches often don't), else the OSRS card's level
     // by name (cards.json [4]; beta uses OSRS combat levels for its monsters),

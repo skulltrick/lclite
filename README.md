@@ -70,7 +70,7 @@ node lclite/tools/lclite.mjs uninstall    # back toward pristine upstreams
 | 🎨 **Smooth shading** | Per-pixel Gouraud instead of 4px blocks (when your CPU says yes) |
 | 🛡 **Anti-cheat toggle** | Mute legacy RuneScope telemetry — keep it ON on public worlds, OFF on your private one |
 | 🚀 **GPU** (beta) | WebGPU render of the 3D world at software-exact parity; auto-falls back on any driver error, reason in the panel |
-| 🃏 **TCG** (beta) | Earn credits from xp + level-ups, open 5-card booster packs (7 rarity tiers, foils, rare apex packs), browse a 6,376-card collection album — the OSRS TCG plugin's economy, for 2004 |
+| 🃏 **TCG** (beta) | Earn credits from non-combat xp, level-ups and monster kills (combat level), open 5-card booster packs (7 rarity tiers, foils, rare apex packs), browse a 6,376-card collection album — the OSRS TCG plugin's economy, for 2004 |
 | ⚙ **Control panel** *(required)* | The F1 popover itself: Mods/Settings tabs, search, pin, fullscreen, screenshot |
 
 ## How it works (the honest version)
