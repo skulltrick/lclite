@@ -621,14 +621,11 @@
     let suppressClick = 0;        // ts until which a surface click is drag-echo
 
     function gameRect() {
-        const c = document.getElementById('canvas');
-        if (c) {
-            const b = c.getBoundingClientRect();
-            if (b.width > 60 && b.height > 60) return b;
-        }
-        const f = { left: 0, top: 0, width: innerWidth, height: innerHeight };
-        f.right = f.left + f.width; f.bottom = f.top + f.height;
-        return f;
+        // RuneLite parity: DOM surfaces anchor to the WHOLE client window (the
+        // browser viewport) — the black letterbox around the scaled canvas is
+        // valid real estate (that's where the FAB lives by default). Canvas-
+        // drawn surfaces are limited by the game buffer itself; see vpRect().
+        return { left: 0, top: 0, right: innerWidth, bottom: innerHeight, width: innerWidth, height: innerHeight };
     }
     function placeXY(el, x, y) {
         el.style.left = Math.round(x) + 'px';
@@ -707,7 +704,7 @@
         }
     };
     const fabSpec = { id: 'fab', el: fab, anchorKey: 'lcmFabAnchor', offsetKey: 'lcmFabOffset', defA: 'TR', defO: '-62,14' };
-    SPECS.push(fabSpec);
+    window.lcmAnchor.register(fabSpec);   // NOT a bare push: register stamps data-lcm-surface (drag hit-test + alt-outline)
 
     // snap markers layer (body child: z 9700 rides above #lctcg-root's 9600)
     let snapLayer = null;

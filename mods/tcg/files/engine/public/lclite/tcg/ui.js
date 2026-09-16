@@ -90,8 +90,8 @@
     document.head.appendChild(style);
 
     function build() {
-        window.__lctcgUi = 5;           // stamp the core checks (replace stale cached copies)
-        console.log('[lclite:tcg] ui v5');
+        window.__lctcgUi = 6;           // stamp the core checks (replace stale cached copies)
+        console.log('[lclite:tcg] ui v6');
         root = document.createElement('div');
         root.id = 'lctcg-root';
         root.innerHTML = `
@@ -140,25 +140,29 @@
     // itself be alt-dragged (lcmAnchor): when it is, the HUD parks opposite the
     // FAB on the same row, so the two never overlap and both stay visible.
     // OWN placement via the lcmTcgHudAnchor/Offset keys (rule 5: we read our own
-    // key at our own hook; the panel's drag layer is the only WRITER). Paused
-    // mid-drag (lcm-drag) so the drag ghost doesn't fight this tick.
+    // key at our own hook; the panel's drag layer is the only WRITER). A SAVED
+    // anchor spans the whole WINDOW (client-area) rect, matching the panel's
+    // gameRect() for DOM surfaces — the black letterbox beside a scaled canvas
+    // is placeable real estate (that's where the FAB defaults). Paused mid-drag
+    // (lcm-drag) so the drag ghost doesn't fight this tick.
     let draggingHud = false;
     addEventListener('lcm-drag', e => { if (e.detail === 'tcg-hud') draggingHud = true; });
     addEventListener('lcm-drag-end', () => { draggingHud = false; });
     const ANCH9 = { TL: [0, 0], TC: [.5, 0], TR: [1, 0], ML: [0, .5], MC: [.5, .5], MR: [1, .5], BL: [0, 1], BC: [.5, 1], BR: [1, 1] };
     function anchorHud() {
         if (draggingHud) { return; }
-        const c = document.getElementById('canvas');
-        if (!c) { return; }
-        const r = c.getBoundingClientRect();
         const A = localStorage.getItem('lcmTcgHudAnchor');
-        let x, y;
+        let x, y, cl;
         if (A && ANCH9[A]) {
             const o = (localStorage.getItem('lcmTcgHudOffset') || '0,0').split(',');
             const k = ANCH9[A];
-            x = r.left + r.width * k[0] + (parseFloat(o[0]) || 0);
-            y = r.top + r.height * k[1] + (parseFloat(o[1]) || 0);
+            x = innerWidth * k[0] + (parseFloat(o[0]) || 0);
+            y = innerHeight * k[1] + (parseFloat(o[1]) || 0);
+            cl = { l: 4, t: 4, r: innerWidth - 4, b: innerHeight - 4 };
         } else {
+            const c = document.getElementById('canvas');
+            if (!c) { return; }
+            const r = c.getBoundingClientRect();
             const fab = document.getElementById('lclite-fab');
             const fr = fab && fab.getBoundingClientRect();
             const fabLeft = !!(fr && r.width && (fr.left + fr.width / 2 - r.left) < r.width / 2);
@@ -167,9 +171,10 @@
             if (fr && r.width && x < fr.right && x + hud.offsetWidth > fr.left && y < fr.bottom) {
                 y = fr.bottom + 6;              // same row collides with a dragged FAB: park below it
             }
+            cl = { l: r.left + 4, t: r.top + 4, r: r.right - 4, b: r.bottom - 4 };
         }
-        hud.style.left = Math.round(Math.max(r.left + 4, Math.min(x, r.right - hud.offsetWidth - 4))) + 'px';
-        hud.style.top = Math.round(Math.max(r.top + 4, Math.min(y, r.bottom - hud.offsetHeight - 4))) + 'px';
+        hud.style.left = Math.round(Math.max(cl.l, Math.min(x, cl.r - hud.offsetWidth))) + 'px';
+        hud.style.top = Math.round(Math.max(cl.t, Math.min(y, cl.b - hud.offsetHeight))) + 'px';
         hud.style.right = 'auto';
     }
 

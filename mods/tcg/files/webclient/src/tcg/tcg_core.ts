@@ -64,9 +64,9 @@
     const KEY_MASTER = 'tcg';           // this mod's master switch (its OWN key, rule 5)
     // ?v= cache key: 'force-cache' happily serves a STALE catalog forever (Brave
     // bit us exactly this way) — bump v with any cards.json format change.
-    const CAT_URL = '/lclite/tcg/cards.json?v=5';
-    const UI_SRC = '/lclite/tcg/ui.js?v=5';
-    const UI_VER = 5;                   // ui.js stamps window.__lctcgUi; stale UI is re-fetched+replaced
+    const CAT_URL = '/lclite/tcg/cards.json?v=6';
+    const UI_SRC = '/lclite/tcg/ui.js?v=6';
+    const UI_VER = 6;                   // ui.js stamps window.__lctcgUi; stale UI is re-fetched+replaced
 
     const TIER_LABELS = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Godly'];
 
