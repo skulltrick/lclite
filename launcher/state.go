@@ -102,6 +102,16 @@ func openStore(dataDir string) (*Store, error) {
 		}
 	}
 	s.cfg.DataDir = dataDir
+	// keep the JSON (and the API) to real arrays instead of nulls
+	if s.cfg.Installs == nil {
+		s.cfg.Installs = []*Install{}
+	}
+	if s.cfg.Remotes == nil {
+		s.cfg.Remotes = []*Remote{}
+	}
+	if s.cfg.Revs == nil {
+		s.cfg.Revs = []Rev{}
+	}
 	return s, nil
 }
 
