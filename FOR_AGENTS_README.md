@@ -52,7 +52,9 @@ embedded file, `launcher/ui/index.html`. The launcher is a CLIENT of
 `tools/lclite.mjs`: it must never grow its own copy of hunk/apply logic, only
 shell out and report, so the overlay keeps exactly one implementation.
 Behaviour changes ship with `launcher/README.md` updated in the same commit
-(rule 7 applies to this folder too).
+(rule 7 applies to this folder too). UI changes need a browser, and a screenshot
+alone is not evidence: check the DOM/state transitions too (a step indicator that
+never updates, or a poll that un-ticks your boxes, looks fine in a still).
 
 ## Files
 launcher/ Go launcher (main/state/actions/tools/gitops/jobs/pipeline/engine/proxy/mods + ui/index.html; build.go cross-builds) ·

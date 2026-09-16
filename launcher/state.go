@@ -26,6 +26,9 @@ type Rev struct {
 	Client  bool   `json:"client"`
 	Engine  bool   `json:"engine"`
 	Content bool   `json:"content"`
+	// Recommended is set on the revision the launcher leads with (see
+	// pickRecommended); it is computed on read, never stored.
+	Recommended bool `json:"recommended,omitempty"`
 }
 
 // Local reports whether the pair needed to run a server exists upstream
@@ -59,6 +62,15 @@ type Config struct {
 	RevsAt    time.Time  `json:"revs_at"`
 	ProxyPort int        `json:"proxy_port"`
 	LastRev   string     `json:"last_rev"`
+
+	// RecommendedRev pins the revision the UI leads with. Empty = work it out
+	// from the branch lists (see pickRecommended).
+	RecommendedRev string `json:"recommended_rev,omitempty"`
+	// RecommendedUpdated is when the recommended revision's content branch last
+	// moved, filled in when the branch list is refreshed.
+	RecommendedUpdated time.Time `json:"recommended_updated,omitempty"`
+	// SkipWizard keeps the full view even with nothing installed.
+	SkipWizard bool `json:"skip_wizard,omitempty"`
 }
 
 type Store struct {
@@ -197,6 +209,21 @@ func (s *Store) setMods(id string, mods []string, built bool) {
 			return
 		}
 	}
+}
+
+func (s *Store) setRecommended(rev string, updated time.Time) {
+	s.mu.Lock()
+	s.cfg.RecommendedRev = rev
+	s.cfg.RecommendedUpdated = updated
+	s.mu.Unlock()
+	_ = s.save()
+}
+
+func (s *Store) setSkipWizard(skip bool) {
+	s.mu.Lock()
+	s.cfg.SkipWizard = skip
+	s.mu.Unlock()
+	_ = s.save()
 }
 
 func (s *Store) setLastRev(rev string) {

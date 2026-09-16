@@ -62,7 +62,7 @@ func (l *Launcher) detectTools() []Tool {
 	tools := []Tool{
 		lookTool("git", []string{"--version"}, "https://git-scm.com/downloads"),
 		lookTool("node", []string{"--version"}, "https://nodejs.org (the engine needs node 24+)"),
-		lookTool("npm", nil, "ships with node"),
+		lookTool("npm", []string{"--version"}, "ships with node"),
 	}
 	bun := l.findBun()
 	if bun != "" {

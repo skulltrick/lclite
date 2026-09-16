@@ -37,9 +37,10 @@ see [custom servers](#running-a-custom-2004-server)).
 
 Or take the [launcher](#the-launcher-one-file-no-runtime): drop `LCLite.exe`
 (8 MB, no runtime, no installer) next to `LCLite.bat` and the same double-click
-opens a window where you pick a **revision**, install it, tick mods, press Play —
-and can point your client at any other server.
-`LCLite.bat --cli` always gets you the plain terminal picker back.
+opens a **setup wizard** — "which revision would you like to use?" with the branch
+Lost City is developing right now already picked, then download, build and Play.
+Afterwards it turns into a dashboard for mods, extra revisions and custom
+servers. `LCLite.bat --cli` always gets you the plain terminal picker back.
 
 ```
  1 [X] Camera          wheel zoom, middle-drag rotate, chat scroll

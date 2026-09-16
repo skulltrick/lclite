@@ -31,12 +31,48 @@ and installs **bun** on demand if the build needs it (bun is a single ~35 MB zip
 cached under the launcher's data folder). Running a Lost City server needs Node
 24+ regardless — that's upstream's requirement, not ours.
 
+## First run (the setup wizard)
+
+With nothing installed the launcher opens a five-step wizard instead of the full
+dashboard — the goal is that someone who has never seen a terminal can get to the
+game:
+
+1. **Welcome** — what this is, what it costs you (one file, nothing installed),
+   and an aside listing the mods that come with it.
+2. **Which revision?** — playable revisions only, the recommended one
+   pre-selected and explained ("the one Lost City is developing right now"), three
+   visible at a time with the rest a scroll away, client-only branches tucked
+   behind a disclosure.
+3. **What you're getting** — the three things it will do (download, install
+   dependencies, build), plus the mod list when the revision supports LCLite.
+4. **Installing** — four named phases with live ticks, the console tail, and a
+   real error state (retry / back / open the dashboard) instead of a dead spinner.
+5. **You're ready** — Play, a web port field for when 80 is taken, and the way
+   into the full launcher.
+
+Reloading mid-install picks the install back up where it is. `Skip setup` (or
+`Setup guide` later, which re-enters the wizard) toggles between the two views;
+both are remembered in `launcher.json`.
+
+### The "recommended" revision
+
+Computed, not hardcoded: **the highest-numbered revision that exists in the
+client, engine *and* content repos** — i.e. the branch Lost City is actually
+developing. Variant branches (`225-custom`, `225-gpu`, `377-wip`) and client-only
+branches (`500`, `jaged`) are never recommended, and the picker explains itself
+when a revision has no matching server content. The wizard also shows when that
+revision's content branch last moved, so "actively developed" is a fact and not a
+claim. Want to lead with a different one (say Lost City cuts a new branch)?
+`POST /api/config {"recommended_rev": "300"}` pins it; `""` goes back to
+automatic.
+
 ## Using it
 
 1. **Revisions** — the branch list is read live from GitHub (`Client-TS`,
    `Engine-TS`, `Content`) and merged by name. A revision with engine + content
    is playable; client-only branches (e.g. `500`, `jaged`) show as "Client only".
-   Branches ending `-wip` / `-node` are treated as internal and hidden.
+   Branches ending `-wip` / `-node` are treated as internal and hidden. Order is:
+   recommended first, then playable newest-first, then client-only.
 2. **Install** — clones the revision into `<data>/installs/<rev>/`:
 
    ```
@@ -49,10 +85,18 @@ cached under the launcher's data folder). Running a Lost City server needs Node
 
    then `npm install` in `engine/`, then either the LCLite build (289) or a plain
    `bun run bundle.ts` deploy of `client.js` into `engine/public/client/`.
+
+   Install is **idempotent and non-destructive**: a revision that is already
+   there keeps its tree exactly as it is (a modded tree is left alone, never
+   re-cloned or refused), and only the dependency/overlay/build steps re-run.
+   `Update` is the deliberate opposite — it fast-forwards from GitHub and asks
+   you to *Reset to pristine* first if the tree is modded.
 3. **Existing folder** — point it at any checkout holding `webclient/` and
    `engine/` (a hand-made one, another revision, someone else's tree). It reads
    the revision off the git branch. Nothing is written until you press a button.
-4. **Mods** — tick boxes, *Apply mods & build*. That's `node tools/lclite.mjs
+4. **Mods** — tick boxes, *Apply mods & build*. Required mods (the camera and the
+   panel — LCLite itself) show as locked gold ticks rather than disabled
+   checkboxes, because a greyed-out box reads as "not included". That's `node tools/lclite.mjs
    --mods <set>`: the listed mods are applied and everything else is stripped, so
    the tree always converges to what the UI shows. Required mods are locked on.
    **Mods are offered on revision 289 only** — the hunks are anchored there, and
@@ -132,10 +176,18 @@ Override with `--data <folder>`. Flags: `--port`, `--no-browser`,
 `--play <rev>` (install if needed, then launch — handy for a desktop shortcut),
 `--version`.
 
+## A note on how the UI renders
+
+The page polls `/api/state` every 2.5s, so every block re-renders only when the
+data behind it changed (a signature check) and the server card is patched in
+place. That is not an optimisation — it is what keeps a poll from un-ticking your
+mod boxes or eating a half-typed port. Anything that turns into an input must
+respect that, or move to a signature of its own.
+
 ## API (for scripting)
 
 All under `/api`, all requiring header `X-LCLite-Token: <token>` (the token is in
-the served page). `state`, `revs`, `install`, `import`, `apply`, `build`,
+the served page). `state`, `revs`, `config`, `install`, `import`, `apply`, `build`,
 `update`, `reset`, `strip` (take every mod off), `remove`, `run`, `stop`, `open`,
 `browse`, `bun`, `proxy/start`, `proxy/stop`, `job`, `log`, `quit`. Long tasks return a job id; poll
 `job?id=&since=` for incremental log lines.

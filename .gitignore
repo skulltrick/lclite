@@ -14,6 +14,8 @@ Thumbs.db
 
 # launcher builds (release artifacts, not repo content)
 LCLite.exe
+LCLite.exe~
 launcher/LCLite.exe
 launcher/LCLite-*
 launcher/dist/
+*~

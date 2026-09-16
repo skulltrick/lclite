@@ -6,180 +6,241 @@
 <title>LCLite launcher</title>
 <style>
   :root{
-    --bg:#12100e; --panel:#1b1815; --panel2:#221e1a; --line:#332c25;
-    --text:#e8ded0; --dim:#a2937f; --accent:#e0b356; --accent2:#8fbf6a;
-    --bad:#d9705f; --warn:#d9a75f; --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    --bg:#0f0d0b; --bg2:#15120f; --panel:#1a1613; --panel2:#211c18; --panel3:#282218;
+    --line:#332c25; --line-soft:#2a2420;
+    --text:#ece2d3; --dim:#ac9d88; --dim2:#8d8172;
+    --accent:#e6bb63; --accent-dim:#8a6f2f; --good:#8fbf6a; --warn:#d9a75f; --bad:#d9705f;
+    --mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",monospace;
+    --shadow:0 10px 30px #0008, 0 2px 6px #0006;
+    --radius:12px;
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
-  a{color:var(--accent)}
-  header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 16px;background:linear-gradient(180deg,#1f1a15,#171412);border-bottom:1px solid var(--line)}
-  header h1{font-size:16px;margin:0;letter-spacing:.4px}
-  header h1 span{color:var(--accent)}
-  .ver{color:var(--dim);font-size:12px}
+  html,body{height:100%}
+  body{
+    margin:0;background:radial-gradient(1200px 700px at 15% -10%,#241d14 0%,#0f0d0b 55%) fixed;
+    color:var(--text);font:14.5px/1.5 system-ui,"Segoe UI",Roboto,Helvetica,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  ::selection{background:#e6bb6340}
+  *{scrollbar-width:thin;scrollbar-color:#4a4238 transparent}
+  ::-webkit-scrollbar{width:11px;height:11px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#3f382f;border-radius:99px;border:3px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-thumb:hover{background:#5a5145;background-clip:content-box}
+  button{font:inherit;color:var(--text);background:linear-gradient(180deg,#2b241d,#221c17);border:1px solid var(--line);
+    border-radius:9px;padding:8px 13px;cursor:pointer;transition:transform .08s ease,border-color .15s,background .15s,box-shadow .15s}
+  button:hover:not(:disabled){border-color:#4d4237;background:linear-gradient(180deg,#332a22,#282019)}
+  button:active:not(:disabled){transform:translateY(1px)}
+  button:disabled{opacity:.42;cursor:not-allowed}
+  button:focus-visible,input:focus-visible,select:focus-visible,.card:focus-visible{outline:2px solid #e6bb6370;outline-offset:2px}
+  button.primary{background:linear-gradient(180deg,#5a4a1c,#3d3418);border-color:#7a6526;color:#fdf1cf;box-shadow:0 1px 0 #ffffff14 inset,0 6px 18px #0004}
+  button.primary:hover:not(:disabled){background:linear-gradient(180deg,#6b5822,#4a3f1c);border-color:#a08434}
+  button.big{padding:13px 20px;font-size:15.5px;border-radius:11px}
+  button.ghost{background:transparent;border-color:var(--line-soft)}
+  button.ghost:hover:not(:disabled){background:#ffffff08}
+  button.danger{color:var(--bad);border-color:#4a2f2c}
+  button.danger:hover:not(:disabled){background:#2a1a18;border-color:#6b3f3a}
+  input[type=text],input[type=number],select{font:inherit;font-size:13px;background:#100e0c;color:var(--text);
+    border:1px solid var(--line);border-radius:9px;padding:8px 10px;width:100%;transition:border-color .15s}
+  input:hover,select:hover{border-color:#463c33}
+  label.f{display:block;color:var(--dim);font-size:11px;letter-spacing:.9px;text-transform:uppercase;margin:12px 0 4px}
+
+  /* ---------- shell ---------- */
+  .screen{animation:screenIn .28s ease both}
+  @keyframes screenIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  header.top{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+    padding:11px 18px;background:#141110ee;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:.3px}
+  .brand svg{filter:drop-shadow(0 0 10px #e6bb6355)}
+  .brand b{font-weight:600}
+  .brand span{color:var(--accent)}
+  .meta{color:var(--dim2);font-size:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .meta .dotsep{opacity:.4}
   .spacer{flex:1}
   .chips{display:flex;gap:6px;flex-wrap:wrap}
-  .chip{border:1px solid var(--line);background:#1d1916;border-radius:999px;padding:3px 9px;font-size:11.5px;color:var(--dim);white-space:nowrap}
-  .chip.ok{color:var(--accent2);border-color:#3a4a2f}
-  .chip.bad{color:var(--bad);border-color:#4a2f2c;cursor:pointer}
-  main{display:grid;grid-template-columns:minmax(330px,1fr) minmax(420px,1.25fr);gap:14px;padding:14px;align-items:start}
-  @media (max-width:980px){main{grid-template-columns:1fr}}
-  section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
-  section h2{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--accent)}
-  .sub{color:var(--dim);font-size:12px;margin:-4px 0 10px}
+  .chip{border:1px solid var(--line);background:#1c1815;border-radius:999px;padding:3px 10px;font-size:11.5px;color:var(--dim);white-space:nowrap}
+  .chip.ok{color:var(--good);border-color:#36462c;background:#182014}
+  .chip.bad{color:var(--bad);border-color:#4a2f2c;background:#211413}
+  .chip.bad{cursor:pointer}
+
+  main.grid{display:grid;grid-template-columns:minmax(320px,.92fr) minmax(430px,1.28fr);gap:16px;padding:16px;align-items:start}
+  @media (max-width:1000px){main.grid{grid-template-columns:1fr}}
+  section.panel{background:linear-gradient(180deg,#1c1815,#181512);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+  section.panel + section.panel{margin-top:16px}
+  .panel h2{margin:0 0 3px;font-size:12px;letter-spacing:1.3px;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:8px}
+  .panel h2 .grow{flex:1}
+  .panel .sub{color:var(--dim2);font-size:12px;margin-bottom:10px}
+  .empty{color:var(--dim2);font-size:13px;padding:10px 2px}
+
+  /* ---------- revisions ---------- */
+  .revlist{display:flex;flex-direction:column;gap:7px;max-height:174px;overflow:auto;padding-right:4px;scrollbar-width:thin}
+  .revlist.wide{max-height:none}
+  .rev{display:flex;gap:10px;align-items:center;border:1px solid var(--line-soft);border-radius:10px;padding:9px 11px;
+    background:linear-gradient(180deg,#1f1b17,#1a1714);transition:border-color .15s,transform .1s;cursor:pointer}
+  .rev:hover{border-color:#4a4034;transform:translateX(1px)}
+  .rev.rec{border-color:#6d5a24;background:linear-gradient(180deg,#26200f,#1c1810)}
+  .rev.installed{border-color:#3d4a2e}
+  .rev.plain{cursor:default}
+  .rev .num{font-family:var(--mono);font-size:15px;font-weight:600;min-width:52px}
+  .rev .tags{display:flex;gap:5px;flex-wrap:wrap;min-width:196px}
+  .rev .tag{font-size:10.5px;letter-spacing:.4px;padding:2px 7px;border-radius:6px;border:1px solid var(--line);color:var(--dim2)}
+  .rev .tag.rec{color:#f2d79a;border-color:#6d5a24;background:#2a2210}
+  .rev .tag.ok{color:var(--good);border-color:#36462c}
+  .rev .tag.mods{color:var(--accent);border-color:#5b4a20}
+  .rev .tag.off{opacity:.65}
+  .rev .grow{flex:1}
+
+  /* ---------- installs ---------- */
+  .install{display:flex;gap:10px;align-items:center;border:1px solid var(--line-soft);border-radius:10px;padding:9px 11px;
+    background:#1c1916;cursor:pointer;transition:border-color .15s,background .15s}
+  .install:hover{background:#221e1a}
+  .install.on{border-color:#7a6526;background:linear-gradient(180deg,#26200f,#1d1913)}
+  .install .name{font-family:var(--mono);font-size:13.5px}
+  .install .path{font-family:var(--mono);font-size:11px;color:var(--dim2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}
+  .pill{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+  .pill.good{color:var(--good);border-color:#36462c}
+  .pill.mods{color:var(--accent);border-color:#5b4a20}
+
+  /* ---------- cards in detail ---------- */
+  .card{border:1px solid var(--line-soft);border-radius:11px;padding:12px;background:var(--panel2);margin-bottom:10px}
+  .card:last-child{margin-bottom:0}
+  .card h3{margin:0 0 6px;font-size:14px;display:flex;align-items:center;gap:8px}
+  .card h3 .grow{flex:1}
+  .path{font-family:var(--mono);font-size:11.5px;color:var(--dim2);word-break:break-all}
   .row{display:flex;gap:8px;align-items:center}
-  .revlist{display:flex;flex-direction:column;gap:6px;max-height:330px;overflow:auto}
-  .rev{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:#1d1a17}
-  .rev b{font-family:var(--mono);font-size:13.5px}
-  .rev.installed{border-color:#4a4327}
-  .badge{font-size:10.5px;padding:2px 6px;border-radius:5px;border:1px solid var(--line);color:var(--dim)}
-  .badge.on{color:var(--accent2);border-color:#3a4a2f}
-  .badge.mods{color:var(--accent);border-color:#4a4327}
-  .grow{flex:1}
-  button{font:inherit;font-size:12.5px;color:var(--text);background:#2a241e;border:1px solid var(--line);border-radius:7px;padding:6px 11px;cursor:pointer}
-  button:hover:not(:disabled){background:#332b23;border-color:#4a4036}
-  button.primary{background:#3d3418;border-color:#6b5a22;color:#f2dfae}
-  button.primary:hover:not(:disabled){background:#4a3f1c}
-  button.ghost{background:transparent}
-  button.danger{color:var(--bad);border-color:#4a2f2c}
-  button:disabled{opacity:.45;cursor:not-allowed}
-  input[type=text],input[type=number],select{font:inherit;font-size:12.5px;background:#151311;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:6px 8px;width:100%}
-  input:focus,select:focus{outline:1px solid #5b4d2a}
-  label.f{display:block;color:var(--dim);font-size:11.5px;margin:8px 0 3px;text-transform:uppercase;letter-spacing:.6px}
-  .card{border:1px solid var(--line);border-radius:9px;padding:10px;background:var(--panel2);margin-bottom:10px}
-  .card h3{margin:0 0 4px;font-size:13.5px}
-  .path{font-family:var(--mono);font-size:11.5px;color:var(--dim);word-break:break-all}
-  .modrow{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px dashed #2b2621}
-  .modrow:last-child{border-bottom:none}
-  .modrow input{margin-top:3px}
-  .modrow .mname{font-size:12.5px}
-  .modrow .mdesc{color:var(--dim);font-size:11.5px}
-  .modrow.req .mname::after{content:" · required";color:var(--accent)}
-  .status{display:flex;gap:8px;align-items:center;font-size:12.5px}
-  .dot{width:9px;height:9px;border-radius:50%;background:#5c5145}
-  .dot.live{background:var(--accent2);box-shadow:0 0 8px #8fbf6a88}
+  .row.wrap{flex-wrap:wrap}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .hint{color:var(--dim2);font-size:12px;margin-top:8px;line-height:1.55}
+  details.block{border-top:1px solid var(--line-soft);margin-top:12px;padding-top:10px}
+  details.block > summary{cursor:pointer;color:var(--dim);font-size:12.5px;list-style:none;display:flex;align-items:center;gap:7px}
+  details.block > summary::-webkit-details-marker{display:none}
+  details.block > summary:before{content:"+";color:var(--accent);font-family:var(--mono);width:10px}
+  details.block[open] > summary:before{content:"–"}
+  details.block > summary:hover{color:var(--text)}
+  details.block .inner{padding-top:10px}
+  .note{color:var(--warn);font-size:12px;margin-top:8px}
+  .status{display:flex;gap:9px;align-items:center;font-size:13px;min-height:22px}
+  .dot{width:9px;height:9px;border-radius:50%;background:#5c5145;flex:0 0 auto}
+  .dot.live{background:var(--good);box-shadow:0 0 10px #8fbf6a99}
   .dot.busy{background:var(--warn);animation:pulse 1.1s ease-in-out infinite}
-  @keyframes pulse{50%{opacity:.35}}
-  .log{margin:14px;border:1px solid var(--line);border-radius:10px;background:#0e0c0a;overflow:hidden}
-  .loghead{display:flex;gap:8px;align-items:center;padding:7px 10px;border-bottom:1px solid var(--line);background:#171412;font-size:12px}
-  .logbody{font-family:var(--mono);font-size:11.8px;line-height:1.5;padding:9px 11px;height:250px;overflow:auto;white-space:pre-wrap;color:#cfc4b4}
-  .logbody .err{color:var(--bad)}
-  .logbody .step{color:var(--accent)}
-  .logbody .cmd{color:#7fa6c8}
-  .tabs{display:flex;gap:4px}
-  .tab{padding:3px 9px;border-radius:6px;border:1px solid var(--line);color:var(--dim);cursor:pointer;font-size:11.5px;background:#1b1815}
-  .tab.on{color:var(--text);border-color:#5b4d2a}
-  .note{color:var(--warn);font-size:12px;margin:6px 0 0}
-  .empty{color:var(--dim);font-size:12.5px;padding:6px 0}
-  .inline{display:flex;gap:8px;align-items:flex-end}
-  .inline > div{flex:1}
-  .hint{color:var(--dim);font-size:11.5px;margin-top:4px}
+  @keyframes pulse{50%{opacity:.3}}
+  .modrow{display:flex;gap:9px;align-items:flex-start;padding:6px 0;border-bottom:1px dashed #2b2621}
+  .modrow:last-child{border-bottom:none}
+  .modrow input[type=checkbox]{margin-top:3px;accent-color:#c9a44f;width:15px;height:15px}
+  /* required mods are always on, so they get a locked tick rather than a
+     disabled checkbox — a dimmed box reads as "not included" */
+  .modcheck{width:15px;height:15px;margin-top:3px;border-radius:4px;flex:0 0 auto;display:grid;place-items:center;
+    background:linear-gradient(180deg,#d3ab55,#a98531);color:#241d0e;font-size:11px;font-weight:700;
+    box-shadow:0 0 0 1px #6b5a2488}
+  .modrow.req .mname::after{content:" · always on";color:var(--accent);font-size:11.5px}
+  .modrow .mname{font-size:13px}
+  .modrow .mdesc{color:var(--dim2);font-size:11.5px}
+  .modrow.req .mname::after{content:" · required";color:var(--accent)}
+  .modlist{max-height:320px;overflow:auto;padding-right:6px}
+
+  /* ---------- console ---------- */
+  .console{margin:0 16px 16px;border:1px solid var(--line);border-radius:var(--radius);background:#0b0908;overflow:hidden;box-shadow:var(--shadow)}
+  .console .head{display:flex;gap:8px;align-items:center;padding:8px 11px;border-bottom:1px solid var(--line);background:#141110;font-size:12px}
+  .tab{padding:4px 10px;border-radius:7px;border:1px solid transparent;color:var(--dim2);cursor:pointer;font-size:11.5px}
+  .tab:hover{color:var(--text)}
+  .tab.on{color:var(--text);border-color:#4a4034;background:#221d18}
+  .body{font-family:var(--mono);font-size:11.8px;line-height:1.55;padding:10px 12px;height:230px;overflow:auto;white-space:pre-wrap;color:#c9bfb0}
+  .body .err{color:var(--bad)} .body .step{color:var(--accent)} .body .cmd{color:#7fa6c8} .body .ok{color:var(--good)}
+  .console.min .body{height:0;padding:0 12px}
+
+  /* ---------- toasts ---------- */
+  #toasts{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:60;max-width:380px}
+  .toast{background:#221d17f2;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;
+    padding:10px 13px;font-size:13px;box-shadow:var(--shadow);animation:toastIn .22s ease both}
+  .toast.good{border-left-color:var(--good)} .toast.bad{border-left-color:var(--bad)}
+  @keyframes toastIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+
+  /* ---------- onboarding wizard ---------- */
+  #wizard{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:34px 20px 60px}
+  .wcard{width:min(800px,100%);background:linear-gradient(180deg,#1d1916,#161311);border:1px solid var(--line);
+    border-radius:18px;padding:26px 30px 24px;box-shadow:0 30px 80px #000a,0 2px 0 #ffffff08 inset;position:relative;overflow:hidden}
+  .wcard:before{content:"";position:absolute;inset:-40% 40% 60% -30%;background:radial-gradient(closest-side,#e6bb6314,transparent);pointer-events:none}
+  .steps{display:flex;gap:7px;margin:0 0 20px;position:relative}
+  .steps i{width:26px;height:4px;border-radius:99px;background:#4b433a;transition:background .3s,width .3s;display:block}
+  .steps i.on{background:linear-gradient(90deg,var(--accent),#f0d493);width:42px}
+  .steps i.done{background:#b9902f}
+  .whero{display:flex;align-items:flex-start;gap:15px;margin-bottom:6px}
+  .whero svg{flex:0 0 auto;margin-top:3px}
+  .wcols{display:grid;grid-template-columns:1.12fr .88fr;gap:26px;align-items:start}
+  @media (max-width:700px){.wcols{grid-template-columns:1fr;gap:18px}}
+  .aside{border:1px solid var(--line-soft);border-radius:14px;padding:15px 16px;background:linear-gradient(180deg,#1e1a16,#191613)}
+  .aside h5{margin:0 0 10px;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent)}
+  .aside ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+  .aside li{font-size:13px;color:var(--text);display:flex;gap:9px;align-items:center}
+  .aside li span.i{width:22px;text-align:center;opacity:.95}
+  .aside .foot{margin-top:13px;padding-top:11px;border-top:1px solid var(--line-soft);color:var(--dim2);font-size:11.5px;line-height:1.6}
+  .wtitle{font-size:26px;font-weight:600;letter-spacing:.2px;margin:0 0 6px}
+  .wlede{color:var(--dim);font-size:14.5px;margin:0 0 20px;max-width:58ch}
+  .wfoot{display:flex;gap:10px;align-items:center;margin-top:22px;padding-top:16px;border-top:1px solid var(--line-soft)}
+  .wfoot .spacer{flex:1}
+  .choice{display:flex;gap:14px;align-items:flex-start;border:1px solid var(--line-soft);border-radius:14px;padding:16px;
+    background:#1c1916;cursor:pointer;transition:border-color .15s,background .15s,transform .1s;text-align:left;width:100%}
+  .choice:hover{border-color:#5c4f3f;background:#221e1a;transform:translateY(-1px)}
+  .choice .ico{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;background:#241f18;border:1px solid var(--line);flex:0 0 auto}
+  .choice h4{margin:0 0 3px;font-size:15px}
+  .choice p{margin:0;color:var(--dim2);font-size:12.5px;line-height:1.5}
+  .choice + .choice{margin-top:10px}
+  .revecard{display:flex;gap:12px;align-items:center;border:1px solid var(--line-soft);border-radius:12px;padding:12px 14px;
+    background:#1b1815;cursor:pointer;transition:border-color .15s,background .15s}
+  .revecard + .revecard{margin-top:8px}
+  .revecard:hover{border-color:#514636;background:#211d19}
+  .revecard.on{border-color:#9c8129;background:linear-gradient(180deg,#302710,#211b10);
+    box-shadow:inset 3px 0 0 var(--accent),0 0 0 1px #8a722944,0 8px 22px #0005}
+  .revecard .n{font-family:var(--mono);font-size:20px;font-weight:600;min-width:64px}
+  .revecard .t{font-size:12px;color:var(--dim2)}
+  .revecard .grow{flex:1}
+  .revecard .tick{width:20px;height:20px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;color:transparent}
+  .revecard.on .tick{background:var(--accent);border-color:var(--accent);color:#2a2213}
+  .revscroll{max-height:220px;overflow:auto;padding-right:10px;scrollbar-width:thin}
+  .footpath{color:var(--dim2);font-size:11.5px;font-family:var(--mono);max-width:34ch;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap}
+  details.more summary{color:var(--dim);cursor:pointer;font-size:12.5px}
+  details.more summary:hover{color:var(--accent)}
+  details.more .body{color:var(--dim2);font-size:12px;margin-top:8px;line-height:1.7}
+  .phases{display:flex;flex-direction:column;gap:9px;margin:6px 0 4px}
+  .phase{display:flex;gap:11px;align-items:center;color:var(--dim2);font-size:13.5px;transition:color .2s}
+  .phase .mark{width:22px;height:22px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:12px;flex:0 0 auto}
+  .phase.active{color:var(--text)}
+  .phase.active .mark{border-color:var(--accent);color:var(--accent);animation:spin 1.1s linear infinite;border-top-color:transparent;border-right-color:transparent}
+  .phase.done{color:var(--dim)}
+  .phase.done .mark{border-color:#3d4a2e;color:var(--good)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .peek{margin-top:12px;background:#0d0b09;border:1px solid var(--line-soft);border-radius:9px;padding:9px 11px;
+    font-family:var(--mono);font-size:11.4px;color:#a89c8c;max-height:92px;overflow:auto;white-space:pre-wrap}
+  .wcheck{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .wcheck span{border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--dim);background:#1b1815}
+  .kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 5px;font-family:var(--mono);font-size:11px;color:var(--dim)}
+  .linky{background:none;border:none;color:var(--dim);text-decoration:underline;cursor:pointer;padding:0;font-size:12.5px}
+  .linky:hover{color:var(--accent)}
+  .skeleton{height:120px;border-radius:12px;background:linear-gradient(90deg,#1b1815,#221e1a,#1b1815);background-size:200% 100%;animation:shimmer 1.4s ease-in-out infinite}
+  @keyframes shimmer{0%{background-position:120% 0}100%{background-position:-120% 0}}
+  .sronly{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
 <body>
-<header>
-  <h1>LCLite <span>launcher</span></h1>
-  <span class="ver" id="ver"></span>
-  <span class="spacer"></span>
-  <span class="chips" id="chips"></span>
-  <button class="ghost" onclick="refreshRevs(true)">Refresh revisions</button>
-  <button class="ghost" onclick="quitLauncher()">Quit launcher</button>
-</header>
-
-<main>
-  <div>
-    <section>
-      <h2>Lost City revisions</h2>
-      <div class="sub" id="revsub">branch list from the Lost City repos</div>
-      <div class="revlist" id="revs"></div>
-    </section>
-
-    <section style="margin-top:14px">
-      <h2>Installs</h2>
-      <div class="sub">managed folders and existing checkouts you pointed at</div>
-      <div id="installs"></div>
-      <div class="card" style="margin-top:10px">
-        <h3>Use an existing folder</h3>
-        <div class="path" id="importpath">no folder picked</div>
-        <div class="row" style="margin-top:8px">
-          <button onclick="pickFolder()">Browse…</button>
-          <button class="primary" onclick="importFolder()">Add it</button>
-        </div>
-        <div class="hint">Any folder holding <b>webclient/</b> and <b>engine/</b> works — LCLite mods are offered when that folder also has <b>lclite/</b> and is on revision 289.</div>
-      </div>
-    </section>
-  </div>
-
-  <div>
-    <section>
-      <h2 id="detailtitle">Install</h2>
-      <div id="detail" class="empty">Pick an install on the left.</div>
-    </section>
-
-    <section style="margin-top:14px">
-      <h2>Server</h2>
-      <div class="card">
-        <div class="status" style="margin-bottom:8px">
-          <span class="dot" id="sdot"></span>
-          <span id="sstatus">no server running</span>
-        </div>
-        <div class="inline">
-          <div>
-            <label class="f">Web port</label>
-            <input type="number" id="port" min="1" max="65535" value="80">
-          </div>
-          <button class="primary" id="playbtn" onclick="play()">Play</button>
-          <button onclick="stopServer()">Stop</button>
-        </div>
-        <div class="hint" id="shint">The client the server serves is the one you built for the selected install.</div>
-      </div>
-
-      <h2 style="margin-top:14px">Custom server</h2>
-      <div class="card">
-        <div class="path">Point the client at any Lost City server — as a bridge, or straight up.</div>
-        <label class="f">Server address</label>
-        <input type="text" id="remoteurl" placeholder="play.example.com:443  ·  http://192.168.1.20:8888">
-        <div class="inline" style="margin-top:8px">
-          <div>
-            <label class="f">Bridge port</label>
-            <input type="number" id="proxyport" min="1" max="65535" value="8890">
-          </div>
-          <div>
-            <label class="f">Serve my build</label>
-            <select id="proxylocal">
-              <option value="0">no — use the server's own client</option>
-              <option value="1">yes — my client, their world</option>
-            </select>
-          </div>
-        </div>
-        <div class="row" style="margin-top:10px">
-          <button class="primary" onclick="startProxy()">Bridge &amp; play</button>
-          <button onclick="openDirect()">Open directly</button>
-          <button onclick="stopProxy()">Stop bridge</button>
-        </div>
-        <div class="hint">A bridge serves the page on localhost and tunnels everything — http and the game socket — to that address. "Serve my build" swaps in the client bundle built for the selected install, so your mods work on someone else's world. Servers that pin <b>allowedOrigin</b> can refuse the bridged socket; direct open always works.</div>
-      </div>
-    </section>
-  </div>
-</main>
-
-<div class="log">
-  <div class="loghead">
-    <div class="tabs">
-      <div class="tab on" data-which="job" onclick="setLog('job')">Task</div>
-      <div class="tab" data-which="server" onclick="setLog('server')">Server</div>
-      <div class="tab" data-which="proxy" onclick="setLog('proxy')">Bridge</div>
-    </div>
-    <span class="grow" id="jobstatus"></span>
-    <button class="ghost" onclick="clearLog()">Clear view</button>
-  </div>
-  <div class="logbody" id="logbody"></div>
-</div>
+<div id="toasts" aria-live="polite"></div>
+<div id="root"><div style="padding:60px"><div class="skeleton" style="width:min(760px,100%);margin:0 auto"></div></div></div>
 
 <script>
 const TOKEN = "__LCLITE_TOKEN__";
-let S = null, sel = null, logWhich = "job", cursors = {job:0, server:0, proxy:0}, lines = [], busyJob = null;
+let S = null, sel = null, view = "auto", logWhich = "job", busyJob = null;
+let cursors = { job: 0, server: 0, proxy: 0 }, mainLog = [];
+let wiz = { step: 0, rev: null, path: "", jobId: null, phase: -1, error: "", mode: "fresh" };
+let folder = "";
+// Section signatures: a poll must never stomp on what you're doing (tick boxes,
+// typed ports, a selected checkbox), so each block re-renders only when the
+// data behind it actually changed.
+let sig = { revs: "", installs: "", detail: "" };
 
+/* ---------------------------------------------------------------- plumbing */
 async function api(path, body) {
   const opt = { headers: { "X-LCLite-Token": TOKEN }, method: body === undefined ? "GET" : "POST" };
   if (body !== undefined) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(body); }
@@ -189,300 +250,787 @@ async function api(path, body) {
   if (data && data.ok === false) throw new Error(data.error || "request failed");
   return data;
 }
+const $ = id => document.getElementById(id);
 function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+function mb(bytes){ return bytes ? (bytes/1048576).toFixed(1) + " MB" : ""; }
+function ago(ts){
+  if (!ts || ts.startsWith("0001")) return "";
+  const d = (Date.now() - new Date(ts).getTime()) / 1000;
+  if (isNaN(d)) return "";
+  if (d < 90) return "just now";
+  if (d < 3600) return Math.round(d/60) + " min ago";
+  if (d < 86400) return Math.round(d/3600) + " h ago";
+  const days = Math.round(d/86400);
+  return days === 1 ? "yesterday" : days + " days ago";
+}
+function toast(msg, kind){
+  const el = document.createElement("div");
+  el.className = "toast " + (kind || "");
+  el.textContent = msg;
+  $("toasts").appendChild(el);
+  setTimeout(() => { el.style.opacity = "0"; el.style.transform = "translateX(10px)"; el.style.transition = "all .25s"; }, 4200);
+  setTimeout(() => el.remove(), 4600);
+}
+async function act(fn, label, quiet){
+  try { return await fn(); }
+  catch (e) { if (!quiet) toast((label ? label + ": " : "") + e.message, "bad"); mainLog.push(["err", "!! " + e.message]); throw e; }
+}
 
-/* ---- state ---- */
-async function refresh() {
-  try {
-    S = await api("state");
-  } catch (e) { console.warn(e); return; }
+/* ---------------------------------------------------------------- state */
+async function refresh(first){
+  try { S = await api("state"); }
+  catch (e) { if (first) setTimeout(() => refresh(true), 1500); return; }
   render();
 }
-async function refreshRevs(force) {
-  if (force) logRaw("step", "refreshing the Lost City branch list…");
+async function refreshRevs(force){
+  if (force) toast("Reading the Lost City branch lists…");
   try {
     const r = await api("revs");
-    if (r.note) logRaw("err", r.note);
+    if (r.note) toast(r.note, "bad");
     await refresh();
-  } catch (e) { logRaw("err", "" + e.message); }
+  } catch (e) { toast("Could not read the branch lists: " + e.message, "bad"); }
 }
 
-/* ---- rendering ---- */
-function render() {
-  document.getElementById("ver").textContent = "v" + S.version + " · " + S.platform + " · " + S.data_dir;
-  renderChips();
-  renderRevs();
-  renderInstalls();
-  renderDetail();
-  renderServer();
-}
-
-function renderChips() {
-  const el = document.getElementById("chips");
-  el.innerHTML = "";
-  for (const t of S.tools) {
-    const d = document.createElement("span");
-    d.className = "chip " + (t.ok ? "ok" : "bad");
-    d.textContent = (t.ok ? "✓ " : "✗ ") + t.name + (t.version ? " " + t.version.replace(/^v/, "") : "");
-    if (!t.ok) { d.title = (t.hint || "") + " — click to install"; d.onclick = installBun; }
-    el.appendChild(d);
+/* ---------------------------------------------------------------- render */
+// The wizard is a place you go, not a condition that can flip under you: once
+// the setup starts, the install showing up in state must not yank the screen
+// away mid-progress. So the view is decided once and then only changed by you.
+function decideView(){
+  if (view !== "auto") return;
+  const fresh = (S.installs || []).length === 0 && !S.skip_wizard;
+  view = fresh ? "wizard" : "main";
+  // Land on something: the last revision used, else the first install.
+  if (view === "main" && !sel && (S.installs || []).length) {
+    const pick = (S.installs || []).find(i => i.rev_label === S.last_rev) || (S.installs || [])[0];
+    sel = pick.id;
+  }
+  // Reloading the page during a setup? Pick the install back up where it is.
+  const job = S.job;
+  if (view === "wizard" && job && job.status === "running" && ["install", "mods", "build"].includes(job.kind)) {
+    wiz.step = INSTALLING;
+    wiz.rev = job.install_id || wiz.rev;
+    wiz.phase = phaseOf(job.step, job.lines || []);
+    busyJob = job.id;
+    cursors.job = 0;
   }
 }
 
-function renderRevs() {
-  const el = document.getElementById("revs");
-  el.innerHTML = "";
-  const installed = new Map((S.installs || []).map(i => [i.rev_label || i.id, i]));
-  const sub = document.getElementById("revsub");
-  sub.textContent = (S.revs_at ? "branches last read " + new Date(S.revs_at).toLocaleString() : "branch list from the Lost City repos");
-  for (const r of S.revs) {
-    const have = installed.get(r.name);
-    const row = document.createElement("div");
-    row.className = "rev" + (have ? " installed" : "");
-    const badges = [];
-    if (r.client) badges.push('<span class="badge on">client</span>');
-    if (r.engine) badges.push('<span class="badge on">engine</span>');
-    if (r.content) badges.push('<span class="badge on">content</span>');
-    if (r.name === "289") badges.push('<span class="badge mods">LCLite mods</span>');
-    if (!r.engine || !r.content) badges.push('<span class="badge">no server side</span>');
-    row.innerHTML = '<b>' + esc(r.name) + '</b>' + badges.join("") + '<span class="grow"></span>';
-    const btn = document.createElement("button");
-    if (have) {
-      btn.textContent = "Open";
-      btn.className = "ghost";
-      btn.onclick = () => { sel = have.id; render(); };
-    } else {
-      btn.textContent = r.engine && r.content ? "Install" : "Client only";
-      btn.className = "primary";
-      btn.disabled = !(r.engine && r.content);
-      btn.onclick = () => install(r.name);
+function render(){
+  if (!S) return;
+  decideView();
+  const showWizard = view === "wizard";
+  const want = showWizard ? "wizard" : "main";
+  if ($("root").dataset.view !== want) {
+    $("root").dataset.view = want;
+    sig = { revs: "", installs: "", detail: "" };
+    sigWiz = "";
+    $("root").innerHTML = showWizard ? wizardHTML() : mainHTML();
+    if (showWizard) renderWizard(); else renderMain(true);
+    return;
+  }
+  if (showWizard) renderWizard(); else renderMain(false);
+}
+
+/* ================================ THE WIZARD ============================= */
+const WELCOME = 0, PICK = 1, READY2GO = 2, INSTALLING = 3, DONE = 4;
+
+function wizardHTML(){
+  return `<div id="wizard" class="screen"><div class="wcard">
+    <div class="steps">${[WELCOME,PICK,READY2GO,INSTALLING,DONE].map(i =>
+      `<i class="${wiz.step === i ? "on" : (wiz.step > i ? "done" : "")}"></i>`).join("")}</div>
+    <div id="wbody"></div>
+  </div></div>`;
+}
+
+let sigWiz = "";
+function renderWizard(){
+  const b = $("wbody");
+  if (!b) return;
+  // The progress dots live in the static shell, so they are not rebuilt with the
+  // step body — update them here or they silently stick on step one.
+  document.querySelectorAll(".steps i").forEach((el, i) => {
+    el.className = wiz.step === i ? "on" : (wiz.step > i ? "done" : "");
+  });
+  // Don't rebuild the wizard on every poll: only when something it shows changed.
+  // (Live phase ticks are done in place by renderPeek.)
+  const s = [wiz.step, wiz.rev, wiz.error, (S.revs || []).length, (S.installs || []).length,
+             S.recommended, S.engine && S.engine.state].join("|");
+  if (s === sigWiz) return;
+  sigWiz = s;
+  const rec = (S.revs || []).find(r => r.recommended) || (S.revs || [])[0];
+  switch (wiz.step) {
+    case WELCOME: {
+      const modsRev = S.overlay_rev || "289";
+      b.innerHTML = `
+        <div class="wcols">
+          <div>
+            <div class="whero">
+              ${logo(52)}
+              <div>
+                <h1 class="wtitle">Welcome to LCLite.</h1>
+                <p class="wlede" style="margin-bottom:0">A mod layer for the Lost City webclient, with a launcher that
+                does the setup for you. Pick a revision and it fetches, builds and opens the game — no terminal, no
+                hand-merging.</p>
+              </div>
+            </div>
+            <div class="chips" style="margin:16px 0 20px">
+              <span class="chip">${mb(S.binary_size)} · no runtime</span>
+              <span class="chip">${(S.revs || []).length} revisions available</span>
+              <span class="chip">nothing sent anywhere</span>
+            </div>
+            <div class="row" style="gap:10px;flex-wrap:wrap">
+              <button class="primary big" onclick="wizGo(${PICK})">Set up a revision&nbsp; →</button>
+              <button class="big ghost" onclick="wizCustom()">Use an existing install</button>
+            </div>
+            <div style="margin-top:13px"><button class="linky" onclick="wizSkip()">Skip setup — show me the full launcher</button></div>
+          </div>
+          <aside class="aside">
+            <h5>What you get</h5>
+            <ul>
+              <li><span class="i">☾</span>OSRS-style camera: zoom, rotate, chat scroll</li>
+              <li><span class="i">📈</span>XP drops and a level tracker</li>
+              <li><span class="i">🔮</span>HP / prayer / energy orbs</li>
+              <li><span class="i">🟩</span>True tile and smooth shading</li>
+              <li><span class="i">🃏</span>TCG card packs, ${"6,376"} collectibles</li>
+            </ul>
+            <div class="foot">Mods live in one overlay you can switch off any time. They're anchored to revision
+            <b>${esc(modsRev)}</b>, the branch Lost City develops now.</div>
+          </aside>
+        </div>`;
+      break;
     }
-    row.appendChild(btn);
-    el.appendChild(row);
+    case PICK: {
+      const playable = (S.revs || []).filter(r => r.engine && r.content);
+      const rest = (S.revs || []).filter(r => !(r.engine && r.content));
+      if (!wiz.rev && rec) wiz.rev = rec.name;
+      b.innerHTML = `
+        <h1 class="wtitle">Which Lost City revision would you like to use?</h1>
+        <p class="wlede">${rec ? `<b>${esc(rec.name)}</b> is the one Lost City is developing right now${S.recommended_updated ? ` (content updated ${ago(S.recommended_updated)})` : ""} — pick it unless you want to visit an older moment in the game's history.` : "Pick a revision to install."}</p>
+        <div class="revscroll">
+          ${playable.map(r => {
+            const on = r.name === wiz.rev;
+            const mods = r.name === S.overlay_rev;
+            return `<div class="revecard ${on ? "on" : ""}" tabindex="0" role="radio" aria-checked="${on}" onclick="wizPick('${esc(r.name)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();wizPick('${esc(r.name)}')}">
+              <div class="n">${esc(r.name)}</div>
+              <div class="grow">
+                <div>${r.recommended ? "Recommended" : "Lost City revision"} ${r.client ? "" : "<span class='t'>(server + content only)</span>"}</div>
+                <div class="t">${mods ? "LCLite mods available — camera, XP drops, orbs, true tile, TCG" : "vanilla upstream client, no LCLite mods (they're anchored to " + esc(S.overlay_rev || "289") + ")"}</div>
+              </div>
+              <div class="tick">✓</div>
+            </div>`;
+          }).join("")}
+        </div>
+        ${rest.length ? `<details class="more" style="margin-top:14px"><summary>More branches — client-only work (${rest.length})</summary>
+          <div class="body">${rest.map(r => esc(r.name)).join(" · ")}<br>These have no matching server content, so they can't be installed here.</div></details>` : ""}
+        <div class="wfoot">
+          <button class="ghost" onclick="wizGo(${WELCOME})">Back</button>
+          <span class="spacer"></span>
+          <span class="footpath" title="${esc(S.data_dir)}">${wiz.rev ? "installs to " + esc(S.data_dir) : "pick a revision to continue"}</span>
+          <button class="primary" ${wiz.rev ? "" : "disabled"} onclick="wizGo(${READY2GO})">Continue →</button>
+        </div>`;
+      break;
+    }
+    case READY2GO: {
+      const mods = wiz.rev === S.overlay_rev;
+      b.innerHTML = `
+        <h1 class="wtitle">What you're getting</h1>
+        <p class="wlede">Revision <b>${esc(wiz.rev || "")}</b>, built on your machine.</p>
+        <div class="card">
+          <h3>We will</h3>
+          <div class="phases" style="margin:2px 0 0">
+            <div class="phase"><span class="mark">↓</span>Download the Lost City client, engine and content at ${esc(wiz.rev || "")}</div>
+            <div class="phase"><span class="mark">⚙</span>Install the server's dependencies (~1 min)</div>
+            <div class="phase"><span class="mark">✦</span>${mods ? "Apply the LCLite mods and build your client" : "Build the client bundle"}</div>
+          </div>
+        </div>
+        ${mods ? `<div class="card">
+          <h3>LCLite comes along <span class="grow"></span><span class="pill mods">on by default</span></h3>
+          <div class="wcheck">
+            <span>☾ OSRS camera</span><span>📈 XP drops</span><span>🔮 Stat orbs</span><span>🟩 True tile</span>
+            <span>🃏 TCG packs</span><span>🎨 Smooth shading</span><span>🚀 GPU (beta)</span><span>⚙ F1 panel</span>
+          </div>
+          <div class="hint">Everything is a toggle afterwards — the F1 panel in-game, or this launcher's mod list.</div>
+        </div>` : `<div class="note">Heads up: LCLite's mods are anchored to revision ${esc(S.overlay_rev || "289")}, so this revision installs vanilla. You can install ${esc(S.overlay_rev || "289")} later from the launcher.</div>`}
+        <div class="hint">Around ${mods ? "1–3" : "1–2"} minutes on a normal connection. Everything stays in <span class="path">${esc(S.data_dir)}</span>.</div>
+        <div class="wfoot">
+          <button class="ghost" onclick="wizGo(${PICK})">Back</button>
+          <span class="spacer"></span>
+          <button class="primary big" onclick="wizInstall()">Install &amp; build →</button>
+        </div>`;
+      break;
+    }
+    case INSTALLING: {
+      const phases = ["Fetching Lost City", "Installing what the server needs", wiz.rev === S.overlay_rev ? "Applying LCLite mods & building" : "Building the client", "Ready to play"];
+      b.innerHTML = `
+        <h1 class="wtitle">Setting up ${esc(wiz.rev || "")}…</h1>
+        <p class="wlede">Sit back — this part is just downloading and compiling. It only happens once per revision.</p>
+        ${wiz.error ? `
+          <div class="card" style="border-color:#5a3630;background:linear-gradient(180deg,#241816,#1d1413)">
+            <h3 style="color:var(--bad)">Setup stopped</h3>
+            <div class="hint" style="color:var(--text)">${esc(wiz.error)}</div>
+            <div class="row wrap" style="margin-top:12px">
+              <button class="primary" onclick="wizInstall()">Try again</button>
+              <button onclick="wizGo(${READY2GO})">Back</button>
+              <button onclick="finishWizard()">Open the full launcher</button>
+            </div>
+            <div class="hint">The full log is in the console below.</div>
+          </div>`
+        : `<div class="phases">${phases.map((p, i) => `
+            <div class="phase ${wiz.phase === i ? "active" : (wiz.phase > i ? "done" : "")}">
+              <span class="mark">${wiz.phase > i ? "✓" : (wiz.phase === i ? "" : i + 1)}</span>${p}</div>`).join("")}
+          </div>
+          <div class="peek" id="peek"></div>
+          <div class="wfoot">
+            <span class="t" style="color:var(--dim2);font-size:12px">Working…</span>
+            <span class="spacer"></span>
+            <button class="ghost" onclick="openConsoleNow()">Full log →</button>
+          </div>`}`;
+      break;
+    }
+    case DONE: {
+      const inst = (S.installs || []).find(i => i.rev_label === wiz.rev) || (S.installs || [])[0];
+      const eng = S.engine || {};
+      b.innerHTML = `
+        <div class="whero">
+          <div style="width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#1f2a17;border:1px solid #3d4a2e;color:var(--good);font-size:24px">✓</div>
+          <div>
+            <h1 class="wtitle">You're ready.</h1>
+            <p class="wlede" style="margin:0">${esc(wiz.rev || "")} is installed and built. Pressing play starts the world and opens the client in your browser.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="status"><span class="dot ${eng.state === "running" ? "live" : eng.state === "starting" ? "busy" : ""}"></span>
+          ${eng.state === "running" ? `World is up — <a href="http://localhost${eng.port == 80 ? "" : ":" + eng.port}/rs2.cgi" target="_blank">open the client</a>`
+            : eng.state === "starting" ? "Starting the world…" : "No world running yet"}</div>
+          <div class="row wrap" style="margin-top:12px;align-items:flex-end">
+            ${eng.state === "running"
+              ? `<button class="primary big" onclick="openClient()">Open the client →</button><button onclick="stopServer()">Stop the world</button>`
+              : `<button class="primary big" onclick="play()">Play ${esc(wiz.rev || "")} →</button>
+                 <div style="max-width:120px"><label class="f" style="margin-top:0">Web port</label>
+                   <input type="number" id="wizport" min="1" max="65535" value="${eng.port || 80}"></div>`}
+          </div>
+          <div class="hint">First boot repacks the game cache, so give it a minute — progress and the full log live in the launcher's console.</div>
+        </div>
+        <div class="wfoot">
+          <button class="ghost" onclick="wizGo(${PICK})">Install another revision</button>
+          <span class="spacer"></span>
+          <button onclick="finishWizard()">Open the full launcher</button>
+        </div>`;
+      break;
+    }
   }
 }
 
-function renderInstalls() {
-  const el = document.getElementById("installs");
-  el.innerHTML = "";
-  if (!S.installs || !S.installs.length) { el.innerHTML = '<div class="empty">Nothing installed yet — pick a revision above.</div>'; return; }
-  for (const i of S.installs) {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.style.cursor = "pointer";
-    card.style.borderColor = (sel === i.id) ? "#6b5a22" : "";
-    const modCount = (i.mods || []).length;
-    card.innerHTML = '<h3>' + esc(i.id === i.rev_label ? i.id : i.id + " (" + i.rev_label + ")") + (i.custom ? ' <span class="badge">existing folder</span>' : "") + '</h3>' +
-      '<div class="path">' + esc(i.path) + '</div>' +
-      '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">' +
-        (i.has_overlay ? '<span class="badge on">overlay</span>' : '') +
-        (i.mods_allowed ? '<span class="badge mods">mods ready</span>' : '') +
-        (modCount ? '<span class="badge">' + modCount + ' mods selected</span>' : '') +
-        (i.engine_deps ? '<span class="badge on">deps</span>' : '<span class="badge">needs setup</span>') +
-        (i.client_bundle ? '<span class="badge on">bundle</span>' : '') +
-      '</div>';
-    card.onclick = (e) => { sel = i.id; render(); };
-    el.appendChild(card);
+function wizGo(step){ wiz.step = step; wiz.error = ""; render(); }
+function wizPick(rev){ wiz.rev = rev; render(); }
+function wizCustom(){ wiz.mode = "custom"; pickFolder(true); }
+async function wizSkip(){ await act(() => api("config", { skip_wizard: true }), "config", true); view = "main"; await refresh(); }
+async function finishWizard(){
+  if (wiz.mode !== "custom") await act(() => api("config", { skip_wizard: true }), "config", true);
+  view = "main";
+  const inst = (S.installs || []).find(i => i.rev_label === wiz.rev);
+  if (inst) sel = inst.id;
+  await refresh();
+  toast("Launcher unlocked — revisions, mods and custom servers are in the full view.", "good");
+}
+async function wizInstall(){
+  wiz.step = INSTALLING; wiz.phase = 0; wiz.error = ""; render();
+  try {
+    const r = await api("install", { rev: wiz.rev, client: true, overlay: wiz.rev === S.overlay_rev });
+    busyJob = r.job; cursors.job = 0;
+    const job = await waitForJob(r.job);
+    if (job.status !== "ok") { wiz.error = job.err || "install failed"; render(); return; }
+    wiz.phase = 3;
+    sel = wiz.rev;
+    await refresh();
+    setTimeout(() => { wiz.step = DONE; render(); }, 550);
+  } catch (e) {
+    wiz.error = e.message; render();
   }
 }
+async function waitForJob(id){
+  for (;;) {
+    const r = await api("job?id=" + encodeURIComponent(id) + "&since=" + cursors.job).catch(() => null);
+    const job = r && r.job;
+    if (!job) { await new Promise(s => setTimeout(s, 700)); continue; }
+    for (const ln of job.lines || []) {
+      cursors.job = Math.max(cursors.job, ln.n + 1);
+      pushLog(classify(ln.text), ln.text);
+    }
+    if (wiz.step === INSTALLING) {
+      const p = phaseOf(job.step, job.lines || []);
+      if (p > wiz.phase) wiz.phase = p;
+      renderPeek();
+    }
+    if (job.status !== "running") return job;
+    await new Promise(s => setTimeout(s, 700));
+  }
+}
+function phaseOf(step, lines){
+  const s = (step || "").toLowerCase();
+  let p = 0;
+  if (/dependenc|npm install/.test(s)) p = 1;
+  if (/mod|build|bundle/.test(s)) p = 2;
+  return p;
+}
+function renderPeek(){
+  const peek = $("peek");
+  if (!peek) return;
+  const tail = mainLog.slice(-4).map(l => l[1]).join("\n");
+  peek.textContent = tail || "…";
+  peek.scrollTop = peek.scrollHeight;
+  // phase markers without a full re-render (keeps the spinner smooth)
+  document.querySelectorAll("#wbody .phase").forEach((el, i) => {
+    el.className = "phase " + (wiz.phase === i ? "active" : (wiz.phase > i ? "done" : ""));
+    const m = el.querySelector(".mark");
+    if (m) m.textContent = wiz.phase > i ? "✓" : (wiz.phase === i ? "" : String(i + 1));
+  });
+}
 
-function currentInstall() { return (S.installs || []).find(i => i.id === sel) || null; }
-
-function renderDetail() {
-  const box = document.getElementById("detail");
-  const title = document.getElementById("detailtitle");
-  const i = currentInstall();
-  if (!i) { title.textContent = "Install"; box.className = "empty"; box.innerHTML = "Pick an install on the left."; return; }
-  box.className = "";
-  title.textContent = "Install · " + i.id;
-  const chosen = new Set((i.mods && i.mods.length) ? i.mods : (i.mods_available || []).map(m => m.name));
-  const mods = (i.mods_available || []).map(m => {
-    const on = m.required || chosen.has(m.name);
-    return '<div class="modrow' + (m.required ? ' req' : '') + '">' +
-      '<input type="checkbox" data-mod="' + esc(m.name) + '"' + (on ? ' checked' : '') + (m.required ? ' disabled' : '') + '>' +
-      '<div><div class="mname">' + esc(m.label) + '</div><div class="mdesc">' + esc(m.desc) + '</div></div></div>';
+/* ================================ FULL VIEW ============================== */
+function mainHTML(){
+  // Tool versions come straight from --version, so strip the tool's own name
+  // ("git version 2.53" / "bun 1.4.2") before printing it next to its label.
+  const tools = (S.tools || []).map(t => {
+    let v = (t.version || "").replace(/^v/, "");
+    if (t.name === "git") v = v.replace(/^git version\s*/i, "");
+    if (t.name === "bun") v = v.replace(/^bun\s*/i, "").replace(/^v/, "");
+    return `<span class="chip ${t.ok ? "ok" : "bad"}" title="${esc(t.path || t.hint || "")}${t.ok ? "" : " — click to fetch it"}" ${t.ok ? "" : `onclick="installBun()"`}>${t.ok ? "✓" : "✗"} ${esc(t.name)}${v ? " " + esc(v) : ""}</span>`;
   }).join("");
+  return `
+  <div class="screen">
+    <header class="top">
+      <div class="brand">${logo(22)}<div><b>LCLite</b> <span>launcher</span></div></div>
+      <div class="meta">
+        <span>v${esc(S.version)}</span><span class="dotsep">·</span>
+        <span title="the entire launcher">${mb(S.binary_size)} single file</span>
+      </div>
+      <span class="spacer"></span>
+      <span class="chips">${tools}</span>
+      <button class="ghost" onclick="refreshRevs(true)">Refresh branches</button>
+      <button class="ghost" onclick="openWizardAgain()">Setup guide</button>
+      <button class="ghost" onclick="quitLauncher()">Quit</button>
+    </header>
 
-  box.innerHTML =
-    '<div class="card">' +
-      '<h3>' + esc(i.rev_label || i.id) + (i.custom ? " · existing folder" : " · managed install") + '</h3>' +
-      '<div class="path">' + esc(i.path) + '</div>' +
-      '<div style="margin-top:8px" class="hint">' +
-        (i.has_client ? "webclient ✓  " : "webclient ✗  ") +
-        (i.has_engine ? "engine ✓  " : "engine ✗  ") +
-        (i.has_overlay ? "lclite ✓" : "lclite ✗") +
-        (i.built_at && i.built_at !== "0001-01-01T00:00:00Z" ? "  ·  built " + new Date(i.built_at).toLocaleString() : "") +
-      '</div>' +
-    '</div>' +
-    '<div class="card">' +
-      '<h3>LCLite mods</h3>' +
-      (i.mods_allowed
-        ? '<div class="sub" style="margin:2px 0 6px">tick what you want, then apply — everything unticked is stripped back to upstream. Nothing ticked means the full default set.</div>' + (mods || '<div class="empty">no mods found in lclite/mods</div>')
-        : '<div class="note">' + (i.has_overlay
-            ? "LCLite hunks are anchored to revision 289 — this install is " + esc(i.rev_label || "?") + ", so mods stay off."
-            : "No lclite/ folder in this install. Copy your lclite/ folder next to webclient/ and engine/ to enable mods.") + '</div>') +
-      '<div class="row" style="margin-top:10px;flex-wrap:wrap">' +
-        '<button class="primary" onclick="applyMods()"' + (i.mods_allowed ? '' : ' disabled') + '>Apply mods &amp; build</button>' +
-        '<button onclick="stripMods()"' + (i.mods_allowed ? '' : ' disabled') + '>Strip all mods</button>' +
-        '<button onclick="revertMods()"' + (i.has_overlay ? '' : ' disabled') + '>Reset to pristine</button>' +
-        '<button onclick="buildOnly()">Build bundle</button>' +
-      '</div>' +
-    '</div>' +
-    '<div class="card">' +
-      '<h3>Housekeeping</h3>' +
-      '<div class="row" style="flex-wrap:wrap">' +
-        '<button onclick="updateInstall()"' + (i.custom ? ' disabled' : '') + '>Update from GitHub</button>' +
-        '<button class="danger" onclick="removeInstall(false)">Forget</button>' +
-        '<button class="danger" onclick="removeInstall(true)"' + (i.custom ? ' disabled' : '') + '>Delete folder</button>' +
-      '</div>' +
-      '<div class="hint">Forget removes it from this list only. Delete folder wipes the cloned revision (never an existing folder you added).</div>' +
-    '</div>';
+    <main class="grid">
+      <div>
+        <section class="panel">
+          <h2>Lost City revisions<span class="grow"></span>
+            <span class="chip" style="text-transform:none;letter-spacing:0">${(S.revs || []).length} branches</span></h2>
+          <div class="sub">${S.revs_at ? "read " + ago(S.revs_at) : "from the Lost City repos"}</div>
+          <div class="revlist" id="revlist">${revRows()}</div>
+        </section>
 
-  const p = document.getElementById("port");
-  if (p && !p.dataset.touched) { p.value = i.rev_label === "289" ? 80 : 8888; }
+        <section class="panel">
+          <h2>Installs<span class="grow"></span>
+            ${(S.installs || []).length ? `<span class="chip ok">${(S.installs || []).length} ready</span>` : ""}</h2>
+          <div class="sub">everything you've set up, ready to launch</div>
+          <div id="installs">${installRows()}</div>
+          <details class="block">
+            <summary>Use an existing folder instead</summary>
+            <div class="inner">
+              <div class="path" id="importpath">${folder ? esc(folder) : "no folder picked yet"}</div>
+              <div class="row" style="margin-top:9px">
+                <button onclick="pickFolder()">Browse…</button>
+                <button class="primary" ${folder ? "" : "disabled"} onclick="importFolder()">Add it</button>
+              </div>
+              <div class="hint">Any folder holding <b>webclient/</b> and <b>engine/</b> works. With <b>lclite/</b> inside it on revision ${esc(S.overlay_rev || "289")}, mods are offered too.</div>
+            </div>
+          </details>
+        </section>
+      </div>
+
+      <div>
+        <section class="panel">
+          <h2 id="detailtitle">Install</h2>
+          <div id="detail">${detailHTML()}</div>
+        </section>
+
+        <section class="panel">
+          <h2>Server</h2>
+          ${serverHTML()}
+        </section>
+      </div>
+    </main>
+
+    <div class="console" id="console">
+      <div class="head">
+        <div class="row" style="gap:4px">
+          <div class="tab on" data-which="job" onclick="setLog('job')">Task</div>
+          <div class="tab" data-which="server" onclick="setLog('server')">Server</div>
+          <div class="tab" data-which="proxy" onclick="setLog('proxy')">Bridge</div>
+        </div>
+        <span class="spacer"></span>
+        <span class="meta" id="jobstatus"></span>
+        <button class="ghost" onclick="clearLog()">Clear</button>
+        <button class="ghost" onclick="toggleConsole()">Hide</button>
+      </div>
+      <div class="body" id="logbody"></div>
+    </div>
+  </div>`;
 }
 
-function renderServer() {
-  const e = S.engine || {}, pr = S.proxy || {};
-  const state = e.state || "stopped", plive = pr.running;
-  const dot = document.getElementById("sdot"), st = document.getElementById("sstatus");
-  dot.className = "dot" + (state === "running" ? " live" : state === "starting" ? " busy" : "");
-  const clientURL = "http://localhost" + (e.port == 80 ? "" : ":" + (e.port || "")) + "/rs2.cgi";
-  if (state === "running") {
-    st.innerHTML = 'serving <b>' + esc(e.install) + '</b> on port ' + e.port +
-      (e.game_port ? ' <span class="chip">game ' + e.game_port + '</span>' : '') +
-      ' — <a href="' + clientURL + '" target="_blank">open the client</a>';
-  } else if (state === "starting") {
-    st.innerHTML = 'starting <b>' + esc(e.install) + '</b>… a first boot repacks the cache, give it a minute';
-  } else if (state === "failed") {
-    st.innerHTML = '<span style="color:var(--bad)">server stopped: ' + esc(e.error || "see the log") + '</span>';
-  } else {
-    st.innerHTML = plive ? 'bridge running on port ' + pr.port + ' → ' + esc(pr.target || '') : "no server running";
+function revRows(){
+  const installed = new Map((S.installs || []).map(i => [i.rev_label || i.id, i]));
+  const rank = r => r.recommended ? 0 : ((r.engine && r.content) ? 1 : 2);
+  const num = n => { const m = String(n).match(/^[0-9.]+/); return m ? parseFloat(m[0]) : -1; };
+  const order = (S.revs || []).slice().sort((a, b) =>
+    rank(a) - rank(b) || num(b.name) - num(a.name) || String(a.name).localeCompare(String(b.name)));
+  return order.map(r => {
+    const have = installed.get(r.name);
+    const playable = r.engine && r.content;
+    const tags = [];
+    if (r.recommended) tags.push('<span class="tag rec">recommended</span>');
+    if (r.name === S.overlay_rev) tags.push('<span class="tag mods">LCLite mods</span>');
+    if (have) tags.push('<span class="tag ok">installed</span>');
+    if (!playable) tags.push('<span class="tag off">client only</span>');
+    // One accent per list: the row you should press is the recommended revision.
+    const cls = r.recommended && !have ? "primary" : "ghost";
+    const btn = have
+      ? `<button class="ghost" onclick="event.stopPropagation();selectInstall('${esc(have.id)}')">Open</button>`
+      : `<button class="${cls}" ${playable ? "" : "disabled"} onclick="event.stopPropagation();install('${esc(r.name)}')">Install</button>`;
+    return `<div class="rev ${r.recommended ? "rec" : ""} ${have ? "installed" : ""} ${playable ? "" : "plain"}" title="${playable ? "client + engine + content" : "no server content on this branch"}">
+      <span class="num">${esc(r.name)}</span>
+      <span class="tags">${tags.join("")}</span>
+      <span class="grow"></span>${btn}</div>`;
+  }).join("");
+}
+
+function installRows(){
+  const list = S.installs || [];
+  if (!list.length) return `<div class="empty">Nothing here yet — pick a revision above and we'll do the rest.</div>`;
+  return list.map(i => `
+    <div class="install ${sel === i.id ? "on" : ""}" tabindex="0" onclick="selectInstall('${esc(i.id)}')"
+         onkeydown="if(event.key==='Enter'){selectInstall('${esc(i.id)}')}">
+      <div style="min-width:0">
+        <div class="name">${esc(i.id)}${i.custom ? ' <span class="tag off">existing folder</span>' : ""}</div>
+        <div class="path" title="${esc(i.path)}">${esc(i.path)}</div>
+      </div>
+      <span class="grow"></span>
+      ${i.mods_allowed ? `<span class="pill mods">${(i.mods || []).length || 0} mods</span>` : ""}
+      ${i.engine_deps ? `<span class="pill good">ready</span>` : `<span class="pill">needs setup</span>`}
+    </div>`).join("");
+}
+
+function currentInstall(){ return (S.installs || []).find(i => i.id === sel) || null; }
+
+function detailHTML(){
+  const i = currentInstall();
+  if (!i) {
+    const hasAny = (S.installs || []).length;
+    return `<div class="empty">${hasAny ? "Pick an install on the left." : "Install a revision and it shows up here — mods, server, housekeeping."}</div>`;
   }
-  document.getElementById("playbtn").disabled = (state === "running" || state === "starting");
-  document.getElementById("shint").textContent = (state === "running")
-    ? "Server log is in the console below (Server tab)."
-    : "Play runs `npm run quickstart` in the selected install's engine/. First boot repacks the cache — watch the Server tab.";
-  if (!document.getElementById("port").dataset.touched && (state === "running" || state === "starting")) document.getElementById("port").value = e.port;
+  const chosen = new Set((i.mods && i.mods.length) ? i.mods : (i.mods_available || []).map(m => m.name));
+  const mods = (i.mods_available || []).map(m => `
+    <div class="modrow ${m.required ? "req" : ""}">
+      ${m.required
+        ? `<span class="modcheck" data-mod="${esc(m.name)}" data-required="1" title="always included">✓</span>`
+        : `<input type="checkbox" data-mod="${esc(m.name)}" ${chosen.has(m.name) ? "checked" : ""}>`}
+      <div><div class="mname">${esc(m.label)}</div><div class="mdesc">${esc(m.desc)}</div></div>
+    </div>`).join("");
+  const facts = [
+    i.has_client ? "webclient ✓" : "webclient ✗",
+    i.has_engine ? "engine ✓" : "engine ✗",
+    i.has_overlay ? "lclite ✓" : "lclite ✗",
+    i.engine_deps ? "deps ✓" : "deps ✗",
+    i.client_bundle ? "bundle ✓" : "bundle ✗"
+  ].join(" · ");
+  return `
+    <div class="card">
+      <h3>${esc(i.rev_label || i.id)} ${i.custom ? '<span class="tag off">existing folder</span>' : ""}
+        <span class="grow"></span>${i.mods_allowed ? '<span class="pill good">mods ready</span>' : ""}</h3>
+      <div class="path">${esc(i.path)}</div>
+      <div class="hint">${facts}${i.built_at && !i.built_at.startsWith("0001") ? " · built " + ago(i.built_at) : ""}</div>
+      <div class="row wrap" style="margin-top:11px">
+        <button class="primary" onclick="play('${esc(i.id)}')">Play</button>
+        <button onclick="updateInstall()" ${i.custom ? "disabled" : ""}>Update</button>
+        <button onclick="buildOnly()">Rebuild</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>LCLite mods</h3>
+      ${i.mods_allowed
+        ? `<div class="sub" style="margin:0 0 6px">Tick what you want, then apply — unticked mods are stripped back to upstream. Nothing ticked = the full default set.</div>
+           <div class="modlist">${mods || '<div class="empty">no mods found in lclite/mods</div>'}</div>
+           <div class="row wrap" style="margin-top:10px">
+             <button class="primary" onclick="applyMods()">Apply mods &amp; build</button>
+             <button onclick="stripMods()">Strip all mods</button>
+             <button onclick="revertMods()">Reset to pristine</button>
+           </div>`
+        : `<div class="note">${i.has_overlay
+            ? `LCLite's hunks are anchored to revision ${esc(S.overlay_rev || "289")} — this install is ${esc(i.rev_label || "?")}, so mods stay off.`
+            : "No lclite/ folder in this install. Copy your lclite/ folder next to webclient/ and engine/ to enable mods."}</div>`}
+    </div>
+    <div class="card">
+      <h3>Housekeeping</h3>
+      <div class="row wrap">
+        <button class="danger" onclick="removeInstall(false)">Forget</button>
+        <button class="danger" onclick="removeInstall(true)" ${i.custom ? "disabled" : ""}>Delete folder</button>
+      </div>
+      <div class="hint">Forget removes it from this list only. Delete folder wipes the cloned revision (never a folder you added).</div>
+    </div>`;
 }
 
-/* ---- actions ---- */
-async function act(fn, label) {
-  try { return await fn(); }
-  catch (e) { logRaw("err", (label ? label + ": " : "") + e.message); }
+function serverHTML(){
+  const e = S.engine || {}, p = S.proxy || {};
+  const state = e.state || "stopped";
+  const port = parseInt($("port") ? $("port").value : "0", 10) || (e.port || 80);
+  const liveURL = `http://localhost${e.port == 80 ? "" : ":" + (e.port || 0)}/rs2.cgi`;
+  return `
+    <div class="card">
+      <div class="status"><span class="dot" id="sdot"></span><span id="serverstatus"></span></div>
+      <div class="grid2" style="margin-top:12px">
+        <div><label class="f">Web port</label><input type="number" id="port" min="1" max="65535" value="${e.port || 80}" oninput="this.dataset.touched=1"></div>
+        <div><label class="f">&nbsp;</label>
+          <div class="row">
+            <button class="primary" style="flex:1" id="playbtn" onclick="play()">Play</button>
+            <button id="stopbtn" onclick="stopServer()">Stop</button>
+          </div>
+        </div>
+      </div>
+      <div class="hint">Starts <span class="path">npm run quickstart</span> inside the selected install's engine folder. Two revisions can run at once — the launcher moves the game and management ports out of the way.</div>
+    </div>
+    <div class="card">
+      <h3>Custom server <span class="grow"></span><span class="pill">bridge</span></h3>
+      <label class="f">Server address</label>
+      <input type="text" id="remoteurl" placeholder="play.example.com:443">
+      <div class="hint" style="margin-top:5px">Hostname, IP or full URL — <span class="path">192.168.1.20:8888</span> and <span class="path">https://play.example.com</span> both work.</div>
+      <div class="grid2">
+        <div><label class="f">Bridge port</label><input type="number" id="proxyport" min="1" max="65535" value="${S.proxy_port || 8890}"></div>
+        <div><label class="f">Serve my build</label>
+          <select id="proxylocal">
+            <option value="0">no — use their client</option>
+            <option value="1">yes — my client, their world</option>
+          </select></div>
+      </div>
+      <div class="row wrap" style="margin-top:11px">
+        <button class="primary" id="bridgebtn" onclick="startProxy()">Bridge &amp; play</button>
+        <button onclick="openDirect()">Open directly</button>
+        <button id="stopbridgebtn" onclick="stopProxy()">Stop bridge</button>
+      </div>
+      <div class="hint">The client dials whatever host served it, so the bridge tunnels both the page and the game socket to that address. <b>Serve my build</b> swaps in your own built client, which is how your mods follow you onto someone else's world. A server that pins <b>allowedOrigin</b> can refuse a bridged socket — open it directly instead.</div>
+    </div>`;
 }
-async function install(rev) {
-  await act(() => api("install", { rev, client: true, overlay: rev === "289" }), "install");
-  sel = rev; await refresh();
+
+function renderMain(force){
+  const sRevs = JSON.stringify((S.revs || []).map(r => [r.name, r.recommended, r.engine, r.content]))
+    + "|" + S.overlay_rev + "|" + JSON.stringify((S.installs || []).map(i => [i.id, i.rev_label, i.engine_deps, i.mods_allowed]));
+  const sInstalls = JSON.stringify((S.installs || []).map(i => [i.id, i.path, i.custom, i.engine_deps, i.mods_allowed, (i.mods || []).length])) + "|" + sel;
+  const cur = currentInstall();
+  const sDetail = JSON.stringify(cur ? [cur.id, cur.path, cur.rev_label, cur.custom, cur.mods_allowed, cur.has_overlay,
+    cur.built_at, cur.mods, cur.mods_available && cur.mods_available.length] : null);
+
+  if (force || sRevs !== sig.revs) { sig.revs = sRevs; const el = $("revlist"); if (el) el.innerHTML = revRows(); }
+  if (force || sInstalls !== sig.installs) { sig.installs = sInstalls; const el = $("installs"); if (el) el.innerHTML = installRows(); }
+  if (force || sDetail !== sig.detail) { sig.detail = sDetail; const el = $("detail"); if (el) el.innerHTML = detailHTML(); }
+  const dt = $("detailtitle"); if (dt) dt.textContent = sel ? "Install · " + sel : "Install";
+
+  renderServerLive();
+  const js = $("jobstatus");
+  const j = S.job;
+  if (js) js.innerHTML = j ? `${esc(j.kind)} · <b>${esc(j.status)}</b>${j.step ? " · " + esc(j.step) : ""}` : (S.busy ? "working…" : "");
 }
-async function applyMods() {
-  const i = currentInstall(); if (!i) return;
-  const mods = [...document.querySelectorAll('#detail input[data-mod]')].filter(c => c.checked).map(c => c.dataset.mod);
-  await act(() => api("apply", { id: i.id, mods }), "apply");
+
+// The server card is updated in place: re-rendering it would wipe a half-typed port.
+function renderServerLive(){
+  const e = S.engine || {}, p = S.proxy || {};
+  const state = e.state || "stopped";
+  const dot = $("sdot");
+  if (dot) dot.className = "dot " + (state === "running" ? "live" : state === "starting" ? "busy" : "");
+  const st = $("serverstatus");
+  if (st) {
+    const url = `http://localhost${e.port == 80 ? "" : ":" + (e.port || 0)}/rs2.cgi`;
+    st.innerHTML = state === "running"
+      ? `serving <b>${esc(e.install)}</b> on port ${e.port}${e.game_port ? ` <span class="chip">game ${e.game_port}</span>` : ""} — <a href="${url}" target="_blank">open client</a>`
+      : state === "starting" ? `starting <b>${esc(e.install)}</b>… first boot repacks the cache`
+      : state === "failed" ? `<span style="color:var(--bad)">stopped: ${esc(e.error || "see the log")}</span>`
+      : p.running ? `bridge on port ${p.port} → ${esc(p.target || "")}` : "no world running";
+  }
+  const pb = $("playbtn"); if (pb) pb.disabled = state === "running" || state === "starting";
+  const sb = $("stopbtn"); if (sb) sb.disabled = !(state === "running" || state === "starting");
+  const bb = $("bridgebtn"); if (bb) bb.disabled = !!p.running;
+  const sbb = $("stopbridgebtn"); if (sbb) sbb.disabled = !p.running;
+  const port = $("port");
+  if (port && !port.dataset.touched && (state === "running" || state === "starting") && e.port) port.value = e.port;
+}
+
+/* ---------------------------------------------------------------- actions */
+function selectInstall(id){ sel = id; render(); }
+async function install(rev){
+  toast(`Installing ${rev} — this takes a minute…`);
+  const r = await act(() => api("install", { rev, client: true, overlay: rev === S.overlay_rev }), "install");
+  if (!r) return;
+  const job = await waitForJob(r.job);
+  if (job.status === "ok") { sel = rev; toast(`${rev} is ready — press Play.`, "good"); }
+  else toast(job.err || "install failed", "bad");
   await refresh();
 }
-async function stripMods() {
-  const i = currentInstall(); if (!i) return;
-  if (!confirm("Take every mod off " + i.id + "? (the tree goes back to upstream)")) return;
-  await act(() => api("strip", { id: i.id }), "strip");
+async function play(id){
+  const inst = id ? (S.installs || []).find(i => i.id === id) : currentInstall();
+  if (!inst) { toast("Pick an install first.", "bad"); return; }
+  sel = inst.id;
+  const field = $("port") || $("wizport");
+  const port = parseInt((field && field.value) || "0", 10);
+  const r = await act(() => api("run", { id: inst.id, port, open: true }), "play", true);
+  if (r) { setLog("server"); toast(`Starting ${inst.id} — the client opens when the world is up.`, "good"); }
   await refresh();
 }
-async function revertMods() { const i = currentInstall(); if (!i) return; await act(() => api("reset", { id: i.id }), "reset"); await refresh(); }
-async function buildOnly() { const i = currentInstall(); if (!i) return; await act(() => api("build", { id: i.id }), "build"); await refresh(); }
-async function updateInstall() { const i = currentInstall(); if (!i) return; await act(() => api("update", { id: i.id }), "update"); await refresh(); }
-async function removeInstall(wipe) {
+async function stopServer(){ await act(() => api("stop", {}), "stop", true); toast("Server stopped."); await refresh(); }
+async function openClient(){
+  const e = S.engine || {};
+  if (e.port) window.open(`http://localhost${e.port == 80 ? "" : ":" + e.port}/rs2.cgi`, "_blank");
+}
+async function applyMods(){
+  const i = currentInstall(); if (!i) return;
+  const mods = [...document.querySelectorAll('#detail [data-mod]')]
+    .filter(el => el.dataset.required === "1" || el.checked)
+    .map(el => el.dataset.mod);
+  toast(`Applying ${mods.length} mods and rebuilding…`);
+  const r = await act(() => api("apply", { id: i.id, mods }), "apply");
+  if (!r) return;
+  const job = await waitForJob(r.job);
+  toast(job.status === "ok" ? "Mods are live — reload the client page." : (job.err || "apply failed"), job.status === "ok" ? "good" : "bad");
+  await refresh();
+}
+async function revertMods(){ const i = currentInstall(); if (!i) return; const r = await act(() => api("reset", { id: i.id }), "reset"); if (r) toast("Working tree reset to pristine."); await refresh(); }
+async function stripMods(){ const i = currentInstall(); if (!i) return; const r = await act(() => api("strip", { id: i.id }), "strip"); if (r) toast("Every mod is off — back to upstream."); await refresh(); }
+async function buildOnly(){ const i = currentInstall(); if (!i) return; const r = await act(() => api("build", { id: i.id }), "build"); if (r) await waitForJob(r.job); await refresh(); }
+async function updateInstall(){ const i = currentInstall(); if (!i) return; const r = await act(() => api("update", { id: i.id }), "update"); if (r) { await waitForJob(r.job); toast("Updated from GitHub."); } await refresh(); }
+async function removeInstall(wipe){
   const i = currentInstall(); if (!i) return;
   if (wipe && !confirm("Delete " + i.path + " from disk?")) return;
   await act(() => api("remove", { id: i.id, wipe }), "remove");
-  sel = null; await refresh();
-}
-async function play() {
-  const i = currentInstall();
-  if (!i) { logRaw("err", "pick an install first"); return; }
-  const port = parseInt(document.getElementById("port").value || "0", 10);
-  const r = await act(() => api("run", { id: i.id, port, open: true }), "play");
-  setLog("server");                                    // watch the boot
-  if (r && r.url) logRaw("step", "booting — the client opens at " + r.url);
+  if (sel === i.id) sel = null;
+  toast(wipe ? "Deleted the folder." : "Forgotten (files left in place).");
   await refresh();
 }
-async function stopServer() { await act(() => api("stop", {}), "stop"); await refresh(); }
-async function startProxy() {
+async function startProxy(){
   const i = currentInstall();
-  const url = document.getElementById("remoteurl").value.trim();
-  const port = parseInt(document.getElementById("proxyport").value || "8890", 10);
-  const local = document.getElementById("proxylocal").value === "1";
-  const r = await act(() => api("proxy/start", { url, port, local_client: local, id: local && i ? i.id : "" }), "bridge");
-  if (r && r.url) logRaw("step", "bridge up: " + r.url);
+  const url = ($("remoteurl") || {}).value || "";
+  const port = parseInt(($("proxyport") || {}).value || "8890", 10);
+  const local = ($("proxylocal") || {}).value === "1";
+  const r = await act(() => api("proxy/start", { url: url.trim(), port, local_client: local, id: local && i ? i.id : "" }), "bridge", true);
+  if (r) { setLog("proxy"); toast(`Bridge up — your client opens at ${r.url}`, "good"); }
   await refresh();
 }
-async function stopProxy() { await act(() => api("proxy/stop", {}), "bridge"); await refresh(); }
-async function openDirect() {
-  const url = document.getElementById("remoteurl").value.trim();
-  await act(() => api("open", { url }), "open");
+async function stopProxy(){ await act(() => api("proxy/stop", {}), "bridge", true); toast("Bridge stopped."); await refresh(); }
+async function openDirect(){ const url = (($("remoteurl") || {}).value || "").trim(); if (!url) { toast("Type a server address first.", "bad"); return; } await act(() => api("open", { url }), "open", true); }
+async function installBun(){ toast("Fetching bun…"); const r = await act(() => api("bun", {}), "bun"); if (r) await waitForJob(r.job); await refresh(); }
+async function pickFolder(forWizard){
+  const r = await act(() => api("browse", { start: folder }), "browse", true);
+  if (!r) return;
+  if (forWizard) { wiz.path = r.path; await importFolder(true); return; }
+  folder = r.path;
+  const el = $("importpath"); if (el) el.textContent = folder;
+  const btn = el && el.parentElement.querySelector("button.primary");
+  if (btn) btn.disabled = false;
 }
-async function installBun() { await act(() => api("bun", {}), "bun"); await refresh(); }
-async function quitLauncher() {
-  if (!confirm("Close the launcher? A running server or bridge is stopped too.")) return;
-  await act(() => api("quit", {}), "quit");
-  document.body.innerHTML = '<div style="padding:40px;font:15px system-ui;color:#a2937f">LCLite launcher stopped — close this tab.</div>';
+async function importFolder(fromWizard){
+  const path = fromWizard ? wiz.path : folder;
+  if (!path) { toast("Pick a folder first.", "bad"); return; }
+  try {
+    const r = await api("import", { path });
+    if (r.install) {
+      sel = r.install.id;
+      folder = "";
+      toast(`Added ${r.install.id} from ${r.install.path}`, "good");
+      if (fromWizard) { wiz.rev = r.install.rev_label || r.install.id; wiz.step = DONE; await refresh(); return; }
+    }
+  } catch (e) { toast(e.message, "bad"); }
+  await refresh();
+}
+async function openWizardAgain(){ view = "wizard"; wiz = { step: PICK, rev: (S.recommended || null), path: "", jobId: null, phase: -1, error: "", mode: "add" }; render(); }
+function toggleConsole(){ const c = $("console"); if (c) c.classList.toggle("min"); }
+// The console lives in the dashboard, so hand the user over rather than
+// pretending a button did something.
+function openConsoleNow(){
+  view = "main";
+  render();
+  toast("Still installing — the running log is in the console at the bottom.", "good");
+}
+function clearLog(){ mainLog = []; const b = $("logbody"); if (b) b.innerHTML = ""; }
+async function quitLauncher(){
+  if (!confirm("Close the launcher? A running world or bridge is stopped too.")) return;
+  await act(() => api("quit", {}), "quit", true);
+  document.body.innerHTML = '<div style="padding:60px;text-align:center;color:#a2937f;font:15px system-ui">LCLite launcher stopped — you can close this tab.</div>';
 }
 
-let importPath = "";
-async function pickFolder() {
-  const r = await act(() => api("browse", { start: importPath }), "browse");
-  if (r && r.path) { importPath = r.path; document.getElementById("importpath").textContent = r.path; }
-}
-async function importFolder() {
-  if (!importPath) { logRaw("err", "browse for a folder first"); return; }
-  const r = await act(() => api("import", { path: importPath }), "import");
-  if (r && r.install) { sel = r.install.id; importPath = ""; document.getElementById("importpath").textContent = "no folder picked"; }
-  await refresh();
-}
-
-/* ---- console ---- */
-function setLog(which) {
+/* ---------------------------------------------------------------- console */
+function setLog(which){
   logWhich = which;
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.which === which));
-  const c = { job: "Task", server: "Server", proxy: "Bridge" }[which];
-  logRaw("step", "— showing the " + c.toLowerCase() + " log —");
 }
-function clearLog() { lines = []; document.getElementById("logbody").innerHTML = ""; }
-function logRaw(cls, text) {
-  const body = document.getElementById("logbody");
-  const div = document.createElement("div");
-  if (cls) div.className = cls;
-  div.textContent = text;
-  body.appendChild(div);
-  while (body.childElementCount > 1200) body.removeChild(body.firstChild);
-  body.scrollTop = body.scrollHeight;
-}
-function classify(text) {
+function classify(text){
   if (text.startsWith("!!")) return "err";
   if (text.startsWith("== ")) return "step";
   if (text.startsWith("$ ")) return "cmd";
+  if (/ready|is up|world ready|deployed/i.test(text)) return "ok";
   return "";
 }
-
-async function pollLog() {
+function pushLog(cls, text){
+  mainLog.push([cls, text]);
+  if (mainLog.length > 2000) mainLog = mainLog.slice(-1200);
+  const b = $("logbody");
+  if (!b) return;
+  const d = document.createElement("div");
+  if (cls) d.className = cls;
+  d.textContent = text;
+  b.appendChild(d);
+  while (b.childElementCount > 1400) b.removeChild(b.firstChild);
+  b.scrollTop = b.scrollHeight;
+}
+async function pollLog(){
+  if (!S) return;
   try {
-    const q = logWhich === "job" ? "job?since=" + cursors.job + (busyJob ? "&id=" + encodeURIComponent(busyJob) : "")
-                                 : "log?which=" + logWhich + "&since=" + cursors[logWhich];
-    const r = await api(q);
     if (logWhich === "job") {
+      const r = await api("job?since=" + cursors.job + (busyJob ? "&id=" + encodeURIComponent(busyJob) : ""));
       const j = r.job;
-      document.getElementById("jobstatus").innerHTML = j ? (j.kind + " · " + j.status + (j.step ? " · " + j.step : "")) : "";
-      if (j && j.lines) for (const ln of j.lines) { logRaw(classify(ln.text), ln.text); cursors.job = ln.n + 1; }
-      busyJob = j && j.status === "running" ? j.id : null;
+      if (j) {
+        for (const ln of j.lines || []) { cursors.job = Math.max(cursors.job, ln.n + 1); pushLog(classify(ln.text), ln.text); }
+        if (j.status !== "running") busyJob = null;
+      }
     } else {
-      for (const ln of (r.lines || [])) { logRaw(classify(ln.text), ln.text); cursors[logWhich] = ln.n + 1; }
+      const r = await api("log?which=" + logWhich + "&since=" + cursors[logWhich]);
+      for (const ln of r.lines || []) { cursors[logWhich] = Math.max(cursors[logWhich], ln.n + 1); pushLog(classify(ln.text), ln.text); }
     }
   } catch (e) {}
 }
 
-refresh().then(() => { if (!S.revs_at || (Date.now() - new Date(S.revs_at)) > 6 * 3600e3) refreshRevs(false); });
+/* ---------------------------------------------------------------- logo */
+function logo(size){
+  // crescent cut from one disc by another (no library, no asset), plus a
+  // three-star cluster — the LCLite moon, drawn at any size.
+  return `<svg width="${size}" height="${size}" viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#f7e2ac"/><stop offset="0.55" stop-color="#e6bb63"/><stop offset="1" stop-color="#b8862c"/>
+      </linearGradient>
+      <mask id="cut"><rect width="48" height="48" fill="#fff"/><circle cx="31" cy="17" r="15.5" fill="#000"/></mask>
+    </defs>
+    <circle cx="23" cy="24" r="17" fill="url(#lg)" mask="url(#cut)"/>
+    <path d="M33 22.5l1.5 3.4 3.4 1.5-3.4 1.5-1.5 3.4-1.5-3.4-3.4-1.5 3.4-1.5z" fill="#fff3d0" opacity=".92"/>
+    <circle cx="41" cy="15" r="1.5" fill="#fff3d0" opacity=".75"/>
+    <circle cx="37" cy="33" r="1.1" fill="#fff3d0" opacity=".6"/>
+  </svg>`;
+}
+
+/* ---------------------------------------------------------------- boot */
+async function boot(){
+  await refresh(true);
+  await pollLog();
+  const stale = !S.revs_at || S.revs_at.startsWith("0001") || (Date.now() - new Date(S.revs_at).getTime()) > 6 * 3600e3;
+  if (stale) refreshRevs(false);   // in the background: the cached list is already usable
+}
+boot();
 setInterval(refresh, 2500);
 setInterval(pollLog, 900);
-document.getElementById("port").addEventListener("input", e => { e.target.dataset.touched = "1"; });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && wiz.step > WELCOME && (S.installs || []).length) finishWizard();
+  if (e.key === "Enter" && !e.target.matches("input,select,button")) {
+    if (wiz.step === PICK && wiz.rev) wizGo(READY2GO);
+    else if (wiz.step === READY2GO) wizInstall();
+  }
+});
 </script>
 </body>
 </html>

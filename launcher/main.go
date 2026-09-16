@@ -28,11 +28,26 @@ type Launcher struct {
 	store      *Store
 	dataDir    string
 	version    string
+	binarySize int64
 	jobs       *JobManager
 	engine     *EngineServer
 	proxy      *Proxy
 	token      string
 	httpClient *http.Client
+}
+
+// ownSize reports the size of the running executable — the UI shows it because
+// "one small binary, no runtime" is the whole point of this thing.
+func ownSize() int64 {
+	path, err := os.Executable()
+	if err != nil {
+		return 0
+	}
+	st, err := os.Stat(path)
+	if err != nil {
+		return 0
+	}
+	return st.Size()
 }
 
 func newLauncher(dataDir, version string) (*Launcher, error) {
@@ -48,6 +63,7 @@ func newLauncher(dataDir, version string) (*Launcher, error) {
 		store:      store,
 		dataDir:    store.snapshot().DataDir,
 		version:    version,
+		binarySize: ownSize(),
 		jobs:       newJobManager(),
 		engine:     &EngineServer{},
 		proxy:      &Proxy{},
@@ -143,6 +159,7 @@ func (l *Launcher) routes() http.Handler {
 
 	api("state", l.handleState)
 	api("revs", l.handleRevs)
+	api("config", l.handleConfig)
 	api("install", l.handleInstall)
 	api("import", l.handleImport)
 	api("apply", l.handleApply)
@@ -251,29 +268,39 @@ func (l *Launcher) viewInstall(in *Install) installView {
 
 func (l *Launcher) handleState(w http.ResponseWriter, r *http.Request) {
 	cfg := l.store.snapshot()
-	revs := cfg.Revs
+	revs := append([]Rev(nil), cfg.Revs...)
 	if len(revs) == 0 {
-		revs = fallbackRevs
+		revs = append([]Rev(nil), fallbackRevs...)
+	}
+	recommended := pickRecommended(revs, cfg.RecommendedRev)
+	for i := range revs {
+		revs[i].Recommended = revs[i].Name == recommended
 	}
 	views := make([]installView, 0, len(cfg.Installs))
 	for _, in := range cfg.Installs {
 		views = append(views, l.viewInstall(in))
 	}
 	out := map[string]any{
-		"version":    l.version,
-		"data_dir":   l.dataDir,
-		"platform":   runtime.GOOS + "/" + runtime.GOARCH,
-		"installs":   views,
-		"revs":       revs,
-		"revs_at":    cfg.RevsAt,
-		"remotes":    cfg.Remotes,
-		"last_rev":   cfg.LastRev,
-		"tools":      l.detectTools(),
-		"engine":     l.engine.Status(),
-		"proxy":      l.proxy.Status(),
-		"job":        l.currentJobView(),
-		"busy":       l.jobs.active() != nil,
-		"proxy_port": cfg.ProxyPort,
+		"version":             l.version,
+		"binary_size":         l.binarySize,
+		"data_dir":            l.dataDir,
+		"platform":            runtime.GOOS + "/" + runtime.GOARCH,
+		"installs":            views,
+		"revs":                revs,
+		"revs_at":             cfg.RevsAt,
+		"remotes":             cfg.Remotes,
+		"last_rev":            cfg.LastRev,
+		"recommended":         recommended,
+		"recommended_updated": cfg.RecommendedUpdated,
+		"recommended_pinned":  cfg.RecommendedRev != "",
+		"overlay_rev":         overlayRev,
+		"skip_wizard":         cfg.SkipWizard,
+		"tools":               l.detectTools(),
+		"engine":              l.engine.Status(),
+		"proxy":               l.proxy.Status(),
+		"job":                 l.currentJobView(),
+		"busy":                l.jobs.active() != nil,
+		"proxy_port":          cfg.ProxyPort,
 	}
 	writeJSON(w, out)
 }
@@ -292,8 +319,54 @@ func (l *Launcher) handleRevs(w http.ResponseWriter, r *http.Request) {
 		fail(w, err)
 		return
 	}
+	cfg := l.store.snapshot()
+	recommended := pickRecommended(revs, cfg.RecommendedRev)
+	for i := range revs {
+		revs[i].Recommended = revs[i].Name == recommended
+	}
+
+	// One extra call: when the recommended revision's content branch last moved.
+	// Informational only ("actively developed"), so a failure is silent.
+	updated := time.Time{}
+	if recommended != "" {
+		if d, err := branchCommitDate(l.httpClient, contentRepoURL, recommended); err == nil {
+			updated = d
+		}
+	}
 	l.store.setRevs(revs)
-	writeJSON(w, map[string]any{"ok": true, "revs": revs, "note": note, "at": time.Now()})
+	l.store.setRecommended(recommended, updated)
+
+	writeJSON(w, map[string]any{
+		"ok": true, "revs": revs, "note": note, "at": time.Now(),
+		"recommended": recommended, "recommended_updated": updated,
+	})
+}
+
+// handleConfig flips first-run/advanced mode and can pin the recommended
+// revision (empty string = back to automatic).
+func (l *Launcher) handleConfig(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		SkipWizard     *bool   `json:"skip_wizard"`
+		RecommendedRev *string `json:"recommended_rev"`
+	}
+	if err := decode(r, &req); err != nil {
+		fail(w, err)
+		return
+	}
+	if req.SkipWizard != nil {
+		l.store.setSkipWizard(*req.SkipWizard)
+	}
+	if req.RecommendedRev != nil {
+		rev := strings.TrimSpace(*req.RecommendedRev)
+		updated := time.Time{}
+		if rev != "" {
+			if d, err := branchCommitDate(l.httpClient, contentRepoURL, rev); err == nil {
+				updated = d
+			}
+		}
+		l.store.setRecommended(rev, updated)
+	}
+	ok(w, nil)
 }
 
 func (l *Launcher) handleJob(w http.ResponseWriter, r *http.Request) {

@@ -29,9 +29,14 @@ func overlayPresent(root string) bool {
 	return err == nil && !st.IsDir()
 }
 
-// overlayModsAllowed mirrors the project rule: the patch hunks ship anchored to
-// 289, so the overlay is only offered there (see docs/MODS.md).
-func overlayModsAllowed(rev string) bool { return strings.TrimSpace(rev) == "289" }
+// overlayRev is the revision the patch hunks are anchored to. When Lost City
+// moves on and the hunks are reseated, this is the one line to bump (the UI
+// explains itself from /api/state's overlay_rev).
+const overlayRev = "289"
+
+// overlayModsAllowed mirrors the project rule: the overlay is only offered on
+// the revision its hunks were anchored to (see docs/MODS.md).
+func overlayModsAllowed(rev string) bool { return strings.TrimSpace(rev) == overlayRev }
 
 func listMods(root string) []ModInfo {
 	overlay := filepath.Join(root, "lclite")

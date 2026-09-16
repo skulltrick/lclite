@@ -126,34 +126,107 @@ func (l *Launcher) listRevs() ([]Rev, string, error) {
 	return revs, note, nil
 }
 
+// revScore extracts the revision number from a branch name (289 -> 289,
+// 245.2 -> 245.2). Non-numeric or variant branches score 0, false.
+func revScore(name string) (float64, bool) {
+	num := strings.Builder{}
+	for _, r := range name {
+		if (r >= '0' && r <= '9') || r == '.' {
+			num.WriteRune(r)
+			continue
+		}
+		break
+	}
+	if num.Len() == 0 {
+		return 0, false
+	}
+	var f float64
+	if _, err := fmt.Sscanf(num.String(), "%f", &f); err != nil {
+		return 0, false
+	}
+	return f, true
+}
+
 // sortRevs orders revisions numerically when possible, newest first.
 func sortRevs(revs []Rev) {
-	score := func(s string) float64 {
-		num := strings.Builder{}
-		for _, r := range s {
-			if (r >= '0' && r <= '9') || r == '.' {
-				num.WriteRune(r)
-			} else {
-				break
-			}
-		}
-		if num.Len() == 0 {
-			return -1
-		}
-		var f float64
-		_, err := fmt.Sscanf(num.String(), "%f", &f)
-		if err != nil {
-			return -1
-		}
-		return f
-	}
 	sort.SliceStable(revs, func(i, j int) bool {
-		a, b := score(revs[i].Name), score(revs[j].Name)
-		if a != b {
+		a, aok := revScore(revs[i].Name)
+		b, bok := revScore(revs[j].Name)
+		if aok != bok {
+			return aok
+		}
+		if aok && b != a {
 			return a > b
 		}
 		return revs[i].Name < revs[j].Name
 	})
+}
+
+// pickRecommended leads with the revision the Lost City team is actually
+// developing: the highest-numbered revision that exists in the client, engine
+// AND content repos. Variant branches (-custom, -gpu, -wip, -node) and
+// client-only branches are never recommended. An explicit pin in config wins.
+func pickRecommended(revs []Rev, pinned string) string {
+	if pinned != "" {
+		for _, r := range revs {
+			if r.Name == pinned {
+				return pinned
+			}
+		}
+	}
+	best, bestScore := "", -1.0
+	for _, r := range revs {
+		if !r.Client || !r.Engine || !r.Content {
+			continue
+		}
+		if strings.ContainsAny(r.Name, "-_") {
+			continue
+		}
+		score, ok := revScore(r.Name)
+		if !ok {
+			continue
+		}
+		if score > bestScore {
+			bestScore, best = score, r.Name
+		}
+	}
+	return best
+}
+
+// branchCommitDate asks GitHub when a branch last moved (one call, for the
+// recommended revision only — the branch list itself carries no dates).
+func branchCommitDate(client *http.Client, repoURL, branch string) (time.Time, error) {
+	api := strings.Replace(repoURL, "https://github.com/", "https://api.github.com/repos/", 1) + "/commits/" + branch
+	req, err := http.NewRequest("GET", api, nil)
+	if err != nil {
+		return time.Time{}, err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "lclite-launcher")
+	if tok := os.Getenv("GITHUB_TOKEN"); tok != "" {
+		req.Header.Set("Authorization", "Bearer "+tok)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	res, err := client.Do(req.WithContext(ctx))
+	if err != nil {
+		return time.Time{}, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		return time.Time{}, fmt.Errorf("github api: %s", res.Status)
+	}
+	var commit struct {
+		Commit struct {
+			Committer struct {
+				Date time.Time `json:"date"`
+			} `json:"committer"`
+		} `json:"commit"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&commit); err != nil {
+		return time.Time{}, err
+	}
+	return commit.Commit.Committer.Date, nil
 }
 
 func (l *Launcher) runGit(j *Job, dir string, args ...string) error {

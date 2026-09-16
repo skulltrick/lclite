@@ -76,6 +76,19 @@ type installOpts struct {
 	Mods       []string
 }
 
+// syncOrClone fetches a repo at a branch, but leaves a tree that already has
+// local changes exactly as it is — that's an installed revision with your mods
+// on it, and "install" must be repeatable without clobbering (or refusing).
+func (l *Launcher) syncOrClone(j *Job, dir, url, branch, label string) error {
+	if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
+		if dirty, derr := l.isDirty(dir); derr == nil && dirty {
+			j.logf("%s already has local changes — leaving it alone, nothing to fetch", label)
+			return nil
+		}
+	}
+	return l.syncRepo(j, dir, url, branch)
+}
+
 // installRev clones the revision's repos and gets it ready to play.
 func (l *Launcher) installRev(j *Job, rev string, opts installOpts) (*Install, error) {
 	root := l.store.installDir(rev)
@@ -85,14 +98,14 @@ func (l *Launcher) installRev(j *Job, rev string, opts installOpts) (*Install, e
 	}
 
 	j.setStep("fetching Lost City " + rev)
-	if err := l.syncRepo(j, in.engineDir(), engineRepoURL, rev); err != nil {
+	if err := l.syncOrClone(j, in.engineDir(), engineRepoURL, rev, "engine"); err != nil {
 		return nil, err
 	}
-	if err := l.syncRepo(j, filepath.Join(root, "content"), contentRepoURL, rev); err != nil {
+	if err := l.syncOrClone(j, filepath.Join(root, "content"), contentRepoURL, rev, "content"); err != nil {
 		return nil, err
 	}
 	if opts.WithClient {
-		if err := l.syncRepo(j, in.clientDir(), clientRepoURL, rev); err != nil {
+		if err := l.syncOrClone(j, in.clientDir(), clientRepoURL, rev, "webclient"); err != nil {
 			return nil, err
 		}
 	}
@@ -102,7 +115,7 @@ func (l *Launcher) installRev(j *Job, rev string, opts installOpts) (*Install, e
 			j.logf("!! LCLite mods are anchored to revision 289 only — installing %s without the overlay", rev)
 		} else {
 			j.setStep("fetching the LCLite overlay")
-			if err := l.syncRepo(j, in.overlayDir(), overlayRepoURL, "main"); err != nil {
+			if err := l.syncOrClone(j, in.overlayDir(), overlayRepoURL, "main", "lclite overlay"); err != nil {
 				j.logf("!! could not fetch the LCLite overlay (%v)", err)
 				j.logf("   the install still works — copy your lclite/ folder into %s to enable mods", root)
 			}
