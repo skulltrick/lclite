@@ -89,16 +89,18 @@ Strong form — pristine clones at the base revs + apply must reproduce the patc
 tree **byte-for-byte** (this is what CI proves):
 
 ```
-mkdir t && cd t
+mkdir -p t && cd t                     # t/ is just a host root: no copying needed
 git clone https://github.com/LostCityRS/Client-TS  webclient
 git clone https://github.com/LostCityRS/Engine-TS  engine
 git -C webclient checkout <head from mods/*/patches/*.json generated_from>
 git -C engine    checkout <head from mods/*/patches/*.json generated_from>
-cp -r .. lclite && cd lclite          # the overlay copy, tools included
-node tools/lclite.mjs apply --no-build # t/ is the host root (one level up)
-git -C ../webclient diff --stat        # must show exactly your hunks, clean
-LCLITE_ROOT=.. node tools/doctor.mjs   # exit 0 = structural checks pass
+cd ..                                  # back to this repo; drive t/ by pointing at it
+LCLITE_ROOT=<absolute NATIVE path to t> node tools/lclite.mjs apply --no-build
+git -C t/webclient diff --stat         # must show exactly your hunks, clean
+LCLITE_ROOT=<absolute NATIVE path to t> node tools/doctor.mjs   # exit 0
 ```
+`LCLITE_ROOT` must be a native path (`C:/...`), not a git-bash `/c/...` one — node's
+`existsSync` will not resolve the MSYS form.
 
 A `t/` host root is the same shape an install has, so anything CI can prove there
 holds for the launcher's installs too. `doctor` treats a pin that is merely older

@@ -61,8 +61,10 @@ counts, discovery silhouettes, rarity colors and per-tier collection progress.
 - `patches/client_ejs.json` — 1 hunk: `<script src="/lclite/tcg/ui.js">`.
 - `tools/tcg_test.ts` — bun functional harness (48 checks: chunking, non-combat
   rule, level curve, kill credits incl. timeout/re-grace/settle, login settle,
-  odds vs beta, foils, dup-sell, persistence, seed replay). Run from
-  `webclient/`: `bun run ../lclite/mods/tcg/tools/tcg_test.ts`.
+  odds vs beta, foils, dup-sell, persistence, seed replay). Run it from the installed
+  revision's `webclient/`, pointing at the overlay you are editing:
+  `bun run <overlay>/mods/tcg/tools/tcg_test.ts` — never the install's own `lclite/`
+  copy, which is a snapshot from install time and can be stale.
 
 ## Settings contract
 

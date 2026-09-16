@@ -25,7 +25,7 @@ clicks. Everything is driven by two registries in `panel.js`:
 ```js
 {
     id: 'my-mod',                 // unique
-    mod: 'my-mod',                // the lclite/mods/<folder> this row belongs to —
+    mod: 'my-mod',                // the mods/<folder> this row belongs to —
                                   // that's what groups it into its Settings section
     name: 'My mod',               // row title (the ONLY visible text on the row)
     desc: 'What it does, one line.',  // hover tooltip on the title + searchable text
@@ -108,11 +108,13 @@ Then in the browser console you can poke real fields (`window.lostcityClient.cam
 etc.). Use `bundle.ts` (prod) only for final builds.
 
 ### 3. Snapshot your edit as hunks
-Add the file to `MODS` in `tools/regen.mjs` (run from `lclite/`) (new folder = new mod, e.g.
-`mods/xp-drops`), then:
+Add the file to `MODS` in `tools/regen.mjs` (new folder = new mod, e.g. `mods/xp-drops`),
+then, from the overlay repo:
 ```
-node tools/regen.mjs          # regenerates lclite/mods/*/patches/*.json from git diff
+LCLITE_ROOT=<install> node tools/regen.mjs   # rewrites mods/*/patches/*.json from git diff
 ```
+(`regen` diffs the tree at `LCLITE_ROOT`; without it the tools look one level above the
+overlay — see CONTRIBUTING for its refusals and `--prune`.)
 Hunks are `{find:[old lines], replace:[new lines]}` — `find` is the MINIMAL unique
 window in the pristine old file (2-line context floor, expanded only while the anchor
 is non-unique). If regen warns `AMBIGUOUS`, your hook site's surroundings repeat in the

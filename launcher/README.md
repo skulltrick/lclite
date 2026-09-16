@@ -218,6 +218,9 @@ installation.
 | `%LOCALAPPDATA%\LCLite\installs\<rev>\` | managed revision checkouts |
 | `%LOCALAPPDATA%\LCLite\tools\bun\bun.exe` | bun fetched on demand |
 
+`--data <folder>` moves the whole tree above (the way to test the launcher without
+touching real installs).
+
 Override with `--data <folder>`. Flags: `--port`, `--no-browser`,
 `--play <rev>` (install if needed, then launch — handy for a desktop shortcut),
 `--version`.
