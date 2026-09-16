@@ -90,8 +90,13 @@
     document.head.appendChild(style);
 
     function build() {
-        window.__lctcgUi = 6;           // stamp the core checks (replace stale cached copies)
-        console.log('[lclite:tcg] ui v6');
+        window.__lctcgUi = 7;           // stamp the core checks (replace stale cached copies)
+        // stamp OUR script tag too (currentScript is live at defer execution; the
+        // ejs tag also ships the attribute, and dynamic injection sets it at
+        // create time) — without a tagged script the core's self-heal can't see
+        // us and injects a second copy (double HUD boot, console v7 twice)
+        try { if (document.currentScript) document.currentScript.setAttribute('data-lctcg-ui', String(window.__lctcgUi)); } catch (e) { /* empty */ }
+        console.log('[lclite:tcg] ui v7');
         root = document.createElement('div');
         root.id = 'lctcg-root';
         root.innerHTML = `

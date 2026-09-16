@@ -557,7 +557,9 @@
     }
     renderRows(null);
     // hide controls for mods you unchecked at install time (installer writes the manifest)
-    fetch('/lclite/installed.json').then(r => r.ok ? r.json() : null).then(m => {
+    // no-cache: a stale disk copy of installed.json would silently GHOST a fully
+    // working mod from the list (Brave trap, same family as the ui.js?v= lesson)
+    fetch('/lclite/installed.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(m => {
         if (m && Array.isArray(m.mods)) renderRows(new Set(m.mods));
     }).catch(() => { /* older install: keep every row */ });
 
