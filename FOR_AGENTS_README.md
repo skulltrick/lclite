@@ -50,3 +50,13 @@ tools/lclite.mjs applier/picker/build (+`doctor`, `new <mod>`) · tools/regen.mj
 structural) · lib.mjs shared helpers · root.json host layout (repo dirs/remotes —
 edit for custom 2004-lineage servers) · mods/<name>/{patches/*.json, files/, README.md}.
 Commands: `node tools/lclite.mjs [apply|build|pick|list|doctor|new <mod>|uninstall]`.
+
+## References beyond this repo
+The SERVER side of the stack is documented too: the Lost City content repo has a
+RuneScript reference site — https://sysdevs.org/runescript.html (sources in the
+sibling `content/` repo). Authoritative for interface/widget & modal semantics,
+triggers, the 517 engine commands, the 18 config formats, NPC/zone update loops,
+varps/params, and content-side companion features. When frontier client work
+depends on what the server actually does (TYPE C fake entities, modal-driven
+flows, anything you'd otherwise reverse-engineer from packets), look it up
+there BEFORE guessing — use the site's "I need to…" index.
