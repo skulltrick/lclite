@@ -179,9 +179,14 @@ cp -r lclite t && cd t && node lclite/tools/lclite.mjs
   'force-cache'})` a mod data file — 'no-cache' revalidates and stays 304-cheap.
 - **Placement (alt-drag movable overlays) is the one cross-mod WRITE, by
   design.** RuneLite parity: hold **Alt** and drag any movable surface to one of
-  9 anchor points on the game-canvas rect (TL/TC/TR/ML/MC/MR/BL/BC/BR) plus a
-  px offset; snap dots appear mid-drag; Alt+right-click resets a surface;
-  panel → Reset all wipes every `lcm*` key. The DRAG LAYER (control-panel's
+  9 anchor points plus a px offset; snap dots appear mid-drag; Alt+right-click
+  resets a surface; panel → Reset all wipes every `lcm*` key. The anchor RECT
+  depends on where the surface is painted: **DOM surfaces** (FAB, panel, tcg
+  HUD) anchor to the whole CLIENT WINDOW (browser viewport) — the letterbox
+  beside a scaled canvas is valid real estate, exactly where the FAB defaults;
+  **canvas-buffer surfaces** (xp tracker) anchor inside the game viewport rect
+  (the 512×334 areaGame buffer is the hard boundary — it physically cannot
+  paint into the sidebar/chat/letterbox). The DRAG LAYER (control-panel's
   panel.js) is the only WRITER of `lcm<Surface>Anchor` / `lcm<Surface>Offset`
   localStorage keys; each surface's OWNER still READS its own keys at its own
   hook (rule 5 untouched — placement is settings-with-a-UI, not a hub). DOM
@@ -202,8 +207,11 @@ cp -r lclite t && cd t && node lclite/tools/lclite.mjs
   rect (`panel.js vpRect()`: canvas × 512/765, 4/765 offset, 334/503).
   A new movable DOM surface = one `register()` call; a new movable canvas
   surface = that same pattern (live origin, bounds fn, registerCanvas, reserve
-  the names). Everything clamps inside the viewport rect, so a dragged overlay
-  can never be lost off-screen; F1 works regardless of FAB position.
+  the names). `register()` is the ONLY way in: it stamps `data-lcm-surface`
+  (the drag hit-test + Alt-outline hook) — a bare push onto the spec list
+  leaves the surface invisible to dragging (bit the FAB at first ship).
+  Everything clamps inside its anchor rect, so a dragged overlay can never be
+  lost off-screen; F1 works regardless of FAB position.
 - **The FAB lives at viewport top-right BY DEFAULT** (44px at top:14 right:18,
   z 9000; the panel drops from top:66) — but it is movable (see above), so page
   overlays must not assume that corner is theirs either: tcg's HUD defaults to
