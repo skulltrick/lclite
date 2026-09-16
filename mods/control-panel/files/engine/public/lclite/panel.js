@@ -10,7 +10,8 @@
  * Structure mirrors RuneLite's two surfaces in one popover:
  *   MODS tab     — one row per installed mod: favorite star + name + description
  *                  + gear (jumps to its Settings section) + master switch.
- *                  Favorited mods sort to the top of the list.
+ *                  Favorited mods sort to the top of the list; the rest are
+ *                  alphabetical by name.
  *   SETTINGS tab — collapsible section per mod (only mods that HAVE sub-settings;
  *                  single-toggle mods live entirely on the Mods tab, like
  *                  RuneLite mods with no config). Sections start collapsed;
@@ -158,7 +159,7 @@
             list.push(synthesizeMod(m, rowsOf(m)));
             known.add(m);
         }
-        // favorites first, otherwise registry order (Array.sort is stable)
+        // favorites first, then alphabetical by display name (Array.sort stable)
         return list.sort(favCmp);
     }
     function synthesizeMod(id, rows) {
@@ -192,7 +193,11 @@
     // favorites: panel-owned display state (lcm* prefix ⇒ Reset-all wipes it too)
     const FAVS = new Set(String(LS.get('lcmFavMods', '')).split(',').filter(Boolean));
     const saveFavs = () => LS.set('lcmFavMods', [...FAVS].join(','));
-    const favCmp = (a, b) => (FAVS.has(b.id) ? 1 : 0) - (FAVS.has(a.id) ? 1 : 0);
+    // favorites first; the rest alphabetical by name (case-insensitive —
+    // 'Disable anti-cheat' sorts under D, 'GPU' under G, 'XP drops' last)
+    const favCmp = (a, b) =>
+        (FAVS.has(b.id) ? 1 : 0) - (FAVS.has(a.id) ? 1 : 0) ||
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
 
     // build DOM ---------------------------------------------------------------
     const root = document.createElement('div');
@@ -320,8 +325,9 @@
             if (FAVS.has(p.id)) FAVS.delete(p.id); else FAVS.add(p.id);
             saveFavs();
             toast(FAVS.has(p.id) ? `${p.name}: favorited` : `${p.name}: unfavorited`);
-            // rebuild, not in-place sort: an unfavorited mod must return to its
-            // registry slot, which a stable sort over the already-sorted list can't do
+            // rebuild, not in-place sort: an unfavorited mod must drop back into
+            // its alphabetical slot, which a stable sort over the already-sorted
+            // list can't do
             modsList = buildModList(installedSet);
             renderCurrentTab();              // both tabs share the order
         });

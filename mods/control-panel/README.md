@@ -25,11 +25,11 @@ the cross-realm names (`lostcityClient`, `lcmAnchor`, …).
 
 - `lclitePanelTab` — last-open tab. `lclitePanelPinned` — pin state.
 - `lcmFavMods` — comma-separated favorite mod ids. Panel-owned *display* state:
-  favorited rows sort to the top of BOTH tabs (stable sort; favorites keep
-  registry order among themselves). Star at the left of each Mods row toggles
-  it; unfavoriting rebuilds the list from the registry so the mod returns to
-  its original slot. The `lcm` prefix means "Reset all lclite settings" wipes
-  it along with placement keys.
+  the list is favorites first, then alphabetical by name (case-insensitive
+  localeCompare; favorites also sort alphabetically among themselves). Star at
+  the left of each Mods row toggles it; unfavoriting rebuilds the list so the
+  mod drops back into its alphabetical slot. The `lcm` prefix means "Reset all
+  lclite settings" wipes it along with placement keys.
 - Master switches write each mod's OWN engine key (see MODS.md "The contract").
   `master.invert: true` flips the row's MEANING, not the storage: the switch is
   a DISABLE control (checked ⇔ key 'false'). Only "Disable anti-cheat" uses it

@@ -42,8 +42,8 @@
     "",
     "    <!-- lclite:control-panel -->",
     "    <!-- lclite control panel -->",
-    "    <link rel=\"stylesheet\" href=\"/lclite/panel.css?v=3\">",
-    "    <script src=\"/lclite/panel.js?v=3\" defer></script>",
+    "    <link rel=\"stylesheet\" href=\"/lclite/panel.css?v=4\">",
+    "    <script src=\"/lclite/panel.js?v=4\" defer></script>",
     "",
     "    <script type=\"module\">",
     "        import { Client } from './client/client.js';"
