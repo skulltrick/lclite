@@ -96,6 +96,7 @@
 | webclient/src/dash3d/Model.ts | 1722 | camera | `// lclite:camera` |
 | webclient/bundle.ts | 59 | tcg | `// lclite:tcg — the window['tcg*'] surface shared between the bundled core` |
 | webclient/bundle.ts | 131 | control-panel | `'id',  // lclite:control-panel` |
+| engine/view/client.ejs | 9 | control-panel | `<!-- lclite:control-panel -->` |
 | engine/view/client.ejs | 263 | control-panel | `// lclite:control-panel` |
 | engine/view/client.ejs | 303 | control-panel | `// lclite:control-panel` |
 | engine/view/client.ejs | 331 | control-panel | `<!-- lclite:control-panel -->` |

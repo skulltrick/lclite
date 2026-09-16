@@ -16,7 +16,16 @@ the cross-realm names (`lostcityClient`, `lcmAnchor`, …).
   no config => no section).
 - `files/engine/public/lclite/panel.css` — the whole look; theme vars on `:root`
   (`--lcm-*`), gold `--lcm-gold` is the favorite-star color.
-- `patches/client_ejs.json` — the two tags (currently `?v=6` — see below), plus the
+- `files/engine/public/favicon.svg` + `favicon.ico` — the browser-tab icon: the
+  launcher's own mark (gold crescent + sparkle cluster, `#f7e2ac`→`#e6bb63`→`#b8862c`),
+  shipped as page assets so a tab shows the LCLite moon instead of a 404. The ejs head
+  hunk carries the `<link rel="icon">` pair (`?v=1` version-keyed like every page asset);
+  the `.ico` additionally answers the bare `/favicon.ico` request browsers make when a
+  page has no icon link at all. `tools/make_favicon.py` rasterizes the `.ico` from the
+  same geometry as the svg (Pillow, 8x supersampled, 16/32/48 sizes) — change the art in
+  BOTH (svg by hand, ico by re-running the tool) and bump the `?v=`.
+- `patches/client_ejs.json` — the two tags (currently `?v=6` — see below), the
+  favicon `<link>` pair in the head, and the
   canvas-sizing logic itself: `setSize()` now takes ANY decimal (clamped 0.25x..8x),
   canonicalises it into `canvasSize`, remembers the fixed scale in `canvasScale` and keeps
   the legacy dropdown in step (appending a `(custom)` option for odd values). The panel's
@@ -26,6 +35,9 @@ the cross-realm names (`lostcityClient`, `lcmAnchor`, …).
   decimals, clamping, canonicalisation, dropdown sync). Mod-logic changes to sizing must
   keep it green:
   `LCLITE_ROOT=<install> node mods/control-panel/tools/canvas_size_test.mjs`.
+- `tools/make_favicon.py` — regenerates `files/engine/public/favicon.ico` from the
+  launcher's mark geometry (see the favicon bullet above); needs Pillow, and drops a
+  16px preview in the OS temp dir for eyeballing.
 - `patches/bundle_ts.json` — terser reserves for names the panel reads off the
   bundle. If panel.js starts reading a NEW engine-side window property, it must
   be added there or it arrives mangled.

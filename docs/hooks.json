@@ -566,6 +566,12 @@
   "engine/view/client.ejs": [
    {
     "mod": "control-panel",
+    "note": "view/client.ejs @ old line 9",
+    "line": 9,
+    "marker": true
+   },
+   {
+    "mod": "control-panel",
     "note": "view/client.ejs @ old line 264",
     "line": 263,
     "marker": true

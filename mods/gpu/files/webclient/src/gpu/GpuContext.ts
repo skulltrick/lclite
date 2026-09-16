@@ -29,6 +29,15 @@ export default class GpuContext {
     static adapterLabel: string = '';
     static lost: string | null = null;
 
+    /** True where Chromium IGNORES requestAdapter({powerPreference}) and logs a
+     *  console notice for asking anyway (Windows — crbug.com/369219127), so the
+     *  hint is only worth sending on the platforms that honour it (dual-GPU Macs). */
+    static prefersBareAdapter(): boolean {
+        const nav: any = navigator as unknown as AnyWindow;
+        const platform: string = nav.userAgentData?.platform ?? nav.platform ?? '';
+        return /win/i.test(platform);
+    }
+
     /** Create the 512x334 WebGPU overlay canvas sized to the game viewport.
      *  Async (adapter/device requests); safe to call once — re-entry is a no-op. */
     static async init(width: number, height: number): Promise<GpuInitResult> {
@@ -43,8 +52,14 @@ export default class GpuContext {
                 // high-performance first, but NEVER fail on it: privacy-
                 // hardened Chromium forks (Brave's GPU fingerprinting
                 // defenses) and single-GPU drivers can null an OPTIONED
-                // request while a bare one succeeds.
-                adapter = await gpu.requestAdapter({ powerPreference: 'high-performance' });
+                // request while a bare one succeeds. On Windows the option is
+                // ignored anyway (and Chrome says so in the console), so ask
+                // bare there and keep the console clean.
+                if (GpuContext.prefersBareAdapter()) {
+                    adapter = await gpu.requestAdapter();
+                } else {
+                    adapter = await gpu.requestAdapter({ powerPreference: 'high-performance' });
+                }
                 if (!adapter) {
                     adapter = await gpu.requestAdapter();
                 }

@@ -8,6 +8,36 @@
  "hunks": [
   {
    "find": [
+    "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=0.7\">",
+    "",
+    "    <style>",
+    "        html {"
+   ],
+   "replace": [
+    "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=0.7\">",
+    "",
+    "    <!-- lclite:control-panel -->",
+    "    <!-- lclite tab icon: the launcher's own moon mark. The .ico is what a",
+    "         browser asks for by bare path when no link exists; the svg wins where",
+    "         it is supported. Both are version-keyed like every other page asset",
+    "         (MODS.md stale-cache law) -> bump ?v= when the art changes. -->",
+    "    <link rel=\"icon\" href=\"/favicon.ico?v=1\" sizes=\"any\">",
+    "    <link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg?v=1\">",
+    "",
+    "    <style>",
+    "        html {"
+   ],
+   "note": "view/client.ejs @ old line 9",
+   "occ": 1,
+   "pos": [
+    9,
+    0,
+    7,
+    10
+   ]
+  },
+  {
+   "find": [
     "                case '2':",
     "                case '3':",
     "                    canvas.style.width = (765 * parseInt(size)) + 'px';",

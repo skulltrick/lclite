@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <!-- LCLite tab icon: the launcher's own mark (crescent cut from one disc by
+       another + the sparkle cluster), standalone so a browser can render it.
+       Source of truth for the geometry is launcher/ui/index.html logo(); the
+       .ico beside this file is rasterized from the same numbers by
+       tools/make_favicon.py — keep the two in step. -->
+  <defs>
+    <linearGradient id="lcg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7e2ac"/>
+      <stop offset="0.55" stop-color="#e6bb63"/>
+      <stop offset="1" stop-color="#b8862c"/>
+    </linearGradient>
+    <mask id="lccut">
+      <rect width="48" height="48" fill="#fff"/>
+      <circle cx="31" cy="17" r="15.5" fill="#000"/>
+    </mask>
+  </defs>
+  <circle cx="23" cy="24" r="17" fill="url(#lcg)" mask="url(#lccut)"/>
+  <path d="M33 22.5l1.5 3.4 3.4 1.5-3.4 1.5-1.5 3.4-1.5-3.4-3.4-1.5 3.4-1.5z" fill="#fff3d0" opacity=".92"/>
+  <circle cx="41" cy="15" r="1.5" fill="#fff3d0" opacity=".75"/>
+  <circle cx="37" cy="33" r="1.1" fill="#fff3d0" opacity=".6"/>
+</svg>
