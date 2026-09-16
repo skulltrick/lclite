@@ -52,6 +52,18 @@ export const MOD_META = {
         label: 'GPU renderer (WebGL2)',
         desc: 'RuneLite-style hardware rendering of the 3D world; HUD/interfaces stay CPU-exact. Off by default.',
     },
+    'hide-roofs': {
+        label: 'Hide roofs',
+        desc: 'removes roofs everywhere instead of only while you stand under them',
+    },
+    'low-detail': {
+        label: 'Low detail',
+        desc: 'untextured ground + no ground decorations, live (RuneLite Low Detail style)',
+    },
+    'shift-drop': {
+        label: 'Shift-click drop',
+        desc: 'hold Shift and left-click an item to drop it without the menu',
+    },
 };
 
 export const meta = name => MOD_META[name] || { label: name, desc: '', required: false };

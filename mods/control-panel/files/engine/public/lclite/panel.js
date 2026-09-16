@@ -47,6 +47,14 @@
         const v = parseFloat(localStorage.getItem('cameraZoom'));
         return isNaN(v) ? null : v;
     };
+    // canvas scale readout: canvasSize is THE key the page reads ('auto' or a decimal);
+    // while it is 'auto' the slider shows the last FIXED scale we remember (canvasScale).
+    const liveScale = () => {
+        const size = localStorage.getItem('canvasSize');
+        if (size && size !== 'auto') { const v = parseFloat(size); if (!isNaN(v)) return v; }
+        const last = parseFloat(localStorage.getItem('canvasScale'));
+        return isNaN(last) ? 1 : last;
+    };
 
     const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const cap = s => String(s ?? '').replace(/(^|[-_ ]\w)/g, m => m.toUpperCase()).replace(/[-_]/g, ' ');
@@ -83,6 +91,9 @@
         // so it mirrors the antiCheat engine key (checked ⇔ LS 'false').
         { id: 'anti-cheat', name: 'Disable anti-cheat', desc: 'Disables the client sending legacy mouse/camera/anticheat packets.', master: { key: 'antiCheat', def: 'true', invert: true } },
         { id: 'rendering', name: 'Smooth shading', desc: 'Per-pixel Gouraud instead of 4px blocks. Costs FPS.', master: { key: 'smoothShading', def: 'false' } },
+        { id: 'hide-roofs', name: 'Hide roofs', desc: 'Removes roofs everywhere, not only while you stand under them. Off: the game hides them itself as you walk in.', master: { key: 'hideRoofs', def: 'false' } },
+        { id: 'low-detail', name: 'Low detail', desc: 'Untextured ground + no ground decorations, RuneLite-style, without launching the low-memory client.', master: { key: 'lowDetail', def: 'false' } },
+        { id: 'shift-drop', name: 'Shift-click drop', desc: 'Hold Shift and left-click an item to drop it straight away, skipping the menu.', master: { key: 'shiftDrop', def: 'true' } },
         { id: 'control-panel', name: 'LCLite', desc: 'This panel and the page around it: canvas size, scaling, legacy bar, fullscreen, screenshots.', master: null }
     ];
 
@@ -105,7 +116,12 @@
         { id: 'true-tile-outline', mod: 'true-tile', name: 'Border thickness', desc: 'Width of the true-tile outline, in pixels.', key: 'trueTileOutline', kind: 'slider', min: 1, max: 8, step: 1, def: '1', unit: 'px' },
         { id: 'true-tile-fill', mod: 'true-tile', name: 'Fill opacity', desc: 'Translucent color wash inside the tile (OSRS fill style). 0 = outline only.', key: 'trueTileFill', kind: 'slider', min: 0, max: 100, step: 5, def: '0', unit: '%' },
         { id: 'true-tile-desync', mod: 'true-tile', name: 'Only when out of sync', desc: 'Hide the tile while your model stands on the server tile — pops up only when the tick is visibly delayed.', key: 'trueTileOnlyDesync', kind: 'toggle', def: 'false' },
-        { id: 'canvas-size', mod: 'control-panel', name: 'Canvas size', desc: 'Render scale of the game canvas (same as the legacy bar).', kind: 'select', key: 'canvasSize', def: '1', options: [['1', '1x'], ['2', '2x'], ['3', '3x'], ['auto', 'Auto']], apply(v) { if (typeof setSize === 'function') setSize(v); } },
+        // canvas sizing: a real scale slider (the old 1x/2x/3x dropdown was the whole
+        // range) plus a Fit toggle for the old "Auto". Both go through setSize(), which
+        // writes canvasSize (the key the page reads) and remembers the fixed scale in
+        // canvasScale, so the legacy bar's dropdown and this panel always agree.
+        { id: 'canvas-scale', mod: 'control-panel', name: 'Canvas scale', desc: 'Any size from 0.5x to 4x, not just 1x/2x/3x. The legacy bar follows along.', kind: 'slider', min: 0.5, max: 4, step: 0.05, def: '1', unit: '×', get: liveScale, apply(v) { if (typeof setSize === 'function') setSize(String(v)); } },
+        { id: 'canvas-autofit', mod: 'control-panel', name: 'Fit to window', desc: 'Overrides the scale slider and sizes the canvas to the window (the old Auto).', key: 'canvasAutoFit', kind: 'toggle', def: 'false', get: () => LS.get('canvasSize', '1') === 'auto', apply(on) { if (typeof setSize === 'function') setSize(on ? 'auto' : LS.get('canvasScale', '1')); } },
         { id: 'canvas-scaling', mod: 'control-panel', name: 'Pixel scaling', desc: 'Smooth (auto) vs crisp (pixelated) upscaling.', kind: 'select', key: 'filtering', def: 'true', get: () => (LS.get('filtering', 'true') === 'true' ? 'pixelated' : 'auto'), options: [['auto', 'Auto'], ['pixelated', 'Pixelated']], apply(v) { if (typeof setFilter === 'function') setFilter(v); } },
         { id: 'legacy-bar', mod: 'control-panel', name: 'Show legacy control bar', desc: 'The green text row under the canvas. The panel replaces it.', key: 'lcliteLegacyBar', kind: 'toggle', def: 'false', reload: false },
         { id: 'fullscreen', mod: 'control-panel', name: 'Fullscreen', desc: 'Toggle fullscreen for the game canvas.', kind: 'action', run() {
@@ -125,7 +141,8 @@
             if (typeof hideControls === 'function') hideControls(); else toast('No legacy bar present');
         } },
         { id: 'reset-all', mod: 'control-panel', name: 'Reset all lclite settings', desc: 'Clears every toggle/zoom/placement and reloads.', kind: 'action', run() {
-            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'smoothShading', 'antiCheat', 'gpu', 'statOrbs', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'lcliteLegacyBar', 'tcg', 'lclitePanelTab', 'lclitePanelPinned'].forEach(k => localStorage.removeItem(k));
+            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'smoothShading', 'antiCheat', 'gpu', 'statOrbs', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'lcliteLegacyBar', 'tcg', 'lclitePanelTab', 'lclitePanelPinned',
+                'canvasSize', 'canvasScale', 'canvasAutoFit', 'filtering', 'hideRoofs', 'lowDetail', 'shiftDrop'].forEach(k => localStorage.removeItem(k));
             // placement keys are namespaced lcm* (drag layer + owners): wipe by
             // prefix so every current AND future movable surface resets too
             Object.keys(localStorage).filter(k => k.startsWith('lcm')).forEach(k => localStorage.removeItem(k));
@@ -376,7 +393,10 @@
     }
 
     function toggleRow(f) {
-        const checked = LS.get(f.key, f.def) === 'true';
+        // optional get(): a toggle whose REAL state lives elsewhere (canvasAutoFit is
+        // really "canvasSize === 'auto'"). Optional apply() runs after the write for
+        // toggles that have to poke the page (setSize), not just the settings bus.
+        const checked = typeof f.get === 'function' ? !!f.get() : (LS.get(f.key, f.def) === 'true');
         const row = document.createElement('div');
         row.className = 'lcm-row';
         row.dataset.name = f.name.toLowerCase() + ' ' + (f.desc || '').toLowerCase();
@@ -384,6 +404,7 @@
         const input = switchInput(checked);
         input.addEventListener('change', () => {
             LS.set(f.key, input.checked ? 'true' : 'false');
+            if (typeof f.apply === 'function') { try { f.apply(input.checked); } catch (e) { /* keep the panel alive */ } }
             afterWrite(f);
             toast(`${f.name}: ${input.checked ? 'on' : 'off'}`);
         });

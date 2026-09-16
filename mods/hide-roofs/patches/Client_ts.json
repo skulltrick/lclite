@@ -1,0 +1,44 @@
+{
+ "file": "webclient/src/client/Client.ts",
+ "mod": "hide-roofs",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "a52b321a9f42530f3dd2f1a02cd335c955791a12"
+ },
+ "hunks": [
+  {
+   "find": [
+    "        let top: number = 3;",
+    "",
+    "        if (this.camPitch < 310 && this.localPlayer) {",
+    "            let cameraLocalTileX: number = this.camX >> 7;"
+   ],
+   "replace": [
+    "        let top: number = 3;",
+    "",
+    "        // lclite:hide-roofs",
+    "        /// custom (lclite \"hide-roofs\" mod): own key, read every frame — toggling the",
+    "        /// panel switch changes the world on the next frame, no reload. 'true' answers",
+    "        /// with the level the engine itself uses when it decides a roof is in the way",
+    "        /// (minusedlevel), so roofs and the storey above the player stop drawing exactly",
+    "        /// as they do while you walk under them — vanilla's \"Remove roofs: Always\".",
+    "        /// Off = upstream's selective behaviour, untouched.",
+    "        if (localStorage.getItem('hideRoofs') === 'true') {",
+    "            return this.mapl ? this.minusedlevel : 3;",
+    "        }",
+    "        // lclite:hide-roofs",
+    "",
+    "        if (this.camPitch < 310 && this.localPlayer) {",
+    "            let cameraLocalTileX: number = this.camX >> 7;"
+   ],
+   "note": "src/client/Client.ts @ old line 4478",
+   "occ": 1,
+   "pos": [
+    4478,
+    0,
+    4476,
+    4479
+   ]
+  }
+ ]
+}

@@ -16,7 +16,16 @@ the cross-realm names (`lostcityClient`, `lcmAnchor`, …).
   no config => no section).
 - `files/engine/public/lclite/panel.css` — the whole look; theme vars on `:root`
   (`--lcm-*`), gold `--lcm-gold` is the favorite-star color.
-- `patches/client_ejs.json` — the two tags (currently `?v=3` — see below).
+- `patches/client_ejs.json` — the two tags (currently `?v=5` — see below), plus the
+  canvas-sizing logic itself: `setSize()` now takes ANY decimal (clamped 0.25x..8x),
+  canonicalises it into `canvasSize`, remembers the fixed scale in `canvasScale` and keeps
+  the legacy dropdown in step (appending a `(custom)` option for odd values). The panel's
+  **Canvas scale** slider and **Fit to window** toggle are the only UI for it, so that page
+  code ships here.
+- `tools/canvas_size_test.mjs` — harness for the above (legacy 1x/2x/3x unchanged,
+  decimals, clamping, canonicalisation, dropdown sync). Mod-logic changes to sizing must
+  keep it green:
+  `LCLITE_ROOT=<install> node mods/control-panel/tools/canvas_size_test.mjs`.
 - `patches/bundle_ts.json` — terser reserves for names the panel reads off the
   bundle. If panel.js starts reading a NEW engine-side window property, it must
   be added there or it arrives mangled.
@@ -37,6 +46,14 @@ the cross-realm names (`lostcityClient`, `lcmAnchor`, …).
 - Per-mod gear button (right of the description, before the switch): appears
   only on mods that HAVE settings rows; click jumps to the expanded section in
   Settings (same path as clicking the row body, just discoverable).
+- Canvas sizing (the page's key, the panel's controls): `canvasSize` is THE value
+  `setSize()` applies at boot — `'auto'` (fit the window) or a decimal taken as the fixed
+  scale (clamped 0.25x..8x). `canvasScale` is the last FIXED scale, kept by `setSize()`
+  itself so the slider can show it while `canvasSize` is `'auto'`, and so the Fit toggle
+  can restore it. `canvasAutoFit` is just the toggle's own last position; the row's
+  `get()` reports the derived truth (`canvasSize === 'auto'`), which is why `toggleRow`
+  learned an optional `get()`/`apply()` pair. `setSize()` is the only writer of all three
+  — the panel never writes them directly.
 
 ## Version-keying (stale-cache law, MODS.md "The contract")
 

@@ -105,6 +105,12 @@
     "marker": true
    },
    {
+    "mod": "low-detail",
+    "note": "src/client/Client.ts @ old line 602",
+    "line": 602,
+    "marker": true
+   },
+   {
     "mod": "xp-drops",
     "note": "src/client/Client.ts @ old line 1015",
     "line": 1015,
@@ -201,6 +207,12 @@
     "marker": true
    },
    {
+    "mod": "low-detail",
+    "note": "src/client/Client.ts @ old line 4174",
+    "line": 4174,
+    "marker": true
+   },
+   {
     "mod": "camera",
     "note": "src/client/Client.ts @ old line 4194",
     "line": 4193,
@@ -222,6 +234,12 @@
     "mod": "anti-cheat",
     "note": "src/client/Client.ts @ old line 4388",
     "line": 4387,
+    "marker": true
+   },
+   {
+    "mod": "hide-roofs",
+    "note": "src/client/Client.ts @ old line 4478",
+    "line": 4478,
     "marker": true
    },
    {
@@ -294,6 +312,18 @@
     "mod": "tcg",
     "note": "src/client/Client.ts @ old line 8244",
     "line": 8244,
+    "marker": true
+   },
+   {
+    "mod": "shift-drop",
+    "note": "src/client/Client.ts @ old line 8282",
+    "line": 8282,
+    "marker": true
+   },
+   {
+    "mod": "shift-drop",
+    "note": "src/client/Client.ts @ old line 8364",
+    "line": 8364,
     "marker": true
    },
    {
@@ -384,6 +414,12 @@
     "mod": "camera",
     "note": "src/client/Client.ts @ old line 11686",
     "line": 11686,
+    "marker": true
+   },
+   {
+    "mod": "shift-drop",
+    "note": "src/client/Client.ts @ old line 11694",
+    "line": 11694,
     "marker": true
    }
   ],
@@ -528,6 +564,18 @@
    }
   ],
   "engine/view/client.ejs": [
+   {
+    "mod": "control-panel",
+    "note": "view/client.ejs @ old line 264",
+    "line": 263,
+    "marker": true
+   },
+   {
+    "mod": "control-panel",
+    "note": "view/client.ejs @ old line 304",
+    "line": 303,
+    "marker": true
+   },
    {
     "mod": "control-panel",
     "note": "view/client.ejs @ old line 331",

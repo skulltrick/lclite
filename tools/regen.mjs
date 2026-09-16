@@ -74,6 +74,17 @@ const MODS = {
     ],
     'control-panel': [
         'engine/view/client.ejs'
+    ],
+    // Client.ts is shared; routing is by `// lclite:<mod>` marker (A1), so listing it
+    // here only says "diff this file for these mods too".
+    'hide-roofs': [
+        'webclient/src/client/Client.ts'
+    ],
+    'low-detail': [
+        'webclient/src/client/Client.ts'
+    ],
+    'shift-drop': [
+        'webclient/src/client/Client.ts'
     ]
 };
 
