@@ -26,7 +26,7 @@ const mods = findMods(LIB_DIR);   // LIB_DIR = lclite/ root
 
 const issues = [];      // {sev:'drift'|'struct', msg}
 const notes = [];       // informational — do not affect the exit code
-const report = { root: ROOT, mods: {}, files: {}, revs: {}, corpus: { hunks: 0, addedLines: 0, findLines: 0, markerHunks: 0 } };
+const report = { root: ROOT, mods: {}, files: {}, revs: {}, corpus: { hunks: 0, declared: 0, addedLines: 0, findLines: 0, markerHunks: 0 } };
 
 const git = (repo, cmd) => {   // probe helper: quiet on failure, null = unknown
     try { return execSync(`git -C "${path.join(ROOT, repo)}" ${cmd}`, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
@@ -48,6 +48,10 @@ for (const mod of mods) {
             issues.push({ sev: 'struct', msg: `${patch.file}: base rev mismatch in this overlay (${report.revs[revRepo]} vs ${patch.generated_from?.head}) — regen everything or nothing` });
         }
         report.revs[revRepo] = patch.generated_from?.head;
+        // count what the overlay DECLARES before asking the tree about it: with the
+        // tree absent every hunk is unverifiable, and "corpus.hunks === 0" then means
+        // "no tree", not "no patches" (the empty-overlay check below needs the latter).
+        report.corpus.declared += patch.hunks.length;
         if (!fs.existsSync(abs)) { installed = false; anyMissing = true; continue; }
         const text = toLF(fs.readFileSync(abs, 'utf-8'));
         for (const h of patch.hunks) {
@@ -83,8 +87,8 @@ for (const mod of mods) {
 // per-mod result is ok=0 everywhere — which reads exactly like a healthy overlay in a
 // tree where nothing is installed yet. That state silently disables the whole mod set,
 // so it has to be structural, not a shrug.
-if (report.corpus.hunks === 0) {
-    issues.push({ sev: 'struct', msg: 'no hunks in any patch JSON under mods/*/patches — apply would deliver nothing (restore mods/ from git, or regen against the installed tree)' });
+if (report.corpus.declared === 0) {
+    issues.push({ sev: 'struct', msg: 'no hunks declared in any patch JSON under mods/*/patches — apply would deliver nothing (restore mods/ from git, or regen against the installed tree)' });
 }
 for (const mod of mods) {
     const hasPayload = fs.existsSync(path.join(LIB_DIR, 'mods', mod.name, 'files'));

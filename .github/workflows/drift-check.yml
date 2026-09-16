@@ -1,7 +1,14 @@
 name: drift-check
 
-# Weekly canary + on every PR: clone the pinned upstream revs and dry-run the
-# installer. "anchor not found" here == Lost City updated code under a hunk.
+# Two canaries:
+#  - apply-check (every PR + weekly): clone the PINNED revs and dry-run the installer.
+#    Guarantees the corpus is self-consistent, the pins agree, and the tooling runs.
+#    Upstream moving cannot make this one fail — it tests the revs the hunks were
+#    generated from.
+#  - tip-check (weekly + manual): clone the live 289 TIPS and dry-run the same way.
+#    This answers "has upstream moved under a hunk?" and is EXPECTED to go red when
+#    Lost City lands code a hunk no longer anchors to — that is the re-pin reminder
+#    (regen against an install at the tip), not a regression here.
 
 on:
   schedule:
@@ -14,6 +21,31 @@ on:
       - 'root.json'
 
 jobs:
+  # Reads the branch the launcher would install by default (289 today). Shallow clones,
+  # so doctor reports the pin as uncomparable (a note) rather than drift — only real
+  # anchor drift fails this job.
+  tip-check:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Clone upstream tips beside the overlay
+        run: |
+          cd ..
+          git clone --depth 1 --branch 289 https://github.com/LostCityRS/Client-TS webclient
+          git clone --depth 1 --branch 289 https://github.com/LostCityRS/Engine-TS engine
+
+      - name: Would a fresh install still apply?
+        run: node tools/lclite.mjs apply --check
+        # exit 2 == anchor drift on the current tip: time for a re-pin
+
+      - name: Doctor against the tips
+        run: node tools/doctor.mjs
+
   apply-check:
     runs-on: ubuntu-latest
     steps:
