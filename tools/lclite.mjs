@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { LIB_DIR, meta, findMods, countOccurrences, toLF, restoreEOL, stripPatchFile, loadRootManifest } from './lib.mjs';
 
 const __dirname = LIB_DIR;                       // lclite/ root (overlay)
-const TOOLS_DIR = path.dirname(fileURLToPath(import.meta.url));   // lclite/tools/
+const TOOLS_DIR = path.dirname(fileURLToPath(import.meta.url));   // <overlay>/tools/
 // The Lost City root that holds webclient/ + engine/. Normally one level up
 // from lclite/; LCLITE_ROOT points the installer at a different install
 // (used by the t/ acceptance harness and by anyone keeping the overlay
@@ -240,11 +240,11 @@ function ensureBun() {
 function build() {
     const wc = path.join(ROOT, 'webclient');
     if (!fs.existsSync(wc)) { console.error('no webclient dir'); process.exit(1); }
-    if (!ensureBun()) { console.log('skipping build — run "node lclite/tools/lclite.mjs build" once bun is installed.'); return false; }
+    if (!ensureBun()) { console.log('skipping build — run "LCLITE_ROOT=<install> node tools/lclite.mjs build" once bun is installed.'); return false; }
     if (!fs.existsSync(path.join(wc, 'node_modules'))) {
         console.log('webclient/node_modules missing — installing build deps (bun install)...');
         try { execSync(`"${BUN}" install`, { cwd: wc, stdio: 'inherit' }); }
-        catch { console.log('!! bun install failed — rerun "node lclite/tools/lclite.mjs build" manually (network? bun version?).'); return false; }
+        catch { console.log('!! bun install failed — rerun "LCLITE_ROOT=<install> node tools/lclite.mjs build" manually (network? bun version?).'); return false; }
     }
     const out = execSync(`"${BUN}" run bundle.ts`, { cwd: wc, encoding: 'utf-8', stdio: 'pipe' }).toString();
     if (out.trim()) console.log(out);
