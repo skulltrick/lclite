@@ -68,10 +68,10 @@ node lclite/tools/lclite.mjs uninstall    # back toward pristine upstreams
 | 🔮 **Stat orbs** | HP/Prayer/Energy orbs down the minimap's lower-left, numbers always visible |
 | 🟩 **True tile** | Green outline on the tile the *server* has you on — with color/border/fill controls |
 | 🎨 **Smooth shading** | Per-pixel Gouraud instead of 4px blocks (when your CPU says yes) |
-| 🛡 **Anti-cheat toggle** | Mute legacy RuneScope telemetry — keep it ON on public worlds, OFF on your private one |
+| 🛡 **Disable anti-cheat** | Switch ON = client stops sending the legacy mouse/camera/anticheat telemetry packets (default OFF = keeps sending). Right for a private server; leave it OFF on public worlds |
 | 🚀 **GPU** (beta) | WebGPU render of the 3D world at software-exact parity; auto-falls back on any driver error, reason in the panel |
 | 🃏 **TCG** (beta) | Earn credits from non-combat xp, level-ups and monster kills (combat level), open 5-card booster packs (7 rarity tiers, foils, rare apex packs), browse a 6,376-card collection album — the OSRS TCG plugin's economy, for 2004 |
-| ⚙ **Control panel** *(required)* | The F1 popover itself: Mods/Settings tabs, search, pin, fullscreen, screenshots — and the Alt+drag placement layer that lets you move the FAB, panel, XP tracker and any mod HUD to 9 snap anchors (RuneLite-style; Alt+right-click resets) |
+| ⚙ **Control panel** *(required)* | The F1 popover itself: Mods/Settings tabs, favorite-star pinning (favorites sort to the top), per-mod gear shortcut to its settings, search, pin, fullscreen, screenshots — and the Alt+drag placement layer that lets you move the FAB, panel, XP tracker and any mod HUD to 9 snap anchors (RuneLite-style; Alt+right-click resets) |
 
 ## How it works (the honest version)
 

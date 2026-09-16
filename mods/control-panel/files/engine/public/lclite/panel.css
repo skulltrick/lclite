@@ -89,7 +89,7 @@
 .lcm-body::-webkit-scrollbar { width: 8px; }
 .lcm-body::-webkit-scrollbar-thumb { background: var(--lcm-bg-3); border-radius: 4px; }
 
-/* mod rows (Mods tab): name + real description + master switch */
+/* mod rows (Mods tab): favorite star + name + real description + gear + master switch */
 .lcm-prow {
     display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: 8px;
     border: 1px solid transparent;
@@ -102,6 +102,28 @@
     color: var(--lcm-text-dim); font-size: 11.5px; line-height: 1.35; margin-top: 2px;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+/* favorite star: outline at rest, gold fill when on */
+.lcm-fav {
+    flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px;
+    background: none; color: var(--lcm-text-dim); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    opacity: .45; transition: opacity .12s, color .12s, transform .12s;
+}
+.lcm-fav svg { width: 16px; height: 16px; }
+.lcm-prow:hover .lcm-fav, .lcm-fav.on { opacity: 1; }
+.lcm-fav:hover { color: var(--lcm-gold); transform: scale(1.15); }
+.lcm-fav.on { color: var(--lcm-gold); }
+.lcm-fav.on svg path { fill: var(--lcm-gold); }
+/* settings gear: jumps straight to the mod's Settings section */
+.lcm-gear {
+    flex: none; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 6px;
+    background: none; color: var(--lcm-text-dim); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    opacity: .55; transition: opacity .12s, color .12s, background .12s;
+}
+.lcm-gear svg { width: 15px; height: 15px; }
+.lcm-prow:hover .lcm-gear { opacity: 1; }
+.lcm-gear:hover { color: #fff; background: var(--lcm-bg-3); }
 .lcm-pcore {
     flex: none; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
     color: var(--lcm-moon-lite); border: 1px solid var(--lcm-moon-2); border-radius: 5px; padding: 2px 7px;

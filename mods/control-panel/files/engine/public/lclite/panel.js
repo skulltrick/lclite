@@ -8,8 +8,9 @@
  * take effect on reload, and the legacy green control bar stays visible.
  *
  * Structure mirrors RuneLite's two surfaces in one popover:
- *   MODS tab     — one row per installed mod: name + description + master switch.
- *                  Clicking the row jumps to its section in Settings.
+ *   MODS tab     — one row per installed mod: favorite star + name + description
+ *                  + gear (jumps to its Settings section) + master switch.
+ *                  Favorited mods sort to the top of the list.
  *   SETTINGS tab — collapsible section per mod (only mods that HAVE sub-settings;
  *                  single-toggle mods live entirely on the Mods tab, like
  *                  RuneLite mods with no config). Sections start collapsed;
@@ -51,13 +52,15 @@
 
     // mod registry ---------------------------------------------------------
     // id = the lclite/mods/<id> folder name (matches installed.json).
-    // master: {key, def} — the mod's on/off. null = no engine master (the
-    // panel itself). Mods absent from this list but present in the manifest get
+    // master: {key, def} — the mod's on/off. master.invert: the row's switch is
+    // a DISABLE control (checked = engine key 'false', e.g. "Disable anti-cheat").
+    // null = no engine master (the panel itself). Mods absent from this list but
+    // present in the manifest get
     // synthesized entries (name/desc from their settings rows; master only if the
     // mod has exactly ONE toggle row, whose key then doubles as the master).
     const MOD_REGISTRY = [
-        { id: 'camera', name: 'Camera', desc: 'Wheel zoom, middle-drag rotate, chat scroll. One of the first mods — it is the only mod with sub-settings.', master: { key: 'camera', def: 'true' } },
-        { id: 'gpu', name: 'GPU', desc: 'Draw the 3D world on your graphics card; chat, interfaces, orbs and walk-clicks stay pixel-exact on the CPU. Falls back to software automatically on any driver error.', master: { key: 'gpu', def: 'false' },
+        { id: 'camera', name: 'Camera', desc: 'Wheel zoom, middle-drag rotate, chat scroll.', master: { key: 'camera', def: 'true' } },
+        { id: 'gpu', name: 'GPU', desc: 'Uses your GPU; chat, interfaces, orbs and walk-clicks stay pixel-exact on the CPU.', master: { key: 'gpu', def: 'false' },
           status() {
               if (LS.get('gpu', 'false') !== 'true') return '';
               if (window.lcliteGpuError) return 'off: ' + window.lcliteGpuError;
@@ -65,17 +68,19 @@
               if (!s || !s.frames) return 'starting…';
               return s.tris + '△ · ' + s.batches + ' calls · ' + s.ms + 'ms';
           } },
-        { id: 'xp-drops', name: 'XP drops', desc: 'OSRS-style XP drop rows over the viewport with a level-progress tracker in its top-right corner; auto-hides a few seconds after the last gain.', master: { key: 'xpDrops', def: 'true' } },
-        { id: 'stat-orbs', name: 'Stat orbs', desc: 'OSRS-style HP/Prayer/Run orbs down the left of the minimap, numbers always shown.', master: { key: 'statOrbs', def: 'false' } },
-        { id: 'true-tile', name: 'True tile', desc: 'Green outline on the tile the server actually has you on, instead of the walk-delayed model position. Click for color, border and fill options.', master: { key: 'trueTile', def: 'true' } },
-        { id: 'tcg', name: 'TCG', desc: 'Card packs earnable by playing: every 1,000 non-combat xp pays 100 credits, level-ups pay 1,250–25,000, monster kills pay their combat level. Open a pack from the credits HUD (top-left of the viewport) or ::tcg — 7 rarity tiers, foils, and a collection album of 6,376 OSRS cards.', master: { key: 'tcg', def: 'true' },
+        { id: 'xp-drops', name: 'XP drops', desc: 'Customizable XP drops.', master: { key: 'xpDrops', def: 'true' } },
+        { id: 'stat-orbs', name: 'Stat orbs', desc: 'HP/Prayer/Run/etc orbs by the minimap.', master: { key: 'statOrbs', def: 'false' } },
+        { id: 'true-tile', name: 'True tile', desc: "Highlights player's true server tile. Customizable.", master: { key: 'trueTile', def: 'true' } },
+        { id: 'tcg', name: 'TCG', desc: 'Left click opens pack, right click opens album. 1k exp = 100 credits, level ups = 1k-25k credits, kills = 1 credit per cb lvl.', master: { key: 'tcg', def: 'true' },
           status() {
               if (LS.get('tcg', 'true') !== 'true') return '';
               if (typeof window.tcgInfo !== 'function') return 'core not loaded';
               const i = window.tcgInfo();   // positional contract (see tcg_core.ts)
               return '◈ ' + i[0].toLocaleString('en-US') + ' · ' + i[11] + ' cards · ' + i[16] + ' kills';
           } },
-        { id: 'anti-cheat', name: 'Anti-cheat', desc: 'Send legacy RuneScope mouse/camera/anticheat packets. Harmless to disable on private servers.', master: { key: 'antiCheat', def: 'true' } },
+        // inverted row: the switch is labelled DISABLE — checked means packets OFF,
+        // so it mirrors the antiCheat engine key (checked ⇔ LS 'false').
+        { id: 'anti-cheat', name: 'Disable anti-cheat', desc: 'Disables the client sending legacy mouse/camera/anticheat packets.', master: { key: 'antiCheat', def: 'true', invert: true } },
         { id: 'rendering', name: 'Smooth shading', desc: 'Per-pixel Gouraud instead of 4px blocks. Costs FPS.', master: { key: 'smoothShading', def: 'false' } },
         { id: 'control-panel', name: 'LCLite', desc: 'This panel and the page around it: canvas size, scaling, legacy bar, fullscreen, screenshots.', master: null }
     ];
@@ -153,7 +158,8 @@
             list.push(synthesizeMod(m, rowsOf(m)));
             known.add(m);
         }
-        return list;
+        // favorites first, otherwise registry order (Array.sort is stable)
+        return list.sort(favCmp);
     }
     function synthesizeMod(id, rows) {
         const single = rows.length === 1 && rows[0].kind === 'toggle' ? rows[0] : null;
@@ -178,6 +184,15 @@
     // padlock icons for the pin button (stroke-only so they inherit currentColor)
     const ICON_UNLOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V8a4 4 0 0 1 7.7-1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="5" y="10" width="12" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
     const ICON_LOCKED = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10V8a4 4 0 0 1 8 0v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="5" y="10" width="14" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="14.5" r="1.4" fill="currentColor"/></svg>';
+
+    // mod-row icons: favorite star (fill rides the .on class) + settings gear
+    const ICON_STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3.1-5.8 3.1 1.1-6.5L2.6 9.3l6.5-.9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+    const ICON_GEAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+
+    // favorites: panel-owned display state (lcm* prefix ⇒ Reset-all wipes it too)
+    const FAVS = new Set(String(LS.get('lcmFavMods', '')).split(',').filter(Boolean));
+    const saveFavs = () => LS.set('lcmFavMods', [...FAVS].join(','));
+    const favCmp = (a, b) => (FAVS.has(b.id) ? 1 : 0) - (FAVS.has(a.id) ? 1 : 0);
 
     // build DOM ---------------------------------------------------------------
     const root = document.createElement('div');
@@ -291,19 +306,35 @@
         row.dataset.name = (p.name + ' ' + p.desc).toLowerCase();
         const badge = p.badge ? `<span class="lcm-badge">${esc(p.badge)}</span>` : '';
         const status = typeof p.status === 'function' ? '<span class="lcm-status" style="display:none"></span>' : '';
+        const hasRows = MODS.some(f => f.mod === p.id);
         row.innerHTML = `
+            <button class="lcm-fav${FAVS.has(p.id) ? ' on' : ''}" type="button" title="${FAVS.has(p.id) ? 'Unfavorite (back to default order)' : 'Favorite (pin to top of the list)'}" aria-pressed="${FAVS.has(p.id)}">${ICON_STAR}</button>
             <div class="lcm-pmain">
                 <div class="lcm-pname">${esc(p.name)}${badge}${status}</div>
                 <div class="lcm-pdesc">${esc(p.desc)}</div>
-            </div>`;
+            </div>
+            ${hasRows ? `<button class="lcm-gear" type="button" title="Open ${esc(p.name)} settings">${ICON_GEAR}</button>` : ''}`;
         const main = row.querySelector('.lcm-pmain');
 
+        row.querySelector('.lcm-fav').addEventListener('click', () => {
+            if (FAVS.has(p.id)) FAVS.delete(p.id); else FAVS.add(p.id);
+            saveFavs();
+            toast(FAVS.has(p.id) ? `${p.name}: favorited` : `${p.name}: unfavorited`);
+            // rebuild, not in-place sort: an unfavorited mod must return to its
+            // registry slot, which a stable sort over the already-sorted list can't do
+            modsList = buildModList(installedSet);
+            renderCurrentTab();              // both tabs share the order
+        });
+        const gear = row.querySelector('.lcm-gear');
+        if (gear) gear.addEventListener('click', () => setTab('settings', p.id));
+
         if (p.master) {
-            const input = switchInput(LS.get(p.master.key, p.master.def) === 'true');
+            const inv = !!p.master.invert;
+            const input = switchInput((LS.get(p.master.key, p.master.def) === 'true') !== inv);
             input.addEventListener('change', () => {
-                LS.set(p.master.key, input.checked ? 'true' : 'false');
+                LS.set(p.master.key, (input.checked !== inv) ? 'true' : 'false');
                 afterWrite({ id: 'mod-master-' + p.id });
-                toast(`${p.name}: ${input.checked ? 'enabled' : 'disabled'}`);
+                toast(inv ? `${p.name}: ${input.checked ? 'on' : 'off'}` : `${p.name}: ${input.checked ? 'enabled' : 'disabled'}`);
                 renderCurrentTab();          // section visibility can change
             });
             row.appendChild(wrapSwitch(input));
@@ -317,7 +348,6 @@
 
         // RuneLite behaviour: clicking the mod (not its switch) opens its config
         main.addEventListener('click', () => {
-            const hasRows = MODS.some(f => f.mod === p.id);
             if (!hasRows) { toast(`${p.name}: this mod has no settings`); return; }
             setTab('settings', p.id);
         });
@@ -448,7 +478,10 @@
         });
 
         if (p.master && p.id === 'camera') {
-            // only camera has sub-settings, so its master rides the section header
+            // camera's master gates a whole settings tree (zoom/rotate/chat rows),
+            // so it also rides the section header; other mods' masters live only
+            // on their Mods-tab row (true-tile/control-panel sections read it via
+            // the plugoff note instead)
             const input = switchInput(LS.get(p.master.key, p.master.def) === 'true');
             input.addEventListener('change', () => {
                 LS.set(p.master.key, input.checked ? 'true' : 'false');
@@ -475,6 +508,7 @@
 
     // ---- tab rendering ---------------------------------------------------------
     let modsList = [];   // rebuilt by renderRows(manifest)
+    let installedSet = null;   // last manifest seen (rebuild target for favorite re-sorts)
     // Settings sections start COLLAPSED (the Mods tab is the entry point). An
     // expansion — from clicking a mod row, clicking a section header, or from
     // typing a search that hits it — is remembered only for this page session
@@ -552,6 +586,7 @@
     function renderRows(installed) {
         // `installed` = Set of mod folder names from /lclite/installed.json, or
         // null (manifest unreadable = pre-selection install): show everything.
+        installedSet = installed;
         modsList = buildModList(installed);
         renderCurrentTab();
     }
