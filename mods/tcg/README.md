@@ -32,16 +32,19 @@ counts, discovery silhouettes, rarity colors and per-tier collection progress.
   ALT-DRAGGABLE via the control panel's placement layer — reads its own
   `lcmTcgHudAnchor`/`Offset` keys, parks opposite a relocated FAB), pack
   reveal overlay, collection album: a plain page script next to panel.js
-  (client.ejs
-  hunk). No engine coupling beyond the `window['tcg*']` API + the `tcg` key.
-  Lays over the LCLite chrome (z 9600 > panel 9000) so the FAB never eats
-  its clicks. **Page assets are version-keyed** (`ui.js?v=3`,
-  `cards.json?v=3`): express re-validates stale cached copies and Brave
+  (client.ejs hunk). No engine coupling beyond the `window['tcg*']` API + the
+  `tcg` key. Lays over the LCLite chrome (z 9600 > panel 9000) so the FAB never
+  eats its clicks. **Page assets are version-keyed** (currently `ui.js?v=7` /
+  `cards.json?v=7`): express re-validates stale cached copies and Brave
   demonstrably re-serves deleted assets past hard-refresh, so any ui.js/
   cards.json revision shipped here MUST bump BOTH `?v=` numbers (client.ejs
   hunk + core constants) — the bundled core stamp-checks `window.__lctcgUi`
   and (re)injects the version-keyed script itself if the page never got the
-  ejs tag or loaded a stale copy. That's the whole anti-cache contract.
+  ejs tag or loaded a stale copy. **The injection probe keys on
+  `script[data-lctcg-ui]`, so the ejs tag MUST carry that attribute AND ui.js
+  self-stamps via `document.currentScript`** — a plain `<script src>` tag
+  looked "missing" to the self-heal and the core injected a second copy (v6
+  double-boot bug). That's the whole anti-cache contract.
 - `files/engine/public/lclite/tcg/cards.json` — 6,376-card catalog derived
   from the plugin's `Card.json` (OSRS Wiki item/monster data + image URLs,
   CC BY-SA; the plugin repo is BSD-2 for its own code). Positional rows:

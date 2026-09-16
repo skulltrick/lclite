@@ -175,8 +175,24 @@ cp -r lclite t && cd t && node lclite/tools/lclite.mjs
   then an ancient build (tcg shipped through exactly this: old HUD anchored
   under the FAB looked like a dead mod). The tcg pattern: `?v=` in the ejs tag
   AND in the core's self-heal injection, `window.__lctcgUi` stamp so the core
-  detects a stale UI and removes+replaces it. Also never `fetch(..., {cache:
-  'force-cache'})` a mod data file — 'no-cache' revalidates and stays 304-cheap.
+  detects a stale UI and removes+replaces it. **The stamp must land on the
+  SCRIPT TAG too** (`data-lctcg-ui="N"`): the self-heal probes
+  `script[data-lctcg-ui]` before injecting, and a `<script src>` that never
+  sets the attribute looks "missing" even when it loaded fine — the core then
+  injects a SECOND copy and the page boots the mod twice (v6 shipped exactly
+  this; ui.js now self-stamps via `document.currentScript` AND the ejs tag
+  carries the attribute). Also never `fetch(..., {cache: 'force-cache'})` a mod
+  data file — 'no-cache' revalidates and stays 304-cheap. That includes the
+  panel's own `installed.json` read: a stale disk copy of that file silently
+  GHOSTS a fully working mod from the Mods tab (it's the row filter).
+- **`installed.json` is derived state — regen BEFORE apply when you hand-edit
+  live files.** The Mods tab filters rows by `engine/public/lclite/installed.json`,
+  which `apply` rebuilds from `modInstalled()` = "every hunk replacement is
+  verbatim in the tree". Editing a live file (say, the ejs `?v=` bump) while the
+  committed hunk JSON still holds the old text makes that mod read as NOT
+  installed — the Mods row disappears although the mod works fine. Fix order is
+  always: hand-edit → `node tools/regen.mjs` → `apply` (which then re-verifies
+  and re-lists). `apply --check` ✗0 alone does NOT prove the manifest is right.
 - **Placement (alt-drag movable overlays) is the one cross-mod WRITE, by
   design.** RuneLite parity: hold **Alt** and drag any movable surface to one of
   9 anchor points plus a px offset; snap dots appear mid-drag; Alt+right-click
