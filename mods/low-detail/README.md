@@ -18,9 +18,9 @@ three existing low-memory knobs:
 upload). Flipping it mid-session would leave already-uploaded textures in the other
 layout and the rasterizer reading the wrong strides — wrong colours on any surface that
 still samples a texture. So this mod sets it once, during construction, and never touches
-it again. Consequence, stated in the panel: turning the switch ON mid-session gives the
-untextured ground **immediately** and the halved-texture memory saving only after a
-reload.
+it again. Consequence, and the panel row's description says so: turning the switch ON
+mid-session gives the untextured ground **immediately**, ground decorations as you reach
+the next area, and the halved-texture memory saving only after a **client refresh**.
 
 `ClientBuild.lowMem` needs no live write either: the scene builder re-derives it from
 `World.lowMem` on every build, so the per-frame hook driving `World.lowMem` is enough for

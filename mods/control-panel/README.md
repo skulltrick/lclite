@@ -16,7 +16,7 @@ the cross-realm names (`lostcityClient`, `lcmAnchor`, …).
   no config => no section).
 - `files/engine/public/lclite/panel.css` — the whole look; theme vars on `:root`
   (`--lcm-*`), gold `--lcm-gold` is the favorite-star color.
-- `patches/client_ejs.json` — the two tags (currently `?v=5` — see below), plus the
+- `patches/client_ejs.json` — the two tags (currently `?v=6` — see below), plus the
   canvas-sizing logic itself: `setSize()` now takes ANY decimal (clamped 0.25x..8x),
   canonicalises it into `canvasSize`, remembers the fixed scale in `canvasScale` and keeps
   the legacy dropdown in step (appending a `(custom)` option for odd values). The panel's
