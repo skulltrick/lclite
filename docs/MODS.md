@@ -124,14 +124,22 @@ block (legacy regex fallback). The old ≥61-line isolation rule is RETIRED (202
 regen now extracts `git diff -U0` islands, so adjacent change blocks stay separate
 hunks automatically — but keep hunks' edit sites ≥3 untouched lines apart, and trust
 `node tools/lclite.mjs doctor` (exit 3 = a hunk's deletions would break a sibling's
-anchor).
+anchor). Point doctor at the tree you're patching when this repo isn't inside one
+(`LCLITE_ROOT=<install> node tools/doctor.mjs`); with no host tree at all it exits 3
+and says so rather than reporting every mod as off.
 
 ### 4. Prove it survives
 ```
-# fresh clones at base revs + apply must reproduce your tree byte-for-byte
-git clone --no-checkout ../webclient t/webclient && git clone --no-checkout ../engine t/engine
-(cd t/webclient && git checkout <base-rev>) && (cd t/engine && git checkout <base-rev>)
-cp -r lclite t && cd t && node lclite/tools/lclite.mjs
+# fast form: against the install you are patching (every anchor found, doctor healthy)
+LCLITE_ROOT=<install> node tools/lclite.mjs apply --check    # ✗0 on every mod
+LCLITE_ROOT=<install> node tools/doctor.mjs                  # exit 0
+
+# strong form: fresh clones at the base revs + apply reproduce your tree byte-for-byte
+mkdir -p t && cd t
+git clone https://github.com/LostCityRS/Client-TS webclient
+git clone https://github.com/LostCityRS/Engine-TS engine
+git -C webclient checkout <base-rev> && git -C engine checkout <base-rev>
+cp -r .. lclite && cd lclite && node tools/lclite.mjs        # t/ is the host root
 # diff every patched file against your live tree — must be empty
 ```
 
@@ -237,12 +245,20 @@ cp -r lclite t && cd t && node lclite/tools/lclite.mjs
 
 ## Rev-upgrade day, the short version
 
-1. commit modded trees (`git -C webclient add -A && …`) — safety net for manual reseating
-2. change rev via `start.bat`, or `git pull` per repo
-3. `node lclite/tools/lclite.mjs` → clean? build+play. Failing hunks? each prints
-   `anchor not found` / `ambiguous` + the file and old-line number — open that patch JSON,
-   find where the `find:` lines moved in the new upstream, reseat, rerun.
-4. `node lclite/tools/regen.mjs` when you've since polished the edits in-tree.
+Since the launcher handles installs, "rev-upgrade day" is usually just its
+**Update from GitHub** button: it fast-forwards client + engine + content, re-applies
+your mods, rebuilds, and reports any failing anchor. By hand, in an install (or a
+checkout of your own):
+
+1. commit modded trees (`git -C <install>/webclient add -A && …`) — safety net for
+   manual reseating (never on the tracked upstream branch itself)
+2. `git -C <install>/<repo> pull` per repo, or switch revision in the launcher
+3. `LCLITE_ROOT=<install> node tools/lclite.mjs` → clean? build+play. Failing hunks?
+   each prints `anchor not found` / `ambiguous` + the file and old-line number — open
+   that patch JSON, find where the `find:` lines moved in the new upstream, reseat, rerun.
+4. `LCLITE_ROOT=<install> node tools/regen.mjs` when you've since polished the edits in-tree.
+   Note: installs cloned by the launcher are **shallow**, so regen/doctor can't resolve
+   the old pinned commit there — a pin that is simply older than HEAD is a note, not drift.
 
 ## TYPE C blueprint — visual entities (model overrides, fake NPCs)
 

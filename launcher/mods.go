@@ -23,10 +23,25 @@ var (
 	reModReq   = regexp.MustCompile(`required:\s*true`)
 )
 
-// overlayFiles are the files that MUST exist for the overlay to be usable.
+// overlayPresent reports whether a HOST root has an overlay in it
+// (<root>/lclite/tools/lclite.mjs), i.e. the old "lclite/ inside the checkout" shape.
 func overlayPresent(root string) bool {
 	st, err := os.Stat(filepath.Join(root, "lclite", "tools", "lclite.mjs"))
 	return err == nil && !st.IsDir()
+}
+
+// isOverlayDir reports whether dir IS an overlay checkout (tools/lclite.mjs plus
+// mods/) rather than a host root that contains one. This is the shape of the
+// lclite repo on its own — the one holding the launcher and your mod sources.
+func isOverlayDir(dir string) bool {
+	if dir == "" {
+		return false
+	}
+	if st, err := os.Stat(filepath.Join(dir, "tools", "lclite.mjs")); err != nil || st.IsDir() {
+		return false
+	}
+	st, err := os.Stat(filepath.Join(dir, "mods"))
+	return err == nil && st.IsDir()
 }
 
 // overlayRev is the revision the patch hunks are anchored to. When Lost City
@@ -38,8 +53,14 @@ const overlayRev = "289"
 // the revision its hunks were anchored to (see docs/MODS.md).
 func overlayModsAllowed(rev string) bool { return strings.TrimSpace(rev) == overlayRev }
 
+// listMods reads the mods of a HOST root (lclite/ inside it).
 func listMods(root string) []ModInfo {
-	overlay := filepath.Join(root, "lclite")
+	return listModsFromOverlay(filepath.Join(root, "lclite"))
+}
+
+// listModsFromOverlay reads mods/ inside an overlay checkout itself — which is
+// what the launcher drives, since your checkout is the source of truth.
+func listModsFromOverlay(overlay string) []ModInfo {
 	entries, err := os.ReadDir(filepath.Join(overlay, "mods"))
 	if err != nil {
 		return nil
@@ -119,8 +140,8 @@ func parseModMeta(libPath string) map[string]ModInfo {
 
 // allModNames is the CLI's default set: every mod folder, which is what a bare
 // `node tools/lclite.mjs` applies. An empty selection means this, not "nothing".
-func allModNames(root string) []string {
-	mods := listMods(root)
+func allModNames(overlay string) []string {
+	mods := listModsFromOverlay(overlay)
 	out := make([]string, 0, len(mods))
 	for _, m := range mods {
 		out = append(out, m.Name)
@@ -130,9 +151,9 @@ func allModNames(root string) []string {
 
 // normalizeMods keeps only known mods, always includes the required ones, and
 // returns a stable, comma-free list for the CLI.
-func normalizeMods(root string, wanted []string) []string {
+func normalizeMods(overlay string, wanted []string) []string {
 	known := map[string]ModInfo{}
-	for _, m := range listMods(root) {
+	for _, m := range listModsFromOverlay(overlay) {
 		known[m.Name] = m
 	}
 	picked := map[string]bool{}

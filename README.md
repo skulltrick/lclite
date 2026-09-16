@@ -10,7 +10,7 @@ Survives the next build.
 
 ![LCLite panel over the Lost City webclient](docs/lclite-panel.png)
 
-*Node 18+ · zero dependencies · Windows double-click or any OS from the terminal*
+*One 8 MB launcher, no runtime · or the Node CLI on any OS — `node tools/lclite.mjs`*
 
 </div>
 
@@ -31,39 +31,43 @@ see [custom servers](#running-a-custom-2004-server)).
 
 ## Get started (Windows)
 
-1. Run Lost City's own `start.bat` once so the checkout has `webclient/` + `engine/`.
-2. Put LCLite into that folder: `git clone https://github.com/skulltrick/lclite lclite/`
-3. Double-click **`LCLite.bat`** → a checkbox list appears.
+1. Get the [launcher](#the-launcher-one-file-no-runtime): build it
+   (`cd launcher && go run build.go`) or grab `LCLite.exe` from the releases page,
+   and drop it in this folder next to `LCLite.bat`.
+2. Double-click **`LCLite.bat`** → a setup wizard asks *which Lost City revision
+   you'd like to use*, with the branch Lost City is developing right now already
+   picked. It downloads, builds and starts that revision for you; the wizard hands
+   you the launcher as soon as your world is up.
+3. Press **F1** in-game. Every mod is a toggle, live, no reload.
 
-Or take the [launcher](#the-launcher-one-file-no-runtime): drop `LCLite.exe`
-(8 MB, no runtime, no installer) next to `LCLite.bat` and the same double-click
-opens a **setup wizard** — "which revision would you like to use?" with the branch
-Lost City is developing right now already picked, then download, build and play;
-the wizard hands you the launcher as soon as your world is up. From there it's a
-dashboard for mods, extra revisions, running a world and joining someone else's. `LCLite.bat --cli` always gets you the plain terminal picker back.
+From then on the launcher is a dashboard: mods, extra revisions side by side,
+running a world, joining someone else's.
 
-```
- 1 [X] Camera          wheel zoom, middle-drag rotate, chat scroll
- 3 [X] XP drops        floating rows + level tracker
- 4 [ ] Stat orbs       HP/Prayer/Energy beside the minimap
- ...
- Enter = install your selection + build
-```
-
-Done — start your server, open the webclient, **press F1**. The crescent-moon
-button (top-right) does the same: every mod is a toggle, live, no reload.
+**Nothing is cloned into this folder.** Each revision the launcher installs gets
+its own checkout under its data folder
+(`%LOCALAPPDATA%\LCLite\installs\<rev>\{webclient,engine,content,lclite}`), and
+the launcher drives *this* repo's overlay against it — so edits you make here take
+effect immediately.
 
 <details>
-<summary>Any OS / terminal</summary>
+<summary>Any OS / terminal (the Node CLI)</summary>
+
+The overlay is plain scripts and works anywhere. Run them from this folder; point
+them at an install with `LCLITE_ROOT` whenever this repo isn't sitting inside a
+checkout (which is the normal case now):
 
 ```
-node lclite/tools/lclite.mjs              # same picker
-node lclite/tools/lclite.mjs apply        # apply ALL mods, no build
-node lclite/tools/lclite.mjs doctor       # health report of the whole overlay
-node lclite/tools/lclite.mjs build        # bun bundle + deploy client.js
-node lclite/tools/lclite.mjs list         # machine-readable mod state
-node lclite/tools/lclite.mjs uninstall    # back toward pristine upstreams
+node tools/lclite.mjs                     # picker (needs a host checkout at $LCLITE_ROOT)
+node tools/lclite.mjs list                # machine-readable mod state
+LCLITE_ROOT=/path/to/install node tools/lclite.mjs apply     # apply ALL mods
+LCLITE_ROOT=/path/to/install node tools/lclite.mjs doctor    # health report
+LCLITE_ROOT=/path/to/install node tools/lclite.mjs build     # bun bundle + deploy client.js
+LCLITE_ROOT=/path/to/install node tools/lclite.mjs uninstall # back toward pristine upstreams
 ```
+
+An "install" is any folder holding `webclient/` + `engine/` — the launcher's, or a
+Lost City checkout you made yourself. Copy `lclite/` inside it and everything works
+without `LCLITE_ROOT` at all (the layout LCLite grew up in, still supported).
 </details>
 
 ## The launcher (one file, no runtime)
@@ -117,7 +121,9 @@ bundle can't be hot-swapped like that — so LCLite adapts the *idea* instead of
 the mechanism: mods live **out-of-tree** as identity-anchored patch hunks.
 
 ```
-upstream clone (pristine)  +  lclite/ overlay   →   LCLite.bat   →   your modded client
+upstream clone (pristine)  +  this overlay   →   launcher   →   your modded client
+   ↑ cloned per revision into the launcher's data folder; LCLITE_ROOT points the
+     tools at it, so the overlay stays where you edit it
 ```
 
 - **Hunks are the durable artifact.** Each mod owns a folder under `mods/`:
@@ -144,27 +150,43 @@ same double-click way. Authoring guide: [docs/MODS.md](docs/MODS.md).
 
 ## Updating when Lost City moves on
 
+In the launcher: select the install, **Update from GitHub** (fast-forwards
+client + engine + content, then re-applies your mods and rebuilds). By hand, from
+an install folder or your own checkout:
+
 ```
-git -C webclient pull && git -C engine pull     # or start.bat change-version
-node lclite/tools/lclite.mjs                    # picker → apply → build
+git -C <install>/engine   pull
+git -C <install>/webclient pull
+LCLITE_ROOT=<install> node tools/lclite.mjs     # picker → apply → build
 ```
+
 Clean apply? Play. Failing hunks print `↳ where the anchor moved` — fix the
-`find[]` in that patch JSON, rerun, and `node lclite/tools/regen.mjs` snapshots
-your reseat so the overlay tracks the new rev. Full walkthrough:
-[CONTRIBUTING.md](CONTRIBUTING.md).
+`find[]` in that patch JSON, rerun, and
+`LCLITE_ROOT=<install> node tools/regen.mjs` snapshots your reseat so the overlay
+tracks the new rev. Full walkthrough: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Layout
 
 ```
-lclite/
-  LCLite.bat          ← players double-click this
-  tools/lclite.mjs    ← the engine behind it (apply/pick/build/doctor/new)
-  tools/regen.mjs     ← snapshot your source edits into hunks
-  root.json           ← host project layout (edit for custom servers)
-  mods/<name>/        ← one folder per mod: patches/*.json + files/ payload
-  docs/               ← MODS.md guide, HOOKS map, architecture dossier
-  FOR_AGENTS_README.md ← hard rules for AI sessions (read this first)
+lclite/                 ← this repo: the overlay AND the launcher, on its own
+  LCLite.bat            ← players double-click this (→ LCLite.exe)
+  LCLite.exe            ← the launcher (built; see launcher/)
+  launcher/             ← its Go source (stdlib only, one 8 MB binary)
+  tools/lclite.mjs      ← the engine behind it (apply/pick/build/doctor/new)
+  tools/regen.mjs       ← snapshot your source edits into hunks
+  root.json             ← host project layout (edit for custom servers)
+  mods/<name>/          ← one folder per mod: patches/*.json + files/ payload
+  docs/                 ← MODS.md guide, HOOKS map, architecture dossier
+  FOR_AGENTS_README.md  ← hard rules for AI sessions (read this first)
+
+%LOCALAPPDATA%\LCLite\      ← the launcher's data folder (nothing lives here in git)
+  launcher.json         ← installs, saved servers, cached branch list
+  installs/<rev>/       ← webclient/ engine/ content/ (+ lclite/ copy) per revision
+  tools/bun/            ← bun fetched on demand
 ```
+
+`tree = f(upstream@rev, overlay)` still holds — the overlay is just no longer
+required to live *inside* the tree it patches.
 
 ## Community & status
 

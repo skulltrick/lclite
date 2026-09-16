@@ -182,6 +182,34 @@ Requires Go 1.24+ (no cgo, no third-party modules — `go.mod` has zero requires
 `../LCLite.bat` prefers `LCLite.exe` when it sits beside it and falls back to the
 Node picker otherwise, so the repo stays usable with or without a build.
 
+## Where things live
+
+```
+lclite/                        ← the overlay repo: mods, tools, docs AND this launcher
+  LCLite.exe                   ← build output, sits next to ../LCLite.bat
+  launcher/                    ← Go source
+
+%LOCALAPPDATA%\LCLite\          ← the launcher's data folder
+  installs/<rev>/              ← webclient/ engine/ content/ (+ lclite/ copy)
+  launcher.json                ← installs, saved servers, cached branch list
+  tools/bun/bun.exe            ← bun fetched on demand
+```
+
+Nothing needs to be cloned into the repo any more, and the repo doesn't have to sit
+inside a Lost City checkout. **Mods come from the checkout the launcher was launched
+from** — the overlay next to the exe wins over the copy cloned into each install, so
+editing `mods/` here changes what the launcher applies immediately (the mods card
+says "from your checkout"; the install's own copy is the fallback when the binary
+travels alone). For the CLI, point `LCLITE_ROOT` at an install:
+
+```
+LCLITE_ROOT=%LOCALAPPDATA%\LCLite\installs\289 node tools/lclite.mjs doctor
+```
+
+An install whose folder has been moved or deleted shows up as **missing** in the
+list, with a one-click way to drop the record — it never pretends to be a broken
+installation.
+
 ## Data layout
 
 | Path | What |

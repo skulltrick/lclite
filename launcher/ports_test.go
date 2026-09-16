@@ -93,18 +93,41 @@ func TestEnvPrefersRealDotEnv(t *testing.T) {
 	}
 }
 
-func TestAllModNamesIsTheDefaultSet(t *testing.T) {
-	root := t.TempDir()
+// The mod helpers take an OVERLAY dir (the checkout the launcher drives), which
+// is the shape of this repo on its own — not a host root with lclite/ inside it.
+func TestModHelpersReadAnOverlayDir(t *testing.T) {
+	overlay := t.TempDir()
 	for _, name := range []string{"camera", "control-panel", "tcg"} {
-		if err := os.MkdirAll(filepath.Join(root, "lclite", "mods", name), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Join(overlay, "mods", name), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
-	got := allModNames(root)
+	// mods/ alone is not an overlay — the tooling has to be there too
+	if isOverlayDir(overlay) {
+		t.Fatal("a dir with only mods/ must not count as an overlay")
+	}
+	if err := os.MkdirAll(filepath.Join(overlay, "tools"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(overlay, "tools", "lclite.mjs"), []byte("// stub\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !isOverlayDir(overlay) {
+		t.Fatal("mods/ + tools/lclite.mjs should be detected as an overlay")
+	}
+	got := allModNames(overlay)
 	if len(got) != 3 {
 		t.Fatalf("got %v, want 3 mods", got)
 	}
-	if len(normalizeMods(root, []string{"camera", "nope"})) != 1 {
+	if len(normalizeMods(overlay, []string{"camera", "nope"})) != 1 {
 		t.Fatal("normalizeMods should keep known mods only")
+	}
+	// a host root (lclite/ inside it) is still understood by listMods
+	host := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(host, "lclite", "mods", "camera"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if len(listMods(host)) != 1 {
+		t.Fatal("listMods should read a host root's lclite/mods")
 	}
 }

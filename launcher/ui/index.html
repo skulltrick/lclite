@@ -757,9 +757,10 @@ function installRows(){
          onkeydown="if(event.key==='Enter'){selectInstall('${esc(i.id)}')}" title="${esc(i.path)}">
       <div class="top">
         <span class="name">${esc(i.id)}</span>
+        ${i.missing ? '<span class="tag off" title="this folder is gone — remove it from the list">missing</span>' : ""}
         ${i.custom ? '<span class="tag off">existing folder</span>' : ""}
-        ${i.mods_allowed ? `<span class="pill mods">${(i.mods || []).length || 0} mods</span>` : ""}
-        ${i.engine_deps ? `<span class="pill good">ready</span>` : `<span class="pill">needs setup</span>`}
+        ${i.missing ? "" : (i.mods_allowed ? `<span class="pill mods">${(i.mods || []).length || 0} mods</span>` : "")}
+        ${i.missing ? "" : (i.engine_deps ? `<span class="pill good">ready</span>` : `<span class="pill">needs setup</span>`)}
         <span class="grow"></span>
         <span class="acts">
           <button class="ghost" title="take it out of this list — nothing is deleted from disk" onclick="event.stopPropagation();removeInstall('${esc(i.id)}', false)">Remove</button>
@@ -798,6 +799,16 @@ function refreshModsDirty(){
 
 function detailHTML(){
   const i = currentInstall();
+  if (i && i.missing) {
+    return `
+      <div class="card" style="border-color:#5a3630;background:linear-gradient(180deg,#241816,#1d1413)">
+        <h3 style="color:var(--bad)">This folder is gone</h3>
+        <div class="path">${esc(i.path)}</div>
+        <div class="hint">The launcher remembers it, but nothing is at that path any more — it was moved,
+        deleted, or it points at an older layout. Taking it out of the list changes nothing on disk.</div>
+        <button style="margin-top:10px" onclick="removeInstall('${esc(i.id)}', false)">Remove from the list</button>
+      </div>`;
+  }
   if (!i) {
     const hasAny = (S.installs || []).length;
     return `<div class="empty">${hasAny ? "Pick an install on the left." : "Install a revision and it shows up here — mods, server, housekeeping."}</div>`;
@@ -831,9 +842,13 @@ function detailHTML(){
       </div>
     </div>
     <div class="card">
-      <h3>LCLite mods <span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">${(i.mods_available || []).length} available</span></h3>
+      <h3>LCLite mods <span class="grow"></span>
+        ${i.overlay_source === "checkout" ? `<span class="chip" style="text-transform:none;letter-spacing:0" title="${esc(i.overlay_path || "")}">from your checkout</span>` : ""}
+        ${i.overlay_source === "install" ? '<span class="chip" style="text-transform:none;letter-spacing:0" title="the copy cloned into this install">from install copy</span>' : ""}
+        <span class="chip" style="text-transform:none;letter-spacing:0">${(i.mods_available || []).length} available</span></h3>
       ${i.mods_allowed
-        ? `<div class="sub" style="margin:0 0 6px">Tick what you want, then apply — unticked mods are stripped back to upstream. Nothing ticked = the full default set.</div>
+        ? `<div class="sub" style="margin:0 0 6px">Tick what you want, then apply — unticked mods are stripped back to upstream. Nothing ticked = the full default set.
+             ${i.overlay_source === "checkout" ? `Mods come from <span class="path">${esc(i.overlay_path || "")}</span>, so edits there apply straight away.` : ""}</div>
            <div class="modlist" onchange="refreshModsDirty()">${mods || '<div class="empty">no mods found in lclite/mods</div>'}</div>
            ${(i.mods_available || []).length > 3 ? `<div class="more">showing 3 of ${(i.mods_available || []).length} — scroll the list for the rest</div>` : ""}
            <div class="row wrap" style="margin-top:10px">

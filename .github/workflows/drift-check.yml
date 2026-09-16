@@ -58,7 +58,10 @@ jobs:
 
       - name: Clone upstreams beside the overlay
         # tools/lclite.mjs resolves the Lost City root as one level above its own
-        # folder, so the repos must be siblings of this checkout, not inside it
+        # folder. On a dev machine the launcher installs revisions into its own data
+        # folder and drives them with LCLITE_ROOT; CI has no launcher, so it clones
+        # the pinned revs as siblings of this checkout instead (same shape: a host
+        # root holding webclient/ + engine/ + lclite/).
         run: |
           cd ..
           git clone --filter=blob:none https://github.com/LostCityRS/Client-TS webclient

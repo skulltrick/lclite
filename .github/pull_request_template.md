@@ -5,10 +5,13 @@
 `mods/<name>` / installer / panel / docs
 
 ## Acceptance test
-- [ ] `node tools/lclite.mjs apply --no-build` on pristine clones at base revs: clean apply
-- [ ] patched tree byte-identical to my working tree (or this PR *is* the reseat)
+- [ ] `LCLITE_ROOT=<install> node tools/lclite.mjs apply --check` → ✗0 on every mod
+- [ ] `LCLITE_ROOT=<install> node tools/doctor.mjs` → exit 0
+- [ ] `apply --no-build` on pristine clones at the base revs reproduces my tree
+      byte-for-byte (or this PR *is* the reseat — see CONTRIBUTING §acceptance)
 - [ ] `node tools/lclite.mjs apply --mods <touched-mods>` converges (strips the rest, no ✗)
-- [ ] ran `node tools/regen.mjs` after any in-hunk hand-edit; hunks in shared files stay ≥61 pristine lines apart
+- [ ] ran `node tools/regen.mjs` after any in-hunk hand-edit; edit sites stay
+      ≥3 untouched lines apart (the ≥61-line isolation rule is retired)
 
 ## Notes for review
 <!-- anchor reseats, HUNK_OWNER routing, new MOD_META entries, panel keys -->

@@ -210,9 +210,21 @@ function buildManifest(mods) {
 function preflight() {
     const problems = [];
     const manifest = loadRootManifest(__dirname);
-    for (const repo of manifest.repos) {
-        if (!repo.required) continue;
-        if (!fs.existsSync(path.join(ROOT, repo.dir))) problems.push(`${repo.dir}/ not found — clone the host client first${repo.remote ? ` (${repo.remote})` : ''}, then place lclite/ in that folder next to the repos.`);
+    const required = manifest.repos.filter(r => r.required);
+    const missing = required.filter(r => !fs.existsSync(path.join(ROOT, r.dir)));
+    if (!missing.length) return problems;
+
+    if (missing.length === required.length) {
+        // The normal shape since the launcher landed: this repo is the overlay on
+        // its own, and installs live in the launcher's data folder.
+        problems.push(`no Lost City checkout at ${ROOT} — this is the overlay on its own.`);
+        problems.push(`  Run LCLite.exe to install a revision (it keeps them under its data folder),`);
+        problems.push(`  or aim these tools at one that already exists:`);
+        problems.push(`  LCLITE_ROOT=<install folder> node tools/lclite.mjs ${process.argv.slice(2).join(' ') || 'list'}`);
+        return problems;
+    }
+    for (const repo of missing) {
+        problems.push(`${repo.dir}/ not found at ${ROOT}${repo.remote ? ` — clone it from ${repo.remote}` : ''}`);
     }
     return problems;
 }

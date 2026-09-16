@@ -34,6 +34,9 @@ type Launcher struct {
 	proxy      *Proxy
 	token      string
 	httpClient *http.Client
+	// localOverlay = the lclite checkout this exe lives in, when there is one
+	// (mods are edited there, so it wins over an install's cloned copy).
+	localOverlay string
 }
 
 // ownSize reports the size of the running executable — the UI shows it because
@@ -55,20 +58,22 @@ func newLauncher(dataDir, version string) (*Launcher, error) {
 	if err != nil {
 		return nil, err
 	}
+	localOverlay := findLocalOverlay()
 	buf := make([]byte, 16)
 	if _, err := rand.Read(buf); err != nil {
 		return nil, err
 	}
 	return &Launcher{
-		store:      store,
-		dataDir:    store.snapshot().DataDir,
-		version:    version,
-		binarySize: ownSize(),
-		jobs:       newJobManager(),
-		engine:     &EngineServer{},
-		proxy:      &Proxy{},
-		token:      hex.EncodeToString(buf),
-		httpClient: &http.Client{Timeout: 25 * time.Second},
+		store:        store,
+		dataDir:      store.snapshot().DataDir,
+		version:      version,
+		binarySize:   ownSize(),
+		jobs:         newJobManager(),
+		engine:       &EngineServer{},
+		proxy:        &Proxy{},
+		token:        hex.EncodeToString(buf),
+		localOverlay: localOverlay,
+		httpClient:   &http.Client{Timeout: 25 * time.Second},
 	}, nil
 }
 
@@ -226,16 +231,18 @@ func decode(r *http.Request, v any) error {
 
 type installView struct {
 	*Install
-	RevLabel     string    `json:"rev_label"`
-	OverlayDir   string    `json:"overlay_dir"`
-	ModsAllowed  bool      `json:"mods_allowed"`
-	HasOverlay   bool      `json:"has_overlay"`
-	HasClient    bool      `json:"has_client"`
-	HasEngine    bool      `json:"has_engine"`
-	EngineDeps   bool      `json:"engine_deps"`
-	ClientBundle bool      `json:"client_bundle"`
-	Mods         []ModInfo `json:"mods_available"`
-	Missing      bool      `json:"missing"`
+	RevLabel      string    `json:"rev_label"`
+	OverlayDir    string    `json:"overlay_dir"`
+	OverlayPath   string    `json:"overlay_path"`
+	OverlaySource string    `json:"overlay_source"`
+	ModsAllowed   bool      `json:"mods_allowed"`
+	HasOverlay    bool      `json:"has_overlay"`
+	HasClient     bool      `json:"has_client"`
+	HasEngine     bool      `json:"has_engine"`
+	EngineDeps    bool      `json:"engine_deps"`
+	ClientBundle  bool      `json:"client_bundle"`
+	Mods          []ModInfo `json:"mods_available"`
+	Missing       bool      `json:"missing"`
 }
 
 func (l *Launcher) viewInstall(in *Install) installView {
@@ -247,18 +254,29 @@ func (l *Launcher) viewInstall(in *Install) installView {
 		HasClient:   hasClient,
 		HasEngine:   hasEngine,
 		HasOverlay:  hasOverlay,
-		ModsAllowed: hasOverlay && overlayModsAllowed(in.Rev),
+		ModsAllowed: overlayModsAllowed(in.Rev),
 	}
-	st, err := os.Stat(in.engineDir())
-	v.Missing = err != nil || !st.IsDir()
+	// A folder that isn't there any more (moved, deleted, or an old layout we
+	// outgrew) must read as missing rather than as a broken install.
+	if st, err := os.Stat(in.Path); err != nil || !st.IsDir() {
+		v.Missing = true
+		v.Mods = []ModInfo{}
+		v.ModsAllowed = false
+		v.OverlayPath = ""
+		v.OverlaySource = ""
+		return v
+	}
 	if deps, err := os.Stat(filepath.Join(in.engineDir(), "node_modules")); err == nil && deps.IsDir() {
 		v.EngineDeps = true
 	}
 	if b, err := os.Stat(filepath.Join(in.publicDir(), "client", "client.js")); err == nil && !b.IsDir() {
 		v.ClientBundle = true
 	}
-	if hasOverlay {
-		v.Mods = listMods(in.Path)
+	v.OverlayPath = l.overlayFor(in)
+	v.OverlaySource = l.overlaySource(in)
+	v.ModsAllowed = v.ModsAllowed && v.OverlayPath != ""
+	if v.OverlayPath != "" {
+		v.Mods = listModsFromOverlay(v.OverlayPath)
 	}
 	if v.Mods == nil {
 		v.Mods = []ModInfo{}
@@ -290,6 +308,7 @@ func (l *Launcher) handleState(w http.ResponseWriter, r *http.Request) {
 		"revs_at":             cfg.RevsAt,
 		"remotes":             cfg.Remotes,
 		"last_rev":            cfg.LastRev,
+		"overlay_path":        l.localOverlay,
 		"recommended":         recommended,
 		"recommended_updated": cfg.RecommendedUpdated,
 		"recommended_pinned":  cfg.RecommendedRev != "",

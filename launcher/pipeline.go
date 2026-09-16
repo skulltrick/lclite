@@ -60,6 +60,51 @@ func (j *Job) proc(dir string, env []string, name string, args ...string) error 
 	return cmd.Wait()
 }
 
+// findLocalOverlay locates the overlay checkout the running exe lives in: the
+// binary sits in the repo root (or in launcher/), so tools/lclite.mjs + mods/
+// nearby mean "this is your working copy".
+func findLocalOverlay() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	dir := filepath.Dir(exe)
+	for _, cand := range []string{dir, filepath.Dir(dir)} {
+		if isOverlayDir(cand) {
+			return cand
+		}
+	}
+	return ""
+}
+
+// overlayFor picks the overlay (tools/ + mods/) that drives an install.
+//
+// Your own checkout wins when there is one — that's where mods are edited, and
+// since the launcher moved out of the checkout, silently using a stale clone
+// inside each install would mean edits appearing to do nothing. The copy cloned
+// into the install stays as the fallback for a launcher that lives alone.
+func (l *Launcher) overlayFor(in *Install) string {
+	if l.localOverlay != "" {
+		return l.localOverlay
+	}
+	if isOverlayDir(in.overlayDir()) {
+		return in.overlayDir()
+	}
+	return ""
+}
+
+// overlaySource labels where an install's mods come from, for the UI.
+func (l *Launcher) overlaySource(in *Install) string {
+	switch l.overlayFor(in) {
+	case "":
+		return ""
+	case l.localOverlay:
+		return "checkout"
+	default:
+		return "install"
+	}
+}
+
 func (l *Launcher) overlayEnv(in *Install) []string {
 	env := []string{"LCLITE_ROOT=" + in.Path}
 	if bun := l.findBun(); bun != "" {
@@ -148,9 +193,11 @@ func (l *Launcher) installRev(j *Job, rev string, opts installOpts) (*Install, e
 // ---- per-install actions ----------------------------------------------------
 
 func (l *Launcher) applyMods(j *Job, in *Install, mods []string) error {
-	if !in.Overlay {
-		return fmt.Errorf("no LCLite overlay in %s — copy the lclite/ folder there first", in.Path)
+	overlay := l.overlayFor(in)
+	if overlay == "" {
+		return fmt.Errorf("no LCLite overlay to apply — put this exe in your lclite checkout, or copy lclite/ into %s", in.Path)
 	}
+	j.logf("overlay: %s (%s)", overlay, l.overlaySource(in))
 	if !overlayModsAllowed(in.Rev) {
 		return fmt.Errorf("LCLite mods are anchored to revision 289; this install is %s", revLabel(in))
 	}
@@ -162,16 +209,16 @@ func (l *Launcher) applyMods(j *Job, in *Install, mods []string) error {
 	} else {
 		j.logf("using bun: %s", bun)
 	}
-	mods = normalizeMods(in.Path, mods)
+	mods = normalizeMods(overlay, mods)
 	if len(mods) == 0 {
 		// an empty selection means "the default set" — exactly what a bare
 		// `node tools/lclite.mjs` applies. Stripping is its own action.
-		mods = allModNames(in.Path)
+		mods = allModNames(overlay)
 		j.logf("no mods ticked — applying the full default set (%d mods)", len(mods))
 	}
 	// "desired set": these get applied, everything else is stripped back
 	args := []string{"tools/lclite.mjs", "--mods", strings.Join(mods, ",")}
-	if err := j.proc(in.overlayDir(), l.overlayEnv(in), "node", args...); err != nil {
+	if err := j.proc(overlay, l.overlayEnv(in), "node", args...); err != nil {
 		return fmt.Errorf("the overlay reported a problem — see the log above (drift means the hunks need reseating)")
 	}
 	in.Overlay = true
@@ -183,10 +230,11 @@ func (l *Launcher) applyMods(j *Job, in *Install, mods []string) error {
 // stripMods takes every mod back off the tree (the overlay's own uninstall, so
 // copied files are removed too — a plain git checkout would leave them behind).
 func (l *Launcher) stripMods(j *Job, in *Install) error {
-	if !in.Overlay {
-		return fmt.Errorf("no LCLite overlay in %s", in.Path)
+	overlay := l.overlayFor(in)
+	if overlay == "" {
+		return fmt.Errorf("no LCLite overlay to strip with — put this exe in your lclite checkout, or copy lclite/ into %s", in.Path)
 	}
-	if err := j.proc(in.overlayDir(), l.overlayEnv(in), "node", "tools/lclite.mjs", "uninstall"); err != nil {
+	if err := j.proc(overlay, l.overlayEnv(in), "node", "tools/lclite.mjs", "uninstall"); err != nil {
 		return fmt.Errorf("the overlay reported a problem while stripping — see the log above")
 	}
 	in.Mods = nil

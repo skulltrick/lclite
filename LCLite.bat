@@ -32,6 +32,11 @@ if exist "LCLite.exe" (
   goto :done
 )
 
+rem No launcher build here. The CLI tools only mean something next to a Lost City
+rem checkout, so point people at the launcher instead of dumping a node error.
+if not exist "..\webclient" goto :nohost
+if not exist "..\engine" goto :nohost
+
 :cli
 where node >nul 2>nul
 if errorlevel 1 goto :nonode
@@ -78,6 +83,22 @@ endlocal & exit /b 0
 :nonode
 echo.
 echo  LCLite needs Node.js 18+ - grab it from https://nodejs.org and rerun me.
+echo.
+pause
+exit /b 1
+
+:nohost
+echo.
+echo  This folder is the LCLite overlay on its own - there is no Lost City
+echo  checkout here (no ..\webclient and ..\engine to patch).
+echo.
+echo  Get the launcher instead: build it with  cd launcher ^&^& go run build.go
+echo  (or grab LCLite.exe from the releases page) and double-click me again.
+echo  A launcher installs a revision you choose, applies your mods and runs it.
+echo.
+echo  Already have a checkout somewhere? Run me from  lclite\  inside it, or:
+echo    set LCLITE_ROOT=C:\path\to\checkout
+echo    node tools\lclite.mjs list
 echo.
 pause
 exit /b 1

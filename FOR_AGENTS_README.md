@@ -5,6 +5,33 @@ Hunks are minimal `{find, replace}` line arrays anchored by unique text; regen
 extracts them from `git diff -U0` of the live tree. Deep context:
 `docs/hunk-system-assessment.md`, `docs/archive/actions-2026-09.md`.
 
+## Where things live (read this before running anything)
+
+- **This repo is the overlay, on its own** — `mods/`, `tools/`, `docs/` and the
+  launcher (`launcher/`, `LCLite.exe`). Nothing is cloned into it, and it is not a
+  Lost City checkout: `webclient/` + `engine/` are NOT here.
+- **The tree you patch is an install**: `<data>/installs/<rev>/{webclient,engine,content}`
+  (data folder = `%LOCALAPPDATA%\LCLite` on Windows, `~/.local/share/lclite`
+  elsewhere). The launcher makes those; its dashboard is the normal way to manage them.
+- **Drive an install with `LCLITE_ROOT`** — this is the shape every loop below
+  assumes now:
+
+  ```
+  LCLITE_ROOT=<install> node tools/lclite.mjs [list|apply|build|doctor|uninstall]
+  LCLITE_ROOT=<install> node tools/doctor.mjs
+  ```
+
+  Without `LCLITE_ROOT` the tools look one level above this repo; with no host tree
+  there, doctor exits 3 with a message saying exactly that (not a wall of "off" mods).
+- **Mods are read from THIS checkout**, not from an install's `lclite/` copy: the
+  launcher prefers the overlay it was launched from, so edits here take effect
+  immediately (the UI labels it "from your checkout"). The install's copy is the
+  fallback for a launcher that lives alone, and `root.json` still describes a host
+  layout for custom servers.
+- **Installs are shallow clones**, so git history isn't available inside them:
+  `merge-base`/`cat-file` on a pinned commit fails there, and doctor reports that as
+  a note rather than drift. `apply --check` and the hunk counts are the authority.
+
 ## Hard rules (violations have caused real incidents)
 1. **Never hand-edit inside a hunk's replacement region without running
    `node tools/regen.mjs` right after.** The stale-JSON guard only warns;
@@ -42,7 +69,8 @@ find[] against the printed hint lines (they include fuzzy line numbers).
 
 ## Loop for a TYPE A (panel) change
 edit `mods/control-panel/files/engine/public/lclite/panel.{js,css}` →
-`node tools/lclite.mjs apply` (re-copies files) → browser check. No rebuild.
+`LCLITE_ROOT=<install> node tools/lclite.mjs apply` (re-copies files) → browser
+check. No rebuild. (Drop `LCLITE_ROOT` if you copied this repo inside a checkout.)
 
 ## Loop for a LAUNCHER change
 `launcher/` is Go, stdlib only, zero modules in go.mod — keep it that way (the
@@ -60,7 +88,9 @@ never updates, or a poll that un-ticks your boxes, looks fine in a still).
 launcher/ Go launcher (main/state/actions/tools/gitops/jobs/pipeline/engine/proxy/mods + ui/index.html; build.go cross-builds) ·
 tools/lclite.mjs applier/picker/build (+`doctor`, `new <mod>`) · tools/regen.mjs hunk extractor
 (+docs/hooks.json, docs/HOOKS.md) · doctor.mjs health report (exit 2 drift / 3
-structural) · lib.mjs shared helpers · root.json host layout (repo dirs/remotes —
+structural — also 3 when there is no host tree here, and its pin check is
+ancestry-aware: a pin older than HEAD is a note, a shallow clone it can't compare
+is a note) · lib.mjs shared helpers · root.json host layout (repo dirs/remotes —
 edit for custom 2004-lineage servers) · mods/<name>/{patches/*.json, files/, README.md}.
 Commands: `node tools/lclite.mjs [apply|build|pick|list|doctor|new <mod>|uninstall]`.
 
