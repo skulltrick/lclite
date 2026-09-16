@@ -34,7 +34,8 @@
   button:hover:not(:disabled){border-color:#4d4237;background:linear-gradient(180deg,#332a22,#282019)}
   button:active:not(:disabled){transform:translateY(1px)}
   button:disabled{opacity:.42;cursor:not-allowed}
-  button:focus-visible,input:focus-visible,select:focus-visible,.card:focus-visible{outline:2px solid #e6bb6370;outline-offset:2px}
+  button:focus-visible,input:focus-visible,select:focus-visible,.card:focus-visible,
+  .install:focus-visible,.rev:focus-visible,summary:focus-visible{outline:2px solid #e6bb6370;outline-offset:2px}
   button.primary{background:linear-gradient(180deg,#5a4a1c,#3d3418);border-color:#7a6526;color:#fdf1cf;box-shadow:0 1px 0 #ffffff14 inset,0 6px 18px #0004}
   button.primary:hover:not(:disabled){background:linear-gradient(180deg,#6b5822,#4a3f1c);border-color:#a08434}
   button.big{padding:13px 20px;font-size:15.5px;border-radius:11px}
@@ -75,9 +76,20 @@
   .panel .sub{color:var(--dim2);font-size:12px;margin-bottom:10px}
   .empty{color:var(--dim2);font-size:13px;padding:10px 2px}
 
-  /* ---------- revisions ---------- */
+  /* ---------- revisions: one at a time, stepped with the arrows ---------- */
   .revlist{display:flex;flex-direction:column;gap:7px;max-height:174px;overflow:auto;padding-right:4px;scrollbar-width:thin}
-  .revlist.wide{max-height:none}
+  .revlist.single{max-height:56px;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth}
+  /* flex-shrink would squeeze every row into the one-row window (min-height:auto
+     lets it go below the specified height), so rows are pinned at their size. */
+  .revlist .rev{flex:0 0 auto}
+  .revlist.single .rev{height:56px;min-height:56px;overflow:hidden}
+  .revlist.single .rev .tags{flex-wrap:nowrap;overflow:hidden;min-width:0}
+  .stepper{display:flex;gap:5px;align-items:center}
+  .stepper button{padding:4px 11px;line-height:1.2;font-size:14px;border-radius:8px;background:linear-gradient(180deg,#2f2820,#251f19)}
+  .stepper .count{font-family:var(--mono);font-size:11.5px;color:var(--dim2);min-width:54px;text-align:center}
+  /* the arrows are the control here, so keep a scrollbar out of the way */
+  .revlist.single{scrollbar-width:none}
+  .revlist.single::-webkit-scrollbar{width:0;height:0}
   .rev{display:flex;gap:10px;align-items:center;border:1px solid var(--line-soft);border-radius:10px;padding:9px 11px;
     background:linear-gradient(180deg,#1f1b17,#1a1714);transition:border-color .15s,transform .1s;cursor:pointer}
   .rev:hover{border-color:#4a4034;transform:translateX(1px)}
@@ -94,8 +106,13 @@
   .rev .grow{flex:1}
 
   /* ---------- installs ---------- */
-  .install{display:flex;gap:10px;align-items:center;border:1px solid var(--line-soft);border-radius:10px;padding:9px 11px;
+  .install{border:1px solid var(--line-soft);border-radius:10px;padding:9px 10px;
     background:#1c1916;cursor:pointer;transition:border-color .15s,background .15s}
+  .install .top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .install .path{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+  .install .acts{display:flex;gap:6px;opacity:.62;transition:opacity .15s;margin-left:6px;padding-left:8px;border-left:1px solid var(--line-soft)}
+  .install:hover .acts,.install.on .acts{opacity:1}
+  .install .acts button{padding:4px 9px;font-size:11.5px}
   .install:hover{background:#221e1a}
   .install.on{border-color:#7a6526;background:linear-gradient(180deg,#26200f,#1d1913)}
   .install .name{font-family:var(--mono);font-size:13.5px}
@@ -136,10 +153,13 @@
     background:linear-gradient(180deg,#d3ab55,#a98531);color:#241d0e;font-size:11px;font-weight:700;
     box-shadow:0 0 0 1px #6b5a2488}
   .modrow.req .mname::after{content:" · always on";color:var(--accent);font-size:11.5px}
+  button.primary.dirty{animation:glow 1.6s ease-in-out infinite}
+  @keyframes glow{50%{box-shadow:0 0 0 1px #e6bb6366,0 0 16px #e6bb6333}}
   .modrow .mname{font-size:13px}
   .modrow .mdesc{color:var(--dim2);font-size:11.5px}
   .modrow.req .mname::after{content:" · required";color:var(--accent)}
-  .modlist{max-height:320px;overflow:auto;padding-right:6px}
+  .modlist{max-height:320px;overflow:auto;padding-right:6px;scrollbar-width:thin}
+  .modlist .more{color:var(--dim2);font-size:11.5px;padding-top:6px;text-align:center}
 
   /* ---------- console ---------- */
   .console{margin:0 16px 16px;border:1px solid var(--line);border-radius:var(--radius);background:#0b0908;overflow:hidden;box-shadow:var(--shadow)}
@@ -325,7 +345,7 @@ function render(){
     sig = { revs: "", installs: "", detail: "" };
     sigWiz = "";
     $("root").innerHTML = showWizard ? wizardHTML() : mainHTML();
-    if (showWizard) renderWizard(); else renderMain(true);
+    if (showWizard) renderWizard(); else { renderMain(true); wireRevScroll(); fitModList(); }
     return;
   }
   if (showWizard) renderWizard(); else renderMain(false);
@@ -346,6 +366,16 @@ let sigWiz = "";
 function renderWizard(){
   const b = $("wbody");
   if (!b) return;
+  // Pressing Play at the end of setup is the last step, not a dead end: once the
+  // world answers, move the user on to the launcher itself (after a beat, so the
+  // "your world is up" state is visible).
+  if (wiz.step === DONE && wiz.autoFinish && !wiz.leaving && S.engine && S.engine.state === "running") {
+    wiz.leaving = true;
+    setTimeout(() => {
+      toast("Here's the launcher — your world is running on the Server panel.", "good");
+      finishWizard(true);
+    }, 2200);
+  }
   // The progress dots live in the static shell, so they are not rebuilt with the
   // step body — update them here or they silently stick on step one.
   document.querySelectorAll(".steps i").forEach((el, i) => {
@@ -495,7 +525,8 @@ function renderWizard(){
           <div style="width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#1f2a17;border:1px solid #3d4a2e;color:var(--good);font-size:24px">✓</div>
           <div>
             <h1 class="wtitle">You're ready.</h1>
-            <p class="wlede" style="margin:0">${esc(wiz.rev || "")} is installed and built. Pressing play starts the world and opens the client in your browser.</p>
+            <p class="wlede" style="margin:0">${esc(wiz.rev || "")} is installed and built. Press play to start the world and open the client —
+            and the launcher itself opens once your world is up.</p>
           </div>
         </div>
         <div class="card">
@@ -505,7 +536,7 @@ function renderWizard(){
           <div class="row wrap" style="margin-top:12px;align-items:flex-end">
             ${eng.state === "running"
               ? `<button class="primary big" onclick="openClient()">Open the client →</button><button onclick="stopServer()">Stop the world</button>`
-              : `<button class="primary big" onclick="play()">Play ${esc(wiz.rev || "")} →</button>
+              : `<button class="primary big" onclick="playFromWizard()">Play ${esc(wiz.rev || "")} →</button>
                  <div style="max-width:120px"><label class="f" style="margin-top:0">Web port</label>
                    <input type="number" id="wizport" min="1" max="65535" value="${eng.port || 80}"></div>`}
           </div>
@@ -514,24 +545,24 @@ function renderWizard(){
         <div class="wfoot">
           <button class="ghost" onclick="wizGo(${PICK})">Install another revision</button>
           <span class="spacer"></span>
-          <button onclick="finishWizard()">Open the full launcher</button>
+          <button onclick="finishWizard()">Open the launcher now</button>
         </div>`;
       break;
     }
   }
 }
 
-function wizGo(step){ wiz.step = step; wiz.error = ""; render(); }
+function wizGo(step){ wiz.step = step; wiz.error = ""; wiz.leaving = false; render(); }
 function wizPick(rev){ wiz.rev = rev; render(); }
 function wizCustom(){ wiz.mode = "custom"; pickFolder(true); }
 async function wizSkip(){ await act(() => api("config", { skip_wizard: true }), "config", true); view = "main"; await refresh(); }
-async function finishWizard(){
+async function finishWizard(quiet){
   if (wiz.mode !== "custom") await act(() => api("config", { skip_wizard: true }), "config", true);
   view = "main";
   const inst = (S.installs || []).find(i => i.rev_label === wiz.rev);
   if (inst) sel = inst.id;
   await refresh();
-  toast("Launcher unlocked — revisions, mods and custom servers are in the full view.", "good");
+  if (!quiet) toast("Launcher unlocked — revisions, mods and custom servers are in the full view.", "good");
 }
 async function wizInstall(){
   wiz.step = INSTALLING; wiz.phase = 0; wiz.error = ""; render();
@@ -589,14 +620,22 @@ function renderPeek(){
 
 /* ================================ FULL VIEW ============================== */
 function mainHTML(){
-  // Tool versions come straight from --version, so strip the tool's own name
-  // ("git version 2.53" / "bun 1.4.2") before printing it next to its label.
-  const tools = (S.tools || []).map(t => {
+  // Tool names/versions come straight from --version, so strip the tool's own
+  // name ("git version 2.53" / "bun 1.4.2") before showing it.
+  const toolList = (S.tools || []).map(t => {
     let v = (t.version || "").replace(/^v/, "");
     if (t.name === "git") v = v.replace(/^git version\s*/i, "");
     if (t.name === "bun") v = v.replace(/^bun\s*/i, "").replace(/^v/, "");
-    return `<span class="chip ${t.ok ? "ok" : "bad"}" title="${esc(t.path || t.hint || "")}${t.ok ? "" : " — click to fetch it"}" ${t.ok ? "" : `onclick="installBun()"`}>${t.ok ? "✓" : "✗"} ${esc(t.name)}${v ? " " + esc(v) : ""}</span>`;
-  }).join("");
+    return { ...t, clean: v };
+  });
+  const missing = toolList.filter(t => !t.ok);
+  // Diagnostic info stays quiet unless it needs you: one chip when everything is
+  // there, a clickable one per missing tool when it isn't.
+  const tools = toolList.length
+    ? (missing.length
+        ? missing.map(t => `<span class="chip bad" ${t.name === "bun" ? `onclick="installBun()"` : ""} title="${esc(t.hint || "")}${t.name === "bun" ? " — click to fetch it" : ""}">✗ ${esc(t.name)}</span>`).join("")
+        : `<button class="ghost" style="padding:3px 10px;font-size:11.5px" title="click for versions" onclick="showTools()">tools ✓</button>`)
+    : "";
   return `
   <div class="screen">
     <header class="top">
@@ -616,9 +655,13 @@ function mainHTML(){
       <div>
         <section class="panel">
           <h2>Lost City revisions<span class="grow"></span>
-            <span class="chip" style="text-transform:none;letter-spacing:0">${(S.revs || []).length} branches</span></h2>
-          <div class="sub">${S.revs_at ? "read " + ago(S.revs_at) : "from the Lost City repos"}</div>
-          <div class="revlist" id="revlist">${revRows()}</div>
+            <span class="stepper">
+              <button id="revup" aria-label="previous revision" title="previous revision (or ↑)" onclick="stepRev(-1)">▲</button>
+              <span class="count" id="revcount">1 / ${(S.revs || []).length}</span>
+              <button id="revdown" aria-label="next revision" title="next revision (or ↓)" onclick="stepRev(1)">▼</button>
+            </span></h2>
+          <div class="sub">${S.revs_at ? "last checked " + ago(S.revs_at) : "from the Lost City repos"} · the revision Lost City develops sits first, client-only branches last</div>
+          <div class="revlist single" id="revlist">${revRows()}</div>
         </section>
 
         <section class="panel">
@@ -647,8 +690,13 @@ function mainHTML(){
         </section>
 
         <section class="panel">
-          <h2>Server</h2>
+          <h2>Server<span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">this machine</span></h2>
           ${serverHTML()}
+        </section>
+
+        <section class="panel">
+          <h2>Join server<span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">somewhere else</span></h2>
+          ${joinHTML()}
         </section>
       </div>
     </main>
@@ -679,17 +727,22 @@ function revRows(){
   return order.map(r => {
     const have = installed.get(r.name);
     const playable = r.engine && r.content;
+    // Ordered by what matters most: a one-row window can clip the tail, so the
+    // tooltip carries the full story.
     const tags = [];
     if (r.recommended) tags.push('<span class="tag rec">recommended</span>');
-    if (r.name === S.overlay_rev) tags.push('<span class="tag mods">LCLite mods</span>');
     if (have) tags.push('<span class="tag ok">installed</span>');
+    if (r.name === S.overlay_rev) tags.push('<span class="tag mods">mods available</span>');
     if (!playable) tags.push('<span class="tag off">client only</span>');
     // One accent per list: the row you should press is the recommended revision.
     const cls = r.recommended && !have ? "primary" : "ghost";
     const btn = have
-      ? `<button class="ghost" onclick="event.stopPropagation();selectInstall('${esc(have.id)}')">Open</button>`
+      ? `<button class="ghost" title="work with this install in the launcher" onclick="event.stopPropagation();selectInstall('${esc(have.id)}')">Select</button>`
       : `<button class="${cls}" ${playable ? "" : "disabled"} onclick="event.stopPropagation();install('${esc(r.name)}')">Install</button>`;
-    return `<div class="rev ${r.recommended ? "rec" : ""} ${have ? "installed" : ""} ${playable ? "" : "plain"}" title="${playable ? "client + engine + content" : "no server content on this branch"}">
+    const tip = `${r.name}: ${[r.client ? "client" : null, r.engine ? "engine" : null, r.content ? "content" : null].filter(Boolean).join(" + ")}`
+      + (playable ? "" : " — no server content on this branch, so it can't be installed")
+      + (have ? ` — installed at ${have.path}` : "");
+    return `<div class="rev ${r.recommended ? "rec" : ""} ${have ? "installed" : ""} ${playable ? "" : "plain"}" title="${esc(tip)}">
       <span class="num">${esc(r.name)}</span>
       <span class="tags">${tags.join("")}</span>
       <span class="grow"></span>${btn}</div>`;
@@ -701,18 +754,47 @@ function installRows(){
   if (!list.length) return `<div class="empty">Nothing here yet — pick a revision above and we'll do the rest.</div>`;
   return list.map(i => `
     <div class="install ${sel === i.id ? "on" : ""}" tabindex="0" onclick="selectInstall('${esc(i.id)}')"
-         onkeydown="if(event.key==='Enter'){selectInstall('${esc(i.id)}')}">
-      <div style="min-width:0">
-        <div class="name">${esc(i.id)}${i.custom ? ' <span class="tag off">existing folder</span>' : ""}</div>
-        <div class="path" title="${esc(i.path)}">${esc(i.path)}</div>
+         onkeydown="if(event.key==='Enter'){selectInstall('${esc(i.id)}')}" title="${esc(i.path)}">
+      <div class="top">
+        <span class="name">${esc(i.id)}</span>
+        ${i.custom ? '<span class="tag off">existing folder</span>' : ""}
+        ${i.mods_allowed ? `<span class="pill mods">${(i.mods || []).length || 0} mods</span>` : ""}
+        ${i.engine_deps ? `<span class="pill good">ready</span>` : `<span class="pill">needs setup</span>`}
+        <span class="grow"></span>
+        <span class="acts">
+          <button class="ghost" title="take it out of this list — nothing is deleted from disk" onclick="event.stopPropagation();removeInstall('${esc(i.id)}', false)">Remove</button>
+          <button class="danger" title="${i.custom ? "folders you added are never deleted from here" : "delete these files from disk (asks first)"}"
+            ${i.custom ? "disabled" : ""} onclick="event.stopPropagation();removeInstall('${esc(i.id)}', true)">Delete files</button>
+        </span>
       </div>
-      <span class="grow"></span>
-      ${i.mods_allowed ? `<span class="pill mods">${(i.mods || []).length || 0} mods</span>` : ""}
-      ${i.engine_deps ? `<span class="pill good">ready</span>` : `<span class="pill">needs setup</span>`}
+      <div class="path">${esc(i.path)}</div>
     </div>`).join("");
 }
 
 function currentInstall(){ return (S.installs || []).find(i => i.id === sel) || null; }
+
+// What the tree currently has applied, so a tick can tell you it's not committed yet.
+let modsBase = [];
+
+function modSelection(){
+  return [...document.querySelectorAll("#detail [data-mod]")]
+    .filter(el => el.dataset.required === "1" || el.checked)
+    .map(el => el.dataset.mod)
+    .sort();
+}
+
+function refreshModsDirty(){
+  const cur = modSelection();
+  const base = [...modsBase].sort();
+  const dirty = JSON.stringify(cur) !== JSON.stringify(base);
+  const hint = $("modsdirty");
+  if (hint) hint.style.display = dirty ? "" : "none";
+  const btn = $("applymods");
+  if (btn) {
+    btn.classList.toggle("dirty", dirty);
+    btn.textContent = dirty ? "Apply mods & build *" : "Apply mods & build";
+  }
+}
 
 function detailHTML(){
   const i = currentInstall();
@@ -721,17 +803,19 @@ function detailHTML(){
     return `<div class="empty">${hasAny ? "Pick an install on the left." : "Install a revision and it shows up here — mods, server, housekeeping."}</div>`;
   }
   const chosen = new Set((i.mods && i.mods.length) ? i.mods : (i.mods_available || []).map(m => m.name));
+  // lib.mjs descriptions end in "— required"; the row already says "always on".
+  const blurb = d => String(d || "").replace(/\s*[—–-]\s*required\b.*$/i, "").trim();
   const mods = (i.mods_available || []).map(m => `
     <div class="modrow ${m.required ? "req" : ""}">
       ${m.required
         ? `<span class="modcheck" data-mod="${esc(m.name)}" data-required="1" title="always included">✓</span>`
         : `<input type="checkbox" data-mod="${esc(m.name)}" ${chosen.has(m.name) ? "checked" : ""}>`}
-      <div><div class="mname">${esc(m.label)}</div><div class="mdesc">${esc(m.desc)}</div></div>
+      <div><div class="mname">${esc(m.label)}</div><div class="mdesc">${esc(blurb(m.desc))}</div></div>
     </div>`).join("");
   const facts = [
-    i.has_client ? "webclient ✓" : "webclient ✗",
+    i.has_client ? "client ✓" : "client ✗",
     i.has_engine ? "engine ✓" : "engine ✗",
-    i.has_overlay ? "lclite ✓" : "lclite ✗",
+    i.has_overlay ? "overlay ✓" : "overlay ✗",
     i.engine_deps ? "deps ✓" : "deps ✗",
     i.client_bundle ? "bundle ✓" : "bundle ✗"
   ].join(" · ");
@@ -742,37 +826,34 @@ function detailHTML(){
       <div class="path">${esc(i.path)}</div>
       <div class="hint">${facts}${i.built_at && !i.built_at.startsWith("0001") ? " · built " + ago(i.built_at) : ""}</div>
       <div class="row wrap" style="margin-top:11px">
-        <button class="primary" onclick="play('${esc(i.id)}')">Play</button>
-        <button onclick="updateInstall()" ${i.custom ? "disabled" : ""}>Update</button>
-        <button onclick="buildOnly()">Rebuild</button>
+        <button onclick="updateInstall()" ${i.custom ? "disabled" : ""}>Update from GitHub</button>
+        <button onclick="buildOnly()">Rebuild client</button>
       </div>
     </div>
     <div class="card">
-      <h3>LCLite mods</h3>
+      <h3>LCLite mods <span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">${(i.mods_available || []).length} available</span></h3>
       ${i.mods_allowed
         ? `<div class="sub" style="margin:0 0 6px">Tick what you want, then apply — unticked mods are stripped back to upstream. Nothing ticked = the full default set.</div>
-           <div class="modlist">${mods || '<div class="empty">no mods found in lclite/mods</div>'}</div>
+           <div class="modlist" onchange="refreshModsDirty()">${mods || '<div class="empty">no mods found in lclite/mods</div>'}</div>
+           ${(i.mods_available || []).length > 3 ? `<div class="more">showing 3 of ${(i.mods_available || []).length} — scroll the list for the rest</div>` : ""}
            <div class="row wrap" style="margin-top:10px">
-             <button class="primary" onclick="applyMods()">Apply mods &amp; build</button>
+             <button class="primary" id="applymods" onclick="applyMods()">Apply mods &amp; build</button>
              <button onclick="stripMods()">Strip all mods</button>
-             <button onclick="revertMods()">Reset to pristine</button>
-           </div>`
+           </div>
+           <div class="note" id="modsdirty" style="display:none">Not applied yet — the client still has the old set.</div>
+           <details class="block"><summary>Something's broken? Reset to pristine</summary>
+             <div class="inner hint">Throws away every local change in webclient/ and engine/ with git — the blunt repair for a tree that drifted. Use <b>Strip all mods</b> for ordinary mod removal.</div>
+             <button class="danger" style="margin-top:9px" onclick="revertMods()">Reset to pristine</button>
+           </details>`
         : `<div class="note">${i.has_overlay
             ? `LCLite's hunks are anchored to revision ${esc(S.overlay_rev || "289")} — this install is ${esc(i.rev_label || "?")}, so mods stay off.`
             : "No lclite/ folder in this install. Copy your lclite/ folder next to webclient/ and engine/ to enable mods."}</div>`}
     </div>
-    <div class="card">
-      <h3>Housekeeping</h3>
-      <div class="row wrap">
-        <button class="danger" onclick="removeInstall(false)">Forget</button>
-        <button class="danger" onclick="removeInstall(true)" ${i.custom ? "disabled" : ""}>Delete folder</button>
-      </div>
-      <div class="hint">Forget removes it from this list only. Delete folder wipes the cloned revision (never a folder you added).</div>
-    </div>`;
+  `;
 }
 
 function serverHTML(){
-  const e = S.engine || {}, p = S.proxy || {};
+  const e = S.engine || {};
   const state = e.state || "stopped";
   const port = parseInt($("port") ? $("port").value : "0", 10) || (e.port || 80);
   const liveURL = `http://localhost${e.port == 80 ? "" : ":" + (e.port || 0)}/rs2.cgi`;
@@ -780,18 +861,27 @@ function serverHTML(){
     <div class="card">
       <div class="status"><span class="dot" id="sdot"></span><span id="serverstatus"></span></div>
       <div class="grid2" style="margin-top:12px">
-        <div><label class="f">Web port</label><input type="number" id="port" min="1" max="65535" value="${e.port || 80}" oninput="this.dataset.touched=1"></div>
+        <div><label class="f">Web port</label>
+          <input type="number" id="port" min="1" max="65535" value="${e.port || 80}"
+            style="max-width:104px;font-family:var(--mono);text-align:center" oninput="this.dataset.touched=1"></div>
         <div><label class="f">&nbsp;</label>
           <div class="row">
-            <button class="primary" style="flex:1" id="playbtn" onclick="play()">Play</button>
+            <button class="primary" style="flex:1" id="playbtn" onclick="play()">Play${sel ? " " + esc(sel) : ""}</button>
             <button id="stopbtn" onclick="stopServer()">Stop</button>
           </div>
         </div>
       </div>
       <div class="hint">Starts <span class="path">npm run quickstart</span> inside the selected install's engine folder. Two revisions can run at once — the launcher moves the game and management ports out of the way.</div>
-    </div>
+    </div>`;
+}
+
+// Joining someone else's world is a different job from running your own, so it
+// gets its own panel instead of being a footnote under the local server.
+function joinHTML(){
+  const p = S.proxy || {};
+  return `
     <div class="card">
-      <h3>Custom server <span class="grow"></span><span class="pill">bridge</span></h3>
+      <h3>Play on another Lost City server <span class="grow"></span>${p.running ? '<span class="pill good">bridging</span>' : '<span class="pill">bridge</span>'}</h3>
       <label class="f">Server address</label>
       <input type="text" id="remoteurl" placeholder="play.example.com:443">
       <div class="hint" style="margin-top:5px">Hostname, IP or full URL — <span class="path">192.168.1.20:8888</span> and <span class="path">https://play.example.com</span> both work.</div>
@@ -812,6 +902,56 @@ function serverHTML(){
     </div>`;
 }
 
+/* ---- one-revision-at-a-time stepper ------------------------------------- */
+let revStep = 0;
+
+function revRowStep(list){
+  const rows = list.querySelectorAll(".rev");
+  if (rows.length < 2) return rows[0] ? rows[0].offsetHeight + 7 : 0;
+  return rows[1].offsetTop - rows[0].offsetTop;   // gap-proof: ask the layout
+}
+
+function stepRev(delta){
+  const list = $("revlist");
+  if (!list) return;
+  const n = list.querySelectorAll(".rev").length;
+  revStep = Math.max(0, Math.min(n - 1, revStep + delta));
+  list.scrollTop = revStep * revRowStep(list);
+  updateRevCount(list);
+}
+
+function updateRevCount(list){
+  const el = $("revcount");
+  if (!el || !list) return;
+  const n = list.querySelectorAll(".rev").length;
+  el.textContent = `${n ? revStep + 1 : 0} / ${n}`;
+  const up = $("revup"), down = $("revdown");
+  if (up) up.disabled = revStep <= 0;
+  if (down) down.disabled = revStep >= n - 1;
+}
+
+// keep the arrows honest when the mouse wheel is used instead of the buttons
+function wireRevScroll(){
+  const list = $("revlist");
+  if (!list) return;
+  updateRevCount(list);
+  list.onscroll = () => {
+    const step = revRowStep(list);
+    if (step > 0) revStep = Math.max(0, Math.round(list.scrollTop / step));
+    updateRevCount(list);
+  };
+  list.scrollTop = revStep * revRowStep(list);
+}
+
+// Three mods at a time: measure the real rows instead of guessing at a height.
+function fitModList(){
+  const list = document.querySelector("#detail .modlist");
+  if (!list) return;
+  const rows = [...list.children].filter(c => c.classList.contains("modrow"));
+  if (rows.length <= 3) { list.style.maxHeight = "none"; return; }
+  list.style.maxHeight = (rows[2].offsetTop + rows[2].offsetHeight - rows[0].offsetTop) + "px";
+}
+
 function renderMain(force){
   const sRevs = JSON.stringify((S.revs || []).map(r => [r.name, r.recommended, r.engine, r.content]))
     + "|" + S.overlay_rev + "|" + JSON.stringify((S.installs || []).map(i => [i.id, i.rev_label, i.engine_deps, i.mods_allowed]));
@@ -820,9 +960,19 @@ function renderMain(force){
   const sDetail = JSON.stringify(cur ? [cur.id, cur.path, cur.rev_label, cur.custom, cur.mods_allowed, cur.has_overlay,
     cur.built_at, cur.mods, cur.mods_available && cur.mods_available.length] : null);
 
-  if (force || sRevs !== sig.revs) { sig.revs = sRevs; const el = $("revlist"); if (el) el.innerHTML = revRows(); }
+  if (force || sRevs !== sig.revs) { sig.revs = sRevs; const el = $("revlist"); if (el) el.innerHTML = revRows(); wireRevScroll(); }
   if (force || sInstalls !== sig.installs) { sig.installs = sInstalls; const el = $("installs"); if (el) el.innerHTML = installRows(); }
-  if (force || sDetail !== sig.detail) { sig.detail = sDetail; const el = $("detail"); if (el) el.innerHTML = detailHTML(); }
+  if (force || sDetail !== sig.detail) {
+    sig.detail = sDetail;
+    const el = $("detail");
+    if (el) {
+      const i = currentInstall();
+      modsBase = i ? ((i.mods && i.mods.length) ? i.mods.slice() : (i.mods_available || []).map(m => m.name)) : [];
+      el.innerHTML = detailHTML();
+      fitModList();
+      refreshModsDirty();
+    }
+  }
   const dt = $("detailtitle"); if (dt) dt.textContent = sel ? "Install · " + sel : "Install";
 
   renderServerLive();
@@ -844,7 +994,7 @@ function renderServerLive(){
       ? `serving <b>${esc(e.install)}</b> on port ${e.port}${e.game_port ? ` <span class="chip">game ${e.game_port}</span>` : ""} — <a href="${url}" target="_blank">open client</a>`
       : state === "starting" ? `starting <b>${esc(e.install)}</b>… first boot repacks the cache`
       : state === "failed" ? `<span style="color:var(--bad)">stopped: ${esc(e.error || "see the log")}</span>`
-      : p.running ? `bridge on port ${p.port} → ${esc(p.target || "")}` : "no world running";
+      : "no world running";
   }
   const pb = $("playbtn"); if (pb) pb.disabled = state === "running" || state === "starting";
   const sb = $("stopbtn"); if (sb) sb.disabled = !(state === "running" || state === "starting");
@@ -864,6 +1014,11 @@ async function install(rev){
   if (job.status === "ok") { sel = rev; toast(`${rev} is ready — press Play.`, "good"); }
   else toast(job.err || "install failed", "bad");
   await refresh();
+}
+// From the wizard's last step: remember that finishing is the intent.
+function playFromWizard(){
+  wiz.autoFinish = true;
+  play();
 }
 async function play(id){
   const inst = id ? (S.installs || []).find(i => i.id === id) : currentInstall();
@@ -915,6 +1070,12 @@ async function startProxy(){
 }
 async function stopProxy(){ await act(() => api("proxy/stop", {}), "bridge", true); toast("Bridge stopped."); await refresh(); }
 async function openDirect(){ const url = (($("remoteurl") || {}).value || "").trim(); if (!url) { toast("Type a server address first.", "bad"); return; } await act(() => api("open", { url }), "open", true); }
+function showTools(){
+  const list = (S.tools || [])
+    .map(t => `${t.name} ${String(t.version || "").replace(/^v/, "").replace(new RegExp("^" + t.name + "\\s*", "i"), "").replace(/^git version\s*/i, "").trim()}`)
+    .join(" · ");
+  toast(list || "no tools detected", "good");
+}
 async function installBun(){ toast("Fetching bun…"); const r = await act(() => api("bun", {}), "bun"); if (r) await waitForJob(r.job); await refresh(); }
 async function pickFolder(forWizard){
   const r = await act(() => api("browse", { start: folder }), "browse", true);
@@ -939,7 +1100,11 @@ async function importFolder(fromWizard){
   } catch (e) { toast(e.message, "bad"); }
   await refresh();
 }
-async function openWizardAgain(){ view = "wizard"; wiz = { step: PICK, rev: (S.recommended || null), path: "", jobId: null, phase: -1, error: "", mode: "add" }; render(); }
+async function openWizardAgain(){
+  view = "wizard";
+  wiz = { step: PICK, rev: (S.recommended || null), path: "", jobId: null, phase: -1, error: "", mode: "add", autoFinish: false, leaving: false };
+  render();
+}
 function toggleConsole(){ const c = $("console"); if (c) c.classList.toggle("min"); }
 // The console lives in the dashboard, so hand the user over rather than
 // pretending a button did something.
@@ -1025,6 +1190,10 @@ boot();
 setInterval(refresh, 2500);
 setInterval(pollLog, 900);
 document.addEventListener("keydown", e => {
+  if (e.target.matches("input,select,textarea")) return;
+  if (view === "main" && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+    e.preventDefault(); stepRev(e.key === "ArrowDown" ? 1 : -1); return;
+  }
   if (e.key === "Escape" && wiz.step > WELCOME && (S.installs || []).length) finishWizard();
   if (e.key === "Enter" && !e.target.matches("input,select,button")) {
     if (wiz.step === PICK && wiz.rev) wizGo(READY2GO);

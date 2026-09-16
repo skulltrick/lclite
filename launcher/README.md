@@ -48,7 +48,9 @@ game:
 4. **Installing** — four named phases with live ticks, the console tail, and a
    real error state (retry / back / open the dashboard) instead of a dead spinner.
 5. **You're ready** — Play, a web port field for when 80 is taken, and the way
-   into the full launcher.
+   into the full launcher. Pressing Play is the last step rather than a dead end:
+   once the world answers, the wizard hands you to the launcher by itself (with a
+   note saying so), so nobody is left staring at a finished setup screen.
 
 Reloading mid-install picks the install back up where it is. `Skip setup` (or
 `Setup guide` later, which re-enters the wizard) toggles between the two views;
@@ -73,7 +75,15 @@ automatic.
    is playable; client-only branches (e.g. `500`, `jaged`) show as "Client only".
    Branches ending `-wip` / `-node` are treated as internal and hidden. Order is:
    recommended first, then playable newest-first, then client-only.
-2. **Install** — clones the revision into `<data>/installs/<rev>/`:
+   The panel shows **one revision at a time** (a 10-branch list was noise in a
+   sidebar): step with `▲`/`▼` or the arrow keys, `n / total` tells you where you
+   are, and the row itself carries the action (`Install`, or `Select` to work with
+   an install you already have).
+2. **Install** — clones the revision into `<data>/installs/<rev>/`. Each install
+   row in the sidebar owns its own lifecycle: **Remove** (take it out of the list,
+   files untouched) and **Delete files** (wipe the cloned revision from disk,
+   with a confirm) live on the row itself, like the revision rows' actions do —
+   there is no separate housekeeping panel to hunt through.
 
    ```
    <data>/installs/289/
@@ -96,7 +106,13 @@ automatic.
    the revision off the git branch. Nothing is written until you press a button.
 4. **Mods** — tick boxes, *Apply mods & build*. Required mods (the camera and the
    panel — LCLite itself) show as locked gold ticks rather than disabled
-   checkboxes, because a greyed-out box reads as "not included". That's `node tools/lclite.mjs
+   checkboxes, because a greyed-out box reads as "not included". The list shows
+   **three mods at a time** (with a "showing 3 of 9" cue) and tracks pending
+   edits: change a tick and the button becomes *Apply mods & build \** with a
+   "not applied yet" line, because the difference between "ticked" and "built in"
+   is exactly the mistake worth designing out. *Reset to pristine* — the blunt
+   git-level repair — lives behind a "Something's broken?" disclosure so it stops
+   competing with the everyday *Strip all mods*. That's `node tools/lclite.mjs
    --mods <set>`: the listed mods are applied and everything else is stripped, so
    the tree always converges to what the UI shows. Required mods are locked on.
    **Mods are offered on revision 289 only** — the hunks are anchored there, and
@@ -130,9 +146,11 @@ Old revisions also run their engine on **bun**, not tsx — the launcher puts it
 own bun on that process's PATH so a world doesn't die with
 `'bun' is not recognized`.
 
-6. **Custom server** (the RSProx trick) — the webclient dials
+6. **Join server** (the RSProx trick) — running your own world and connecting to
+   someone else's are separate jobs, so they get separate panels: **Server**
+   (*this machine*) and **Join server** (*somewhere else*). The webclient dials
    `window.location.host`, so *whatever* answers on the other end of the page is
-   "the server". The launcher can listen on localhost and tunnel everything to a
+   "the server" — the launcher can listen on localhost and tunnel everything to a
    remote address:
 
    - *Bridge, use their client* — a friendly localhost name for any Lost City
