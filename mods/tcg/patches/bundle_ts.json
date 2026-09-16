@@ -24,7 +24,7 @@
     "                    'tcgSellDuplicates', 'tcgCommand', 'tcgInfo', 'tcgAlbum',",
     "                    'tcgCatalogMeta', 'tcgEnsureCatalog', 'tcgCardBy', 'tcgTierLabel',",
     "                    'tcgHudDirty', 'tcgBumpToast', 'tcgShowReveal', 'tcgShowAlbum',",
-    "                    'tcgEngageNpc', 'tcgNpcHit',",
+    "                    'tcgEngageNpc', 'tcgNpcHit', '__lctcgUi',",
     "",
     "                    // stdlib",
     "                    'willReadFrequently',"
