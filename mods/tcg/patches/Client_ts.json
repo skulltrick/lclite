@@ -3,7 +3,7 @@
  "mod": "tcg",
  "generated_from": {
   "repo": "webclient",
-  "head": "bd6cad7147cc9f44d5eb12de93f0736c18e1c4d0"
+  "head": "a52b321a9f42530f3dd2f1a02cd335c955791a12"
  },
  "hunks": [
   {
@@ -46,13 +46,13 @@
     "            const userhash = JString.toUserhash(username);",
     "            const loginServer = Number(userhash >> 16n) & 0x1f;"
    ],
-   "note": "src/client/Client.ts @ old line 1728",
+   "note": "src/client/Client.ts @ old line 1729",
    "occ": 1,
    "pos": [
-    1728,
+    1729,
     0,
-    1726,
-    1729
+    1727,
+    1730
    ]
   },
   {
@@ -78,13 +78,13 @@
     "                            } else if (this.chatInput.startsWith('::')) {",
     "                                this.out.p1Enc(ClientProt.CLIENT_CHEAT);"
    ],
-   "note": "src/client/Client.ts @ old line 3090",
+   "note": "src/client/Client.ts @ old line 3091",
    "occ": 1,
    "pos": [
-    3090,
+    3091,
     0,
-    3088,
-    3091
+    3089,
+    3092
    ]
   },
   {
@@ -112,13 +112,13 @@
     "                return true;",
     "            }"
    ],
-   "note": "src/client/Client.ts @ old line 6694",
+   "note": "src/client/Client.ts @ old line 6695",
    "occ": 1,
    "pos": [
-    6694,
+    6695,
     0,
-    6690,
-    6696
+    6691,
+    6697
    ]
   },
   {
@@ -141,13 +141,13 @@
     "        }",
     ""
    ],
-   "note": "src/client/Client.ts @ old line 7901",
+   "note": "src/client/Client.ts @ old line 7902",
    "occ": 1,
    "pos": [
-    7901,
+    7902,
     0,
-    7899,
-    7902
+    7900,
+    7903
    ]
   },
   {
@@ -170,13 +170,13 @@
     "",
     "            if ((mask & NpcUpdate.ANIM) !== 0) {"
    ],
-   "note": "src/client/Client.ts @ old line 8189",
+   "note": "src/client/Client.ts @ old line 8190",
    "occ": 1,
    "pos": [
-    8189,
+    8190,
     0,
-    8186,
-    8191
+    8187,
+    8192
    ]
   },
   {
@@ -198,13 +198,13 @@
     "",
     "            if ((mask & NpcUpdate.CHANGETYPE) !== 0) {"
    ],
-   "note": "src/client/Client.ts @ old line 8243",
+   "note": "src/client/Client.ts @ old line 8244",
    "occ": 1,
    "pos": [
-    8243,
+    8244,
     0,
-    8240,
-    8245
+    8241,
+    8246
    ]
   }
  ]

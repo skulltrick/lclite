@@ -123,7 +123,8 @@ EJS); regen routes by marker with 100% precision and warns loudly on any unmarke
 block (legacy regex fallback). The old ≥61-line isolation rule is RETIRED (2026-09-15):
 regen now extracts `git diff -U0` islands, so adjacent change blocks stay separate
 hunks automatically — but keep hunks' edit sites ≥3 untouched lines apart, and trust
-`node tools/lclite.mjs doctor` (exit 3 = a hunk's deletions would break a sibling's
+`node tools/lclite.mjs doctor` (exit 3 = a hunk's deletions would break a sibling;
+exit 2 = drift — and an overlay with no patch JSONs at all is structural, not "healthy")
 anchor). Point doctor at the tree you're patching when this repo isn't inside one
 (`LCLITE_ROOT=<install> node tools/doctor.mjs`); with no host tree at all it exits 3
 and says so rather than reporting every mod as off.

@@ -78,6 +78,21 @@ for (const mod of mods) {
     if (drift) anyDrift = true;
 }
 
+// ---- 1b. an overlay with nothing to apply is a broken overlay ---------------
+// If every patch JSON is gone (botched regen, bad merge, stray `git clean`), the
+// per-mod result is ok=0 everywhere — which reads exactly like a healthy overlay in a
+// tree where nothing is installed yet. That state silently disables the whole mod set,
+// so it has to be structural, not a shrug.
+if (report.corpus.hunks === 0) {
+    issues.push({ sev: 'struct', msg: 'no hunks in any patch JSON under mods/*/patches — apply would deliver nothing (restore mods/ from git, or regen against the installed tree)' });
+}
+for (const mod of mods) {
+    const hasPayload = fs.existsSync(path.join(LIB_DIR, 'mods', mod.name, 'files'));
+    if (!mod.patches.length && !hasPayload) {
+        issues.push({ sev: 'struct', msg: `${mod.name}: no patches and no files/ payload — this mod cannot deliver anything` });
+    }
+}
+
 // ---- 2. A3: hunk apply-safety geometry (pristine line space) ----------------
 // Regen guarantees disjoint find windows EXCEPT shared edge context, and anchors
 // match by TEXT (indexOf), so what actually breaks a sibling is a hunk whose

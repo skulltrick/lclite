@@ -3,7 +3,7 @@
  "mod": "camera",
  "generated_from": {
   "repo": "webclient",
-  "head": "bd6cad7147cc9f44d5eb12de93f0736c18e1c4d0"
+  "head": "a52b321a9f42530f3dd2f1a02cd335c955791a12"
  },
  "hunks": [
   {
@@ -126,13 +126,13 @@
     "",
     "                if (success) {"
    ],
-   "note": "src/client/Client.ts @ old line 2315",
+   "note": "src/client/Client.ts @ old line 2316",
    "occ": 1,
    "pos": [
-    2315,
+    2316,
     0,
-    2313,
-    2316
+    2314,
+    2317
    ]
   },
   {
@@ -150,13 +150,13 @@
     "        if (this.mouseClickButton === 1 && this.tutComMessage) {",
     "            this.tutComMessage = null;"
    ],
-   "note": "src/client/Client.ts @ old line 2325",
+   "note": "src/client/Client.ts @ old line 2326",
    "occ": 1,
    "pos": [
-    2325,
+    2326,
     0,
-    2323,
-    2326
+    2324,
+    2327
    ]
   },
   {
@@ -182,13 +182,13 @@
     "        const orbitZ: number = this.localPlayer.z + this.macroCameraZ;",
     ""
    ],
-   "note": "src/client/Client.ts @ old line 3226",
+   "note": "src/client/Client.ts @ old line 3227",
    "occ": 1,
    "pos": [
-    3226,
+    3227,
     0,
-    3224,
-    3227
+    3225,
+    3228
    ]
   },
   {
@@ -213,13 +213,13 @@
     "            }",
     "        }"
    ],
-   "note": "src/client/Client.ts @ old line 4193",
+   "note": "src/client/Client.ts @ old line 4194",
    "occ": 1,
    "pos": [
-    4192,
+    4193,
     1,
-    4190,
-    4194
+    4191,
+    4195
    ]
   },
   {
@@ -238,13 +238,13 @@
     "    private addPlayers(self: boolean): void {",
     "        if (!this.localPlayer) {"
    ],
-   "note": "src/client/Client.ts @ old line 4258",
+   "note": "src/client/Client.ts @ old line 4259",
    "occ": 1,
    "pos": [
-    4258,
+    4259,
     0,
-    4256,
-    4259
+    4257,
+    4260
    ]
   },
   {
@@ -362,13 +362,13 @@
     "    private panning: boolean = false;",
     ""
    ],
-   "note": "src/client/Client.ts @ old line 11672",
+   "note": "src/client/Client.ts @ old line 11686",
    "occ": 1,
    "pos": [
-    11672,
+    11686,
     0,
-    11670,
-    11673
+    11684,
+    11687
    ]
   }
  ]

@@ -3,7 +3,7 @@
  "mod": "anti-cheat",
  "generated_from": {
   "repo": "webclient",
-  "head": "bd6cad7147cc9f44d5eb12de93f0736c18e1c4d0"
+  "head": "a52b321a9f42530f3dd2f1a02cd335c955791a12"
  },
  "hunks": [
   {
@@ -52,13 +52,13 @@
     "        if (!this.mouseTracked) {",
     "            this.mouseTracking.length = 0;"
    ],
-   "note": "src/client/Client.ts @ old line 2060",
+   "note": "src/client/Client.ts @ old line 2061",
    "occ": 1,
    "pos": [
-    2060,
+    2061,
     0,
-    2058,
-    2061
+    2059,
+    2062
    ]
   },
   {
@@ -77,13 +77,13 @@
     "            this.out.p1Enc(ClientProt.EVENT_MOUSE_MOVE);",
     "            this.out.p1(0);"
    ],
-   "note": "src/client/Client.ts @ old line 2063",
+   "note": "src/client/Client.ts @ old line 2064",
    "occ": 1,
    "pos": [
-    2062,
+    2063,
     1,
-    2060,
-    2064
+    2061,
+    2065
    ]
   },
   {
@@ -102,13 +102,13 @@
     "            let delta = ((this.mouseClickTime - this.prevMouseClickTime) / 50) | 0;",
     "            if (delta > 4095) {"
    ],
-   "note": "src/client/Client.ts @ old line 2132",
+   "note": "src/client/Client.ts @ old line 2133",
    "occ": 1,
    "pos": [
-    2131,
+    2132,
     1,
-    2129,
-    2133
+    2130,
+    2134
    ]
   },
   {
@@ -127,13 +127,13 @@
     "            this.sendCameraDelay = 20;",
     "            this.sendCamera = false;"
    ],
-   "note": "src/client/Client.ts @ old line 2173",
+   "note": "src/client/Client.ts @ old line 2174",
    "occ": 1,
    "pos": [
-    2172,
+    2173,
     1,
-    2170,
-    2174
+    2171,
+    2175
    ]
   },
   {
@@ -168,13 +168,13 @@
     "        }",
     ""
    ],
-   "note": "src/client/Client.ts @ old line 2181",
+   "note": "src/client/Client.ts @ old line 2182",
    "occ": 1,
    "pos": [
-    2180,
+    2181,
     8,
-    2178,
-    2189
+    2179,
+    2190
    ]
   },
   {
@@ -195,13 +195,13 @@
     "        }",
     ""
    ],
-   "note": "src/client/Client.ts @ old line 2307",
+   "note": "src/client/Client.ts @ old line 2308",
    "occ": 1,
    "pos": [
-    2306,
+    2307,
     1,
-    2304,
-    2308
+    2305,
+    2309
    ]
   },
   {
@@ -224,13 +224,13 @@
     "        }",
     ""
    ],
-   "note": "src/client/Client.ts @ old line 2942",
+   "note": "src/client/Client.ts @ old line 2943",
    "occ": 1,
    "pos": [
-    2941,
+    2942,
     2,
-    2939,
-    2944
+    2940,
+    2945
    ]
   },
   {
@@ -253,13 +253,13 @@
     "            }",
     "        }"
    ],
-   "note": "src/client/Client.ts @ old line 4271",
+   "note": "src/client/Client.ts @ old line 4272",
    "occ": 1,
    "pos": [
-    4270,
+    4271,
     2,
-    4268,
-    4273
+    4269,
+    4274
    ]
   },
   {
@@ -278,13 +278,13 @@
     "            Client.cyclelogic1 = 0;",
     ""
    ],
-   "note": "src/client/Client.ts @ old line 4387",
+   "note": "src/client/Client.ts @ old line 4388",
    "occ": 1,
    "pos": [
-    4386,
+    4387,
     1,
-    4384,
-    4388
+    4385,
+    4389
    ]
   },
   {
@@ -303,13 +303,13 @@
     "                Client.cyclelogic5 = 0;",
     ""
    ],
-   "note": "src/client/Client.ts @ old line 4868",
+   "note": "src/client/Client.ts @ old line 4869",
    "occ": 1,
    "pos": [
-    4867,
+    4868,
     1,
-    4865,
-    4869
+    4866,
+    4870
    ]
   },
   {
@@ -328,13 +328,13 @@
     "            Client.cyclelogic3 = 0;",
     ""
    ],
-   "note": "src/client/Client.ts @ old line 5403",
+   "note": "src/client/Client.ts @ old line 5404",
    "occ": 1,
    "pos": [
-    5402,
+    5403,
     1,
-    5400,
-    5404
+    5401,
+    5405
    ]
   },
   {
@@ -353,13 +353,13 @@
     "            Client.cyclelogic2 = 0;",
     ""
    ],
-   "note": "src/client/Client.ts @ old line 5572",
+   "note": "src/client/Client.ts @ old line 5573",
    "occ": 1,
    "pos": [
-    5571,
+    5572,
     1,
-    5569,
-    5573
+    5570,
+    5574
    ]
   },
   {
@@ -378,13 +378,13 @@
     "                        this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC7);",
     "                        this.out.p4(0);"
    ],
-   "note": "src/client/Client.ts @ old line 8609",
+   "note": "src/client/Client.ts @ old line 8610",
    "occ": 1,
    "pos": [
-    8608,
+    8609,
     1,
-    8606,
-    8610
+    8607,
+    8611
    ]
   },
   {
@@ -403,13 +403,13 @@
     "                        this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC8);",
     "                        this.out.p1(19);"
    ],
-   "note": "src/client/Client.ts @ old line 8627",
+   "note": "src/client/Client.ts @ old line 8628",
    "occ": 1,
    "pos": [
-    8626,
+    8627,
     1,
-    8624,
-    8628
+    8625,
+    8629
    ]
   },
   {
@@ -428,13 +428,13 @@
     "                        this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC3);",
     "                        this.out.p4(0);"
    ],
-   "note": "src/client/Client.ts @ old line 8637",
+   "note": "src/client/Client.ts @ old line 8638",
    "occ": 1,
    "pos": [
-    8636,
+    8637,
     1,
-    8634,
-    8638
+    8635,
+    8639
    ]
   },
   {
@@ -453,13 +453,13 @@
     "                this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC1);",
     "                this.out.p4(0);"
    ],
-   "note": "src/client/Client.ts @ old line 8796",
+   "note": "src/client/Client.ts @ old line 8797",
    "occ": 1,
    "pos": [
-    8795,
+    8796,
     1,
-    8793,
-    8797
+    8794,
+    8798
    ]
   },
   {
@@ -478,13 +478,13 @@
     "                this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC2);",
     "                this.out.p2(37954);"
    ],
-   "note": "src/client/Client.ts @ old line 8806",
+   "note": "src/client/Client.ts @ old line 8807",
    "occ": 1,
    "pos": [
-    8805,
+    8806,
     1,
-    8803,
-    8807
+    8804,
+    8808
    ]
   },
   {
@@ -503,13 +503,13 @@
     "                        this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC4);",
     "                        this.out.p1(131);"
    ],
-   "note": "src/client/Client.ts @ old line 8862",
+   "note": "src/client/Client.ts @ old line 8863",
    "occ": 1,
    "pos": [
-    8861,
+    8862,
     1,
-    8859,
-    8863
+    8860,
+    8864
    ]
   },
   {
@@ -528,13 +528,13 @@
     "                        this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC5);",
     "                        this.out.p1(154);"
    ],
-   "note": "src/client/Client.ts @ old line 8880",
+   "note": "src/client/Client.ts @ old line 8881",
    "occ": 1,
    "pos": [
-    8879,
+    8880,
     1,
-    8877,
-    8881
+    8878,
+    8882
    ]
   },
   {
@@ -553,13 +553,13 @@
     "                                this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC5);",
     "                                this.out.p1(154);"
    ],
-   "note": "src/client/Client.ts @ old line 8913",
+   "note": "src/client/Client.ts @ old line 8914",
    "occ": 1,
    "pos": [
-    8912,
+    8913,
     1,
-    8910,
-    8914
+    8911,
+    8915
    ]
   },
   {
@@ -578,13 +578,13 @@
     "                                this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC4);",
     "                                this.out.p1(131);"
    ],
-   "note": "src/client/Client.ts @ old line 8923",
+   "note": "src/client/Client.ts @ old line 8924",
    "occ": 1,
    "pos": [
-    8922,
+    8923,
     1,
-    8920,
-    8924
+    8921,
+    8925
    ]
   },
   {
@@ -603,13 +603,13 @@
     "                    this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC9);",
     "                    this.out.p3(13018169);"
    ],
-   "note": "src/client/Client.ts @ old line 8993",
+   "note": "src/client/Client.ts @ old line 8994",
    "occ": 1,
    "pos": [
-    8992,
+    8993,
     1,
-    8990,
-    8994
+    8991,
+    8995
    ]
   },
   {
@@ -628,13 +628,13 @@
     "                    this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC6);",
     "                    this.out.p2(6118);"
    ],
-   "note": "src/client/Client.ts @ old line 9128",
+   "note": "src/client/Client.ts @ old line 9129",
    "occ": 1,
    "pos": [
-    9127,
+    9128,
     1,
-    9125,
-    9129
+    9126,
+    9130
    ]
   }
  ]

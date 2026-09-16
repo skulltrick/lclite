@@ -1,7 +1,7 @@
 {
  "generated_by": "regen.mjs",
  "heads": {
-  "webclient": "bd6cad7147cc9f44d5eb12de93f0736c18e1c4d0",
+  "webclient": "a52b321a9f42530f3dd2f1a02cd335c955791a12",
   "engine": "0c7cf6555d0cf92d2348999b2fd27c6ceff5ffbf"
  },
  "hooks": {
@@ -112,260 +112,254 @@
    },
    {
     "mod": "rendering",
-    "note": "src/client/Client.ts @ old line 1260",
-    "line": 1260,
+    "note": "src/client/Client.ts @ old line 1261",
+    "line": 1261,
     "marker": true
    },
    {
     "mod": "tcg",
-    "note": "src/client/Client.ts @ old line 1728",
-    "line": 1728,
+    "note": "src/client/Client.ts @ old line 1729",
+    "line": 1729,
     "marker": true
    },
    {
     "mod": "xp-drops",
-    "note": "src/client/Client.ts @ old line 1819",
-    "line": 1819,
+    "note": "src/client/Client.ts @ old line 1820",
+    "line": 1820,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 2060",
-    "line": 2060,
+    "note": "src/client/Client.ts @ old line 2061",
+    "line": 2061,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 2063",
-    "line": 2062,
+    "note": "src/client/Client.ts @ old line 2064",
+    "line": 2063,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 2132",
-    "line": 2131,
+    "note": "src/client/Client.ts @ old line 2133",
+    "line": 2132,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 2173",
-    "line": 2172,
+    "note": "src/client/Client.ts @ old line 2174",
+    "line": 2173,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 2181",
-    "line": 2180,
+    "note": "src/client/Client.ts @ old line 2182",
+    "line": 2181,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 2307",
-    "line": 2306,
+    "note": "src/client/Client.ts @ old line 2308",
+    "line": 2307,
     "marker": true
    },
    {
     "mod": "camera",
-    "note": "src/client/Client.ts @ old line 2315",
-    "line": 2315,
+    "note": "src/client/Client.ts @ old line 2316",
+    "line": 2316,
     "marker": true
    },
    {
     "mod": "camera",
-    "note": "src/client/Client.ts @ old line 2325",
-    "line": 2325,
+    "note": "src/client/Client.ts @ old line 2326",
+    "line": 2326,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 2942",
-    "line": 2941,
+    "note": "src/client/Client.ts @ old line 2943",
+    "line": 2942,
     "marker": true
    },
    {
     "mod": "tcg",
-    "note": "src/client/Client.ts @ old line 3090",
-    "line": 3090,
+    "note": "src/client/Client.ts @ old line 3091",
+    "line": 3091,
     "marker": true
    },
    {
     "mod": "camera",
-    "note": "src/client/Client.ts @ old line 3226",
-    "line": 3226,
+    "note": "src/client/Client.ts @ old line 3227",
+    "line": 3227,
     "marker": true
    },
    {
     "mod": "stat-orbs",
-    "note": "src/client/Client.ts @ old line 3887",
-    "line": 3887,
+    "note": "src/client/Client.ts @ old line 3888",
+    "line": 3888,
     "marker": true
    },
    {
     "mod": "camera",
-    "note": "src/client/Client.ts @ old line 4193",
-    "line": 4192,
+    "note": "src/client/Client.ts @ old line 4194",
+    "line": 4193,
     "marker": true
    },
    {
     "mod": "camera",
-    "note": "src/client/Client.ts @ old line 4258",
-    "line": 4258,
+    "note": "src/client/Client.ts @ old line 4259",
+    "line": 4259,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 4271",
-    "line": 4270,
+    "note": "src/client/Client.ts @ old line 4272",
+    "line": 4271,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 4387",
-    "line": 4386,
+    "note": "src/client/Client.ts @ old line 4388",
+    "line": 4387,
     "marker": true
    },
    {
     "mod": "xp-drops",
-    "note": "src/client/Client.ts @ old line 4571",
-    "line": 4571,
+    "note": "src/client/Client.ts @ old line 4572",
+    "line": 4572,
     "marker": true
    },
    {
     "mod": "xp-drops",
-    "note": "src/client/Client.ts @ old line 4574",
-    "line": 4574,
+    "note": "src/client/Client.ts @ old line 4575",
+    "line": 4575,
     "marker": true
    },
    {
     "mod": "true-tile",
-    "note": "src/client/Client.ts @ old line 4803",
-    "line": 4803,
+    "note": "src/client/Client.ts @ old line 4804",
+    "line": 4804,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 4868",
-    "line": 4867,
+    "note": "src/client/Client.ts @ old line 4869",
+    "line": 4868,
     "marker": true
    },
    {
     "mod": "true-tile",
-    "note": "src/client/Client.ts @ old line 5073",
-    "line": 5073,
+    "note": "src/client/Client.ts @ old line 5074",
+    "line": 5074,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 5403",
-    "line": 5402,
+    "note": "src/client/Client.ts @ old line 5404",
+    "line": 5403,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 5572",
-    "line": 5571,
+    "note": "src/client/Client.ts @ old line 5573",
+    "line": 5572,
     "marker": true
    },
    {
     "mod": "xp-drops",
-    "note": "src/client/Client.ts @ old line 6684",
-    "line": 6684,
+    "note": "src/client/Client.ts @ old line 6685",
+    "line": 6685,
     "marker": true
    },
    {
     "mod": "tcg",
-    "note": "src/client/Client.ts @ old line 6694",
-    "line": 6694,
+    "note": "src/client/Client.ts @ old line 6695",
+    "line": 6695,
     "marker": true
    },
    {
     "mod": "tcg",
-    "note": "src/client/Client.ts @ old line 7901",
-    "line": 7901,
+    "note": "src/client/Client.ts @ old line 7902",
+    "line": 7902,
     "marker": true
    },
    {
     "mod": "tcg",
-    "note": "src/client/Client.ts @ old line 8189",
-    "line": 8189,
+    "note": "src/client/Client.ts @ old line 8190",
+    "line": 8190,
     "marker": true
    },
    {
     "mod": "tcg",
-    "note": "src/client/Client.ts @ old line 8243",
-    "line": 8243,
+    "note": "src/client/Client.ts @ old line 8244",
+    "line": 8244,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8609",
-    "line": 8608,
+    "note": "src/client/Client.ts @ old line 8610",
+    "line": 8609,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8627",
-    "line": 8626,
+    "note": "src/client/Client.ts @ old line 8628",
+    "line": 8627,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8637",
-    "line": 8636,
+    "note": "src/client/Client.ts @ old line 8638",
+    "line": 8637,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8796",
-    "line": 8795,
+    "note": "src/client/Client.ts @ old line 8797",
+    "line": 8796,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8806",
-    "line": 8805,
+    "note": "src/client/Client.ts @ old line 8807",
+    "line": 8806,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8862",
-    "line": 8861,
+    "note": "src/client/Client.ts @ old line 8863",
+    "line": 8862,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8880",
-    "line": 8879,
+    "note": "src/client/Client.ts @ old line 8881",
+    "line": 8880,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8913",
-    "line": 8912,
+    "note": "src/client/Client.ts @ old line 8914",
+    "line": 8913,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8923",
-    "line": 8922,
+    "note": "src/client/Client.ts @ old line 8924",
+    "line": 8923,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8993",
-    "line": 8992,
+    "note": "src/client/Client.ts @ old line 8994",
+    "line": 8993,
     "marker": true
    },
    {
     "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 9128",
-    "line": 9127,
-    "marker": true
-   },
-   {
-    "mod": "stat-orbs",
-    "note": "src/client/Client.ts @ old line 11320",
-    "line": 11320,
+    "note": "src/client/Client.ts @ old line 9129",
+    "line": 9128,
     "marker": true
    },
    {
@@ -376,14 +370,20 @@
    },
    {
     "mod": "stat-orbs",
-    "note": "src/client/Client.ts @ old line 11435",
-    "line": 11435,
+    "note": "src/client/Client.ts @ old line 11348",
+    "line": 11348,
+    "marker": true
+   },
+   {
+    "mod": "stat-orbs",
+    "note": "src/client/Client.ts @ old line 11449",
+    "line": 11449,
     "marker": true
    },
    {
     "mod": "camera",
-    "note": "src/client/Client.ts @ old line 11672",
-    "line": 11672,
+    "note": "src/client/Client.ts @ old line 11686",
+    "line": 11686,
     "marker": true
    }
   ],

@@ -23,6 +23,11 @@ extracts them from `git diff -U0` of the live tree. Deep context:
 
   Without `LCLITE_ROOT` the tools look one level above this repo; with no host tree
   there, doctor exits 3 with a message saying exactly that (not a wall of "off" mods).
+- **Restoring a broken overlay state**: `git checkout -- mods docs` — NOT
+  `git checkout -- .`, which also reverts uncommitted tooling fixes you are mid-way
+  through (it silently un-fixes regen/doctor and the next run then does the wrong
+  thing). Check `git stash list` too: a stash left behind by an interrupted
+  idempotency test holds the very patch JSONs you think are missing.
 - **Mods are read from THIS checkout**, not from an install's `lclite/` copy: the
   launcher prefers the overlay it was launched from, so edits here take effect
   immediately (the UI labels it "from your checkout"). The install's copy is the

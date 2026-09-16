@@ -3,7 +3,7 @@
  "mod": "stat-orbs",
  "generated_from": {
   "repo": "webclient",
-  "head": "bd6cad7147cc9f44d5eb12de93f0736c18e1c4d0"
+  "head": "a52b321a9f42530f3dd2f1a02cd335c955791a12"
  },
  "hunks": [
   {
@@ -128,13 +128,13 @@
     "    // todo: order",
     "    private gameDraw(): void {"
    ],
-   "note": "src/client/Client.ts @ old line 3887",
+   "note": "src/client/Client.ts @ old line 3888",
    "occ": 1,
    "pos": [
-    3887,
+    3888,
     0,
-    3885,
-    3888
+    3886,
+    3889
    ]
   },
   {
@@ -159,13 +159,13 @@
     "        if (this.minimapState == 2) {",
     "            if (this.mapback !== null) {"
    ],
-   "note": "src/client/Client.ts @ old line 11320",
+   "note": "src/client/Client.ts @ old line 11334",
    "occ": 1,
    "pos": [
-    11320,
+    11334,
     0,
-    11318,
-    11321
+    11332,
+    11335
    ]
   },
   {
@@ -187,13 +187,13 @@
     "            this.areaGame?.setPixels();",
     "            return;"
    ],
-   "note": "src/client/Client.ts @ old line 11334",
+   "note": "src/client/Client.ts @ old line 11348",
    "occ": 1,
    "pos": [
-    11334,
+    11348,
     0,
-    11332,
-    11335
+    11346,
+    11349
    ]
   },
   {
@@ -216,13 +216,13 @@
     "        this.areaGame?.setPixels();",
     "    }"
    ],
-   "note": "src/client/Client.ts @ old line 11435",
+   "note": "src/client/Client.ts @ old line 11449",
    "occ": 1,
    "pos": [
-    11435,
+    11449,
     0,
-    11433,
-    11436
+    11447,
+    11450
    ]
   }
  ]

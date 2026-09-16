@@ -7,6 +7,22 @@ hunks in `mods/` and are applied to freshly cloned
 rev updates without hand-merges. Contributions must keep that property —
 `tree = f(upstream@rev, overlay)` is the invariant; everything else is detail.
 
+## regen refusals (read before regenerating)
+
+`regen.mjs` extracts hunks from the tree at `LCLITE_ROOT` and rewrites
+`mods/*/patches/`. Three states make that impossible, and it stops rather than
+writing nonsense:
+
+| State | Exit | What it means |
+|---|---|---|
+| no host tree at `LCLITE_ROOT` (or none set, overlay on its own) | 3 | nothing to diff — point it at an install |
+| the tracked branch's HEAD already carries `lclite:` markers | 3 | modded state committed on the branch (rule 6) — `git reset --mixed HEAD~1` keeping the tree, then regen |
+| a tree with no modded lines (pristine, or already stripped) | 2 | wrong tree — nothing written, nothing deleted |
+
+Stale patch JSONs whose file no longer has hunks are **reported, not deleted**;
+add `--prune` when you actually want them gone (a convergent
+`apply --mods <one>` strips the others, which looks identical from inside regen).
+
 ## Dev setup
 
 1. **The repo on its own** — it no longer lives inside a Lost City checkout.

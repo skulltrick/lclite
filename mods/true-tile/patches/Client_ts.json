@@ -3,7 +3,7 @@
  "mod": "true-tile",
  "generated_from": {
   "repo": "webclient",
-  "head": "bd6cad7147cc9f44d5eb12de93f0736c18e1c4d0"
+  "head": "a52b321a9f42530f3dd2f1a02cd335c955791a12"
  },
  "hunks": [
   {
@@ -22,13 +22,13 @@
     "        if (this.hintType !== 2 || !this.headicons[2]) {",
     "            return;"
    ],
-   "note": "src/client/Client.ts @ old line 4803",
+   "note": "src/client/Client.ts @ old line 4804",
    "occ": 1,
    "pos": [
-    4803,
+    4804,
     0,
-    4801,
-    4804
+    4802,
+    4805
    ]
   },
   {
@@ -195,13 +195,13 @@
     "    private getAvH(sceneX: number, sceneZ: number, level: number): number {",
     "        if (!this.groundh) {"
    ],
-   "note": "src/client/Client.ts @ old line 5073",
+   "note": "src/client/Client.ts @ old line 5074",
    "occ": 1,
    "pos": [
-    5073,
+    5074,
     0,
-    5071,
-    5074
+    5072,
+    5075
    ]
   }
  ]

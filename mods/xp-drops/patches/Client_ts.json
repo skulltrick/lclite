@@ -3,7 +3,7 @@
  "mod": "xp-drops",
  "generated_from": {
   "repo": "webclient",
-  "head": "bd6cad7147cc9f44d5eb12de93f0736c18e1c4d0"
+  "head": "a52b321a9f42530f3dd2f1a02cd335c955791a12"
  },
  "hunks": [
   {
@@ -175,13 +175,13 @@
     "                for (let i: number = 0; i < 100; i++) {",
     "                    this.chatText[i] = null;"
    ],
-   "note": "src/client/Client.ts @ old line 1819",
+   "note": "src/client/Client.ts @ old line 1820",
    "occ": 1,
    "pos": [
-    1819,
+    1820,
     0,
-    1817,
-    1820
+    1818,
+    1821
    ]
   },
   {
@@ -327,13 +327,13 @@
     "    private entityOverlays(): void {",
     "        this.chatCount = 0;"
    ],
-   "note": "src/client/Client.ts @ old line 4571",
+   "note": "src/client/Client.ts @ old line 4572",
    "occ": 1,
    "pos": [
-    4571,
+    4572,
     0,
-    4569,
-    4572
+    4570,
+    4573
    ]
   },
   {
@@ -373,13 +373,13 @@
     "        for (let index: number = -1; index < this.playerCount + this.npcCount; index++) {",
     "            let entity: ClientEntity | null = null;"
    ],
-   "note": "src/client/Client.ts @ old line 4574",
+   "note": "src/client/Client.ts @ old line 4575",
    "occ": 1,
    "pos": [
-    4574,
+    4575,
     0,
-    4572,
-    4575
+    4573,
+    4576
    ]
   },
   {
@@ -423,13 +423,13 @@
     "                this.statXP[stat] = xp;",
     "                this.statEffectiveLevel[stat] = level;"
    ],
-   "note": "src/client/Client.ts @ old line 6684",
+   "note": "src/client/Client.ts @ old line 6685",
    "occ": 1,
    "pos": [
-    6684,
+    6685,
     0,
-    6682,
-    6685
+    6683,
+    6686
    ]
   }
  ]

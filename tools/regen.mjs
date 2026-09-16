@@ -23,7 +23,11 @@ import { loadRootManifest } from './lib.mjs';
 
 const TOOLS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const LCLITE = path.resolve(TOOLS_DIR, '..');           // the overlay root
-const ROOT = path.resolve(LCLITE, '..');                // the Lost City checkout
+// The tree to diff. LCLITE_ROOT wins (same rule as lclite.mjs/doctor.mjs): the overlay
+// usually stands on its own now and the revisions it patches are installs under the
+// launcher's data folder, so "one level above me" is only right in the old layout.
+const ROOT = path.resolve(process.env.LCLITE_ROOT || path.join(LCLITE, '..'));
+const PRUNE = process.argv.includes('--prune');
 const ROOT_REPOS = loadRootManifest(LCLITE).repos.map(r => r.dir + '/');
 
 // Files each mod's hunks may come from. With markers (A1) this is only "which files to
@@ -121,6 +125,23 @@ function parseIslands(diffText) {
     return out;
 }
 
+// No host tree at all (the overlay on its own, no LCLITE_ROOT): nothing to extract and
+// every per-file git call would just print a fatal. Say it once, like doctor does.
+{
+    const manifestRepos = loadRootManifest(LCLITE).repos.filter(r => r.required).map(r => r.dir);
+    const missing = manifestRepos.filter(d => !fs.existsSync(path.join(ROOT, d)));
+    if (missing.length === manifestRepos.length) {
+        console.error(`regen — no Lost City checkout at ${ROOT}`);
+        console.error('');
+        console.error('  This is the overlay on its own, so there is nothing to diff. Point regen');
+        console.error('  at an install:');
+        console.error('    LCLITE_ROOT=<install folder> node tools/regen.mjs');
+        console.error('  (or run LCLite.exe, which installs revisions into its own data folder)');
+        process.exit(3);
+    }
+    for (const d of missing) console.error(`  !! ${d}/ not found at ${ROOT} — skipping its files`);
+}
+
 let total = 0, ambiguous = 0;
 // manifest check: every patched file must live in a repo root.json declares
 for (const [mod, files] of Object.entries(MODS))
@@ -137,10 +158,25 @@ for (const [mod, filesOf] of Object.entries(MODS)) {
         processed.add(f);
         const repo = f.split('/')[0];
         const rel = f.slice(repo.length + 1);
+        // rule-6 tripwire, deliberately BEFORE the diff: HEAD must be upstream code. If
+        // the committed file already carries lclite markers the branch itself is modded
+        // and every pin/diff below would describe the wrong thing. It has to fire on a
+        // CLEAN worktree too — that is the case where diffs are empty and "nothing to
+        // extract" looks benign.
+        let headRaw;
+        try { headRaw = git(repo, `show HEAD:"${rel}"`); }
+        catch { console.log(`not in this rev: ${rel} (${repo}/HEAD has no such file) — skipping`); continue; }
+        const oldLines = toLF(headRaw).split('\n');
+        const committedMarkers = oldLines.filter(l => MARKER.test(l)).length;
+        if (committedMarkers) {
+            console.error(`\n!! ${repo}/HEAD:${rel} already contains ${committedMarkers} lclite marker line(s).`);
+            console.error(`   regen refuses to run: the tracked branch itself is modded (rule 6).`);
+            console.error(`   Recover: git -C ${path.join(ROOT, repo)} reset --mixed HEAD~1 (keeps your tree), then regen.\n`);
+            process.exit(3);
+        }
         let diff;
         try { diff = git(repo, `diff -U0 -- "${rel}"`); } catch (e) { console.error('git diff failed', f, e.message); continue; }
         if (!diff.trim()) { console.log('unchanged:', f); continue; }
-        const oldLines = toLF(git(repo, `show HEAD:"${rel}"`)).split('\n');
         // EOL tripwire (v2 — first version compared `git show HEAD` raw, but in
         // autocrlf=true repos HEAD is LF while the checkout is CRLF: permanent false
         // alarm). The accident worth catching: a tool flattening the WORKTREE to LF
@@ -149,7 +185,7 @@ for (const [mod, filesOf] of Object.entries(MODS)) {
         const rawNew = fs.readFileSync(path.join(ROOT, f), 'utf-8');
         const newLines = toLF(rawNew).split('\n');
         {
-            const headIsLF = !/\r\n/.test(git(repo, `show HEAD:"${rel}"`));
+            const headIsLF = !/\r\n/.test(headRaw);
             const autocrlf = git(repo, `config --get core.autocrlf`).trim() === 'true';
             const wantsCRLF = (autocrlf && headIsLF) || !headIsLF;   // CRLF checkout convention
             if (wantsCRLF && !/\r\n/.test(rawNew)) {
@@ -240,6 +276,17 @@ for (const [mod, filesOf] of Object.entries(MODS)) {
         }
     }
 }
+// Nothing extracted at all = wrong tree (pristine, or LCLITE_ROOT pointing somewhere
+// that isn't a checkout). Stop before the write/cleanup loops below, which read "no
+// patch files are wanted this run" as "delete every patch file". NB: count what the
+// extraction loops found — `total` is only filled in while writing.
+const extracted = [...out.values()].reduce((n, es) => n + es.reduce((m, e) => m + e.hunks.length, 0), 0);
+if (extracted === 0) {
+    console.error('\n!! regen found no modded lines to extract under ' + ROOT);
+    console.error('   Nothing was written or removed. Check that the overlay is actually');
+    console.error('   applied there (apply --check) and that LCLITE_ROOT points at a checkout.');
+    process.exit(2);
+}
 for (const [owner, entries] of out) {
     const dir = path.join(LCLITE, 'mods', owner, 'patches');
     fs.mkdirSync(dir, { recursive: true });
@@ -251,13 +298,17 @@ for (const [owner, entries] of out) {
         console.log(`[${owner}] ${e.f}: ${e.hunks.length} hunks`);
     }
 }
-// clean stale patch files: any json whose (file, mod) pair was not written this run
+// clean stale patch files: any json whose (file, mod) pair was not written this run.
+// Destructive, so it needs --prune: a convergent `apply --mods <one>` STRIPS the other
+// mods, and their reverted files look exactly like "stale patches" from in here.
 for (const owner of new Set([...Object.keys(MODS), ...out.keys()])) {
     const dir = path.join(LCLITE, 'mods', owner, 'patches');
     if (!fs.existsSync(dir)) continue;
     const wanted = new Set((out.get(owner) || []).map(e => path.basename(e.f).replace(/\W+/, '_') + '.json'));
     for (const j of fs.readdirSync(dir).filter(x => x.endsWith('.json'))) {
-        if (!wanted.has(j)) { fs.rmSync(path.join(dir, j)); console.log(`[${owner}] removed stale ${j}`); }
+        if (wanted.has(j)) continue;
+        if (PRUNE) { fs.rmSync(path.join(dir, j)); console.log(`[${owner}] removed stale ${j}`); }
+        else console.log(`  ~ ${owner}/${j}: no hunks in this tree — rerun with --prune to delete`);
     }
 }
 // hooks.json — machine-readable hook-site registry (B3): every mod, every file it
@@ -279,7 +330,7 @@ for (const owner of new Set([...Object.keys(MODS), ...out.keys()])) {
     fs.writeFileSync(path.join(LCLITE, 'docs', 'hooks.json'), JSON.stringify({ generated_by: 'regen.mjs', heads, hooks }, null, 1) + '\n');
     console.log('docs/hooks.json written:', Object.values(hooks).flat().length, 'hook sites in', Object.keys(hooks).length, 'files');
     // HOOKS.md — human view of the SAME data (never allowed to drift from hooks.json)
-    let md = '# Hook-site map\n\n> GENERATED by `node tools/regen.mjs` (run from lclite/) — do not hand-edit; edit sources and regen.\n> Every lclite hunk in source order. `pos` = 0-based line in the PRISTINE file where the hunk inserts/deletes.\n\n| file | pos | mod | first added line |\n|---|---|---|---|\n';
+    let md = '# Hook-site map\n\n> GENERATED by `LCLITE_ROOT=<install> node tools/regen.mjs` — do not hand-edit; edit sources and regen.\n> Every lclite hunk in source order. `pos` = 0-based line in the PRISTINE file where the hunk inserts/deletes.\n\n| file | pos | mod | first added line |\n|---|---|---|---|\n';
     for (const [f, list] of Object.entries(hooks)) {
         for (const h of list) {
             const pj = path.join(LCLITE, 'mods', h.mod, 'patches', path.basename(f).replace(/\W+/, '_') + '.json');
