@@ -17,7 +17,7 @@
 
     // info() indices — must match tcg_core.ts
     const I_CREDITS = 0, I_XPPOOL = 1, I_PRICE = 2, I_PACKS = 3, I_EARN_XP = 6, I_EARN_LVL = 7, I_EARN_DUP = 8,
-        I_SINCE = 10, I_UNIQUE = 11, I_CATSIZ = 13, I_ACCT = 14;
+        I_SINCE = 10, I_UNIQUE = 11, I_CATSIZ = 13, I_ACCT = 14, I_EARN_KILL = 15, I_KILLS = 16;
     // pull[] indices: [key, name, tier, foil]
     const P_KEY = 0, P_NAME = 1, P_TIER = 2, P_FOIL = 3;
     // album row[] indices: [key, name, tier, tags, img, owned, foils]
@@ -90,8 +90,8 @@
     document.head.appendChild(style);
 
     function build() {
-        window.__lctcgUi = 3;           // stamp the core checks (replace stale cached copies)
-        console.log('[lclite:tcg] ui v3');
+        window.__lctcgUi = 4;           // stamp the core checks (replace stale cached copies)
+        console.log('[lclite:tcg] ui v4');
         root = document.createElement('div');
         root.id = 'lctcg-root';
         root.innerHTML = `
@@ -148,7 +148,7 @@
         hud.style.display = 'flex';
         anchorHud();
         root.querySelector('#lctcg-credits').textContent = fmt(i[I_CREDITS]);
-        const earned = i[I_EARN_XP] + i[I_EARN_LVL] + i[I_EARN_DUP];   // grants excluded
+        const earned = i[I_EARN_XP] + i[I_EARN_LVL] + i[I_EARN_DUP] + (i[I_EARN_KILL] || 0);   // grants excluded
         const hours = Math.max(1 / 60, (Date.now() - i[I_SINCE]) / 3600000);
         root.querySelector('#lctcg-rate').textContent = earned > 0 ? '+' + fmt(earned / hours) + '/h' : '';
         const need = i[I_PRICE] - (i[I_CREDITS] % i[I_PRICE]);

@@ -5,7 +5,11 @@
    score, per-category percentile tiering with value/score tie unification,
    1/3000 apex packs, 1% foil, dup-sell at round(score)/200 (min 10), and the
    1,000xp -> 100-credit / level-up 1,250..25,000 curve (user's simplification
-   of the XP half of that plugin's economy). Reimplemented for this client, not
+   of the XP half of that plugin's economy) plus kill credits = npc combat
+   level (the plugin's third earning path, fed from Client.ts npc-update
+   hunks — see the kill-credits section; combat-skill xp pays no chunks so
+   grinding doesn't double-dip, exactly like the beta's COMBAT_SKILLS rule).
+   Reimplemented for this client, not
    ported: persistence is localStorage keyed per username, the card catalog is
    the bundled /lclite/tcg/cards.json (art streams from the OSRS wiki CDN), and
    all visuals live in the DOM layer (mods/tcg/files/engine/public/.../ui.js).
@@ -42,13 +46,23 @@
     const DUP_SELL_MIN = 10;
     const SELL_MAX_PER_PACK = 4;        // sell-back offers capped per opening
 
+    // kill credits (beta NpcKillCreditTracker parity): credits = npc combat
+    // level, floor 1; a death only counts when the player ENGAGED the npc within
+    // INTERACT_TIMEOUT (beta 12 game ticks; loopCycle runs ~52/s -> ~7.2s).
+    const KILL_MIN_CREDITS = 1;
+    const INTERACT_TIMEOUT_CYCLES = 400;
+    // beta COMBAT_SKILLS: these earn credits through kills, not xp chunks.
+    // (stat ids: attack0 defence1 strength2 hitpoints3 ranged4 magic6 —
+    // hitpoints/prayer stay chunk-credited, matching the plugin's enum.)
+    const COMBAT_XP_STATS: Record<number, boolean> = { 0: true, 1: true, 2: true, 4: true, 6: true };
+
     const KEY_STATE = 'lcliteTcg';      // { "username": save }
     const KEY_MASTER = 'tcg';           // this mod's master switch (its OWN key, rule 5)
     // ?v= cache key: 'force-cache' happily serves a STALE catalog forever (Brave
     // bit us exactly this way) — bump v with any cards.json format change.
-    const CAT_URL = '/lclite/tcg/cards.json?v=3';
-    const UI_SRC = '/lclite/tcg/ui.js?v=3';
-    const UI_VER = 3;                   // ui.js stamps window.__lctcgUi; stale UI is re-fetched+replaced
+    const CAT_URL = '/lclite/tcg/cards.json?v=4';
+    const UI_SRC = '/lclite/tcg/ui.js?v=4';
+    const UI_VER = 4;                   // ui.js stamps window.__lctcgUi; stale UI is re-fetched+replaced
 
     const TIER_LABELS = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Godly'];
 
@@ -226,7 +240,7 @@
     // SAVE SHAPE (positional, build-stable — see file header):
     //   [0] credits      [1] uncreditedXp  [2] prevXp {stat: totalXp}
     //   [3] prevLvl {stat: level}          [4] coll {cardKey: [nonfoil, foil]}
-    //   [5] stats [xp, lvl, dup, give, packs, pulls, spent]
+    //   [5] stats [xp, lvl, dup, give, packs, pulls, spent, killsC, killsN]
     //   [6] since (ms, credits/h baseline) [7] cv (catalog version last touched)
     const SV = 8;
     let ACCOUNT = 'default';
@@ -281,6 +295,9 @@
     }
 
     // ── xp hook (called from the UPDATE_STAT packet site in Client.ts) ───────
+    // Combat-skill xp pays NO chunks (beta parity: combat earns through kill
+    // credits instead) — but its baseline/level tracking stays live so level-up
+    // bonuses still fire, and switching the rule back is a one-line change.
     function onXp(stat: number, xp: number): void {
         if ((W.localStorage.getItem(KEY_MASTER) || 'true') !== 'true') { return; }
         if (!CAT) { ensureCatalog(); } // warm the catalog from the first gain too
@@ -306,10 +323,12 @@
         S[2][stat] = xp;
 
         let paid = 0;
-        S[1] += gained;
-        while (S[1] >= XP_PER_CHUNK) {
-            S[1] -= XP_PER_CHUNK;
-            paid += CREDITS_PER_CHUNK;
+        if (!COMBAT_XP_STATS[stat]) {
+            S[1] += gained;
+            while (S[1] >= XP_PER_CHUNK) {
+                S[1] -= XP_PER_CHUNK;
+                paid += CREDITS_PER_CHUNK;
+            }
         }
         const lvl = levelForXp(xp);
         const prevLvl = S[3][stat] || 1;
@@ -325,6 +344,81 @@
         W['tcgHudDirty'] = true;
         if (paid > 0) { toast('+' + fmt(paid) + ' credits — ' + fmt(gained) + ' xp'); }
         if (lvlBonus > 0) { toast('Level ' + lvl + '! +' + fmt(lvlBonus) + ' credits'); }
+    }
+
+    // ── kill credits (NpcKillCreditTracker parity, fed from Client.ts hunks) ─
+    // The plugin marks an npc "engaged" when the local player interacts with or
+    // hitsplats it, then pays combat-level credits if it dies within 12 ticks.
+    // This client has no local-hitsplat ownership (hitsplats are broadcast, not
+    // attributed), so the signals are:
+    //   tcgEngageNpc(index)     — local player's FACEENTITY update aims at an
+    //                             npc (covers melee/range/mage/cannon targeting;
+    //                             one-shot kills still credit, as in beta);
+    //   tcgWatchHit(index, hp, total) — every npc HITMARK/HITMARK2 update:
+    //                             hp>0 && engaged refreshes the timeout (the
+    //                             server-facing player during combat keeps it
+    //                             warm for npcs we never targeted);
+    //                             hp===0 is the death — credit if engaged and
+    //                             valid. Respawn farming: engagement SURVIVES a
+    //                             credited death (auto-retarget on the respawned
+    //                             npc sends no new FACEENTITY update), but a
+    //                             re-emitted corpse death can't double-pay —
+    //                             KILL_REGRACE is the minimum cycle gap between
+    //                             two credits on one index (~2s < any respawn).
+    //                             A death we never engaged (someone else's kill,
+    //                             despawn, quest script) just clears state.
+    // Combat level: NpcType.vislevel from the cache (code 103; -1 unless the
+    // def ships it — 2004-era caches often don't), else the OSRS card's level
+    // by name (cards.json [4]; beta uses OSRS combat levels for its monsters),
+    // else 1. Engagement maps are session-only (never saved, like beta).
+    const KILL_REGRACE_CYCLES = 100;
+    const engaged: Record<number, { t: number, d: number }> = {};   // index -> {last engage/hit, last credit}
+
+    function killLevel(vislevel: number, typeName: string, totalHp: number): number {
+        if (vislevel > 0 && vislevel < 32768) { return vislevel; }
+        if (CAT && typeName) {
+            const c = CAT_BY_KEY[typeName.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()];
+            if (c && c[4] > 0) { return c[4]; }
+        }
+        if (totalHp >= 20 && totalHp <= 32700) { return totalHp; } // last resort: full hp as level
+        return KILL_MIN_CREDITS;
+    }
+
+    function onEngage(index: number, cycle: number): void {
+        if ((W.localStorage.getItem(KEY_MASTER) || 'true') !== 'true') { return; }
+        const e = engaged[index];
+        if (e) { e.t = cycle; } else { engaged[index] = { t: cycle, d: -1e9 }; }
+    }
+
+    function onNpcHit(index: number, hp: number, total: number, cycle: number, vislevel: number, typeName: string): void {
+        if ((W.localStorage.getItem(KEY_MASTER) || 'true') !== 'true') { return; }
+        const e = engaged[index];
+        if (hp > 0) {
+            if (e) { e.t = cycle; }       // hit landed: keep the engagement warm
+            return;
+        }
+        if (!e) { return; }               // unengaged death: other player's kill / despawn
+        if (cycle - e.t > INTERACT_TIMEOUT_CYCLES) { delete engaged[index]; return; }
+        if (cycle - e.d < KILL_REGRACE_CYCLES) { return; }  // same corpse re-emitting
+        load();
+        e.d = cycle;
+        e.t = cycle;
+        // settle window after login: adopt silently (a save that logged in
+        // mid-combat shouldn't retro-credit whatever dies first)
+        if (Date.now() < settleUntil) { return; }
+        const credits = Math.max(KILL_MIN_CREDITS, killLevel(vislevel, typeName, total));
+        S[0] += credits;
+        S[5][7] = (S[5][7] || 0) + credits;
+        S[5][8] = (S[5][8] || 0) + 1;
+        markDirty();
+        flush();
+        W['tcgHudDirty'] = true;
+        const label = typeName && typeName.length ? typeName : 'NPC';
+        toast('+' + fmt(credits) + ' credits — ' + label + ' slain');
+    }
+
+    function clearEngagements(): void {
+        for (const k in engaged) { delete engaged[k]; }
     }
 
     // ── pack roll (PackOpeningService parity minus party/webhook plumbing) ───
@@ -466,7 +560,7 @@
             openPack();
         } else if (sub === 'info') {
             const i = info();
-            toast('◈ ' + fmt(i[0]) + ' · packs ' + i[3] + ' · cards ' + i[11] + '/' + (i[13] ? fmt(i[13]) : '?') + ' · xp pool ' + i[1]);
+            toast('◈ ' + fmt(i[0]) + ' · packs ' + i[3] + ' · cards ' + i[11] + '/' + (i[13] ? fmt(i[13]) : '?') + ' · kills ' + fmt(i[16]) + ' · xp pool ' + i[1]);
         } else if (sub === 'give' && staff >= 2) {
             const n = clamp(parseInt(parts[1]) || 0, 1, 1000000);
             addCredits(n, 3, 'granted ' + fmt(n) + ' credits');
@@ -490,6 +584,7 @@
     // info() -> [0]credits [1]uncreditedXp [2]packPrice [3]packsOpened [4]pulls
     //   [5]spent [6]earnedXp [7]earnedLvl [8]earnedDup [9]earnedGive [10]since
     //   [11]uniqueCards [12]catalogVersion|0 [13]catalogSize|0 [14]account
+    //   [15]earnedKills [16]killCount
     function info(): any {
         load();
         return [
@@ -497,7 +592,8 @@
             S[5][0], S[5][1], S[5][2], S[5][3] || 0, S[6],
             Object.keys(S[4]).length,
             CAT ? CAT.version : 0, CAT ? CAT.cards.length : 0,
-            ACCOUNT
+            ACCOUNT,
+            S[5][7] || 0, S[5][8] || 0
         ];
     }
     // albumRows() -> rows of [key, name, tier, tagsCsv, imageUrl, owned, foils]
@@ -547,6 +643,7 @@
     W['tcgSetAccount'] = function (username: string): void {
         ACCOUNT = (username || 'default').trim().toLowerCase();
         S = null;
+        clearEngagements();   // npc indices are per-world-session; never credit across accounts
         // open the settle window: the login UPDATE_STAT burst (which re-syncs all
         // 25 skills) rebases S[2]/S[3] silently instead of retro-paying xp earned
         // offline or on a previous character with this account.
@@ -554,6 +651,8 @@
         W['tcgHudDirty'] = true;
     };
     W['tcgOnXp'] = onXp;
+    W['tcgEngageNpc'] = onEngage;
+    W['tcgNpcHit'] = onNpcHit;
     W['tcgOpenPack'] = openPack;
     W['tcgRevealClosed'] = function (): void { OPENING = false; };
     W['tcgSellDuplicates'] = sellDuplicates;

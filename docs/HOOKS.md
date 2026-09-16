@@ -50,6 +50,9 @@
 | webclient/src/client/Client.ts | 5571 | anti-cheat | `// lclite:anti-cheat` |
 | webclient/src/client/Client.ts | 6684 | xp-drops | `// custom: a gained amount (xp > stored) = drop; equal/below = login lclite:xp-d` |
 | webclient/src/client/Client.ts | 6694 | tcg | `// custom (lclite "tcg"): feed the credit economy from real xp — 100c/1k xp lcli` |
+| webclient/src/client/Client.ts | 7901 | tcg | `// lclite:tcg — the LOCAL player aiming at an npc (attack/cast/follow` |
+| webclient/src/client/Client.ts | 8189 | tcg | `// lclite:tcg — health 0 is the death announcement; the core` |
+| webclient/src/client/Client.ts | 8243 | tcg | `// lclite:tcg — see the HITMARK2 watch above` |
 | webclient/src/client/Client.ts | 8608 | anti-cheat | `// lclite:anti-cheat` |
 | webclient/src/client/Client.ts | 8626 | anti-cheat | `// lclite:anti-cheat` |
 | webclient/src/client/Client.ts | 8636 | anti-cheat | `// lclite:anti-cheat` |

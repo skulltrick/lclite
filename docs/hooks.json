@@ -279,6 +279,24 @@
     "marker": true
    },
    {
+    "mod": "tcg",
+    "note": "src/client/Client.ts @ old line 7901",
+    "line": 7901,
+    "marker": true
+   },
+   {
+    "mod": "tcg",
+    "note": "src/client/Client.ts @ old line 8189",
+    "line": 8189,
+    "marker": true
+   },
+   {
+    "mod": "tcg",
+    "note": "src/client/Client.ts @ old line 8243",
+    "line": 8243,
+    "marker": true
+   },
+   {
     "mod": "anti-cheat",
     "note": "src/client/Client.ts @ old line 8609",
     "line": 8608,

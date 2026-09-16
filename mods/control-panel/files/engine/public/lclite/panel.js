@@ -68,12 +68,12 @@
         { id: 'xp-drops', name: 'XP drops', desc: 'OSRS-style XP drop rows over the viewport with a level-progress tracker in its top-right corner; auto-hides a few seconds after the last gain.', master: { key: 'xpDrops', def: 'true' } },
         { id: 'stat-orbs', name: 'Stat orbs', desc: 'OSRS-style HP/Prayer/Run orbs down the left of the minimap, numbers always shown.', master: { key: 'statOrbs', def: 'false' } },
         { id: 'true-tile', name: 'True tile', desc: 'Green outline on the tile the server actually has you on, instead of the walk-delayed model position. Click for color, border and fill options.', master: { key: 'trueTile', def: 'true' } },
-        { id: 'tcg', name: 'TCG', desc: 'Card packs earnable by playing: every 1,000 xp pays 100 credits, level-ups pay 1,250–25,000. Open a pack from the credits HUD (top-left of the viewport) or ::tcg — 7 rarity tiers, foils, and a collection album of 6,376 OSRS cards.', master: { key: 'tcg', def: 'true' },
+        { id: 'tcg', name: 'TCG', desc: 'Card packs earnable by playing: every 1,000 non-combat xp pays 100 credits, level-ups pay 1,250–25,000, monster kills pay their combat level. Open a pack from the credits HUD (top-left of the viewport) or ::tcg — 7 rarity tiers, foils, and a collection album of 6,376 OSRS cards.', master: { key: 'tcg', def: 'true' },
           status() {
               if (LS.get('tcg', 'true') !== 'true') return '';
               if (typeof window.tcgInfo !== 'function') return 'core not loaded';
               const i = window.tcgInfo();   // positional contract (see tcg_core.ts)
-              return '◈ ' + i[0].toLocaleString('en-US') + ' · ' + i[11] + ' cards';
+              return '◈ ' + i[0].toLocaleString('en-US') + ' · ' + i[11] + ' cards · ' + i[16] + ' kills';
           } },
         { id: 'anti-cheat', name: 'Anti-cheat', desc: 'Send legacy RuneScope mouse/camera/anticheat packets. Harmless to disable on private servers.', master: { key: 'antiCheat', def: 'true' } },
         { id: 'rendering', name: 'Smooth shading', desc: 'Per-pixel Gouraud instead of 4px blocks. Costs FPS.', master: { key: 'smoothShading', def: 'false' } },

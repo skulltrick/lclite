@@ -120,6 +120,92 @@
     6690,
     6696
    ]
+  },
+  {
+   "find": [
+    "                player.faceEntity = -1;",
+    "            }",
+    "        }",
+    ""
+   ],
+   "replace": [
+    "                player.faceEntity = -1;",
+    "            }",
+    "            // lclite:tcg — the LOCAL player aiming at an npc (attack/cast/follow",
+    "            // target) marks it engaged, beta InteractingChanged parity: one-shot",
+    "            // kills credit even before any hitsplat lands. Indices >= 32768 are",
+    "            // players (faceEntity offset), -1 = clear; both ignored.",
+    "            if (index === LOCAL_PLAYER_INDEX && player.faceEntity >= 0 && player.faceEntity < 32768) {",
+    "                (window as any)['tcgEngageNpc']?.(player.faceEntity, Client.loopCycle);",
+    "            }",
+    "        }",
+    ""
+   ],
+   "note": "src/client/Client.ts @ old line 7901",
+   "occ": 1,
+   "pos": [
+    7901,
+    0,
+    7899,
+    7902
+   ]
+  },
+  {
+   "find": [
+    "                npc.combatCycle = Client.loopCycle + 400;",
+    "                npc.health = buf.g1();",
+    "                npc.totalHealth = buf.g1();",
+    "            }",
+    "",
+    "            if ((mask & NpcUpdate.ANIM) !== 0) {"
+   ],
+   "replace": [
+    "                npc.combatCycle = Client.loopCycle + 400;",
+    "                npc.health = buf.g1();",
+    "                npc.totalHealth = buf.g1();",
+    "                // lclite:tcg — health 0 is the death announcement; the core",
+    "                // credits it iff we engaged this npc recently (kill credits).",
+    "                (window as any)['tcgNpcHit']?.(id, npc.health, npc.totalHealth, Client.loopCycle, npc.type ? npc.type.vislevel : -1, npc.type && npc.type.name ? npc.type.name : '');",
+    "            }",
+    "",
+    "            if ((mask & NpcUpdate.ANIM) !== 0) {"
+   ],
+   "note": "src/client/Client.ts @ old line 8189",
+   "occ": 1,
+   "pos": [
+    8189,
+    0,
+    8186,
+    8191
+   ]
+  },
+  {
+   "find": [
+    "                npc.combatCycle = Client.loopCycle + 400;",
+    "                npc.health = buf.g1();",
+    "                npc.totalHealth = buf.g1();",
+    "            }",
+    "",
+    "            if ((mask & NpcUpdate.CHANGETYPE) !== 0) {"
+   ],
+   "replace": [
+    "                npc.combatCycle = Client.loopCycle + 400;",
+    "                npc.health = buf.g1();",
+    "                npc.totalHealth = buf.g1();",
+    "                // lclite:tcg — see the HITMARK2 watch above",
+    "                (window as any)['tcgNpcHit']?.(id, npc.health, npc.totalHealth, Client.loopCycle, npc.type ? npc.type.vislevel : -1, npc.type && npc.type.name ? npc.type.name : '');",
+    "            }",
+    "",
+    "            if ((mask & NpcUpdate.CHANGETYPE) !== 0) {"
+   ],
+   "note": "src/client/Client.ts @ old line 8243",
+   "occ": 1,
+   "pos": [
+    8243,
+    0,
+    8240,
+    8245
+   ]
   }
  ]
 }
