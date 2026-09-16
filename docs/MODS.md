@@ -125,7 +125,19 @@ file — widen your edit to include a unique line rather than fighting the tool.
 file hosts SEVERAL mods (Client.ts does), each added block MUST start with a
 `lclite:<mod>` marker (comment form matching the language, `<!-- lclite:mod -->` in
 EJS); regen routes by marker with 100% precision and warns loudly on any unmarked
-block (legacy regex fallback). The old ≥61-line isolation rule is RETIRED (2026-09-15):
+block (legacy regex fallback). **EJS trap: inside a `<script>` block those
+`<!-- ... -->` markers are Annex-B line comments — only a line that STARTS with
+`<!--` is a comment, so a multi-line one is a syntax error the browser reports at
+load. Use `// lclite:<mod>` for markers and comments inside page script blocks (the
+marker regex does not care which comment form it is) and keep `<!-- -->` for the HTML
+region.** **`-U0` islands merge: an insertion with NO unchanged line between it and
+another mod's insertion is one island, and regen reports `MIXED MARKERS <a>,<b>` — the
+majority marker wins, so one mod silently swallows the other's hunk. A "natural" hook
+site can be unusable for exactly this reason (`Client.mouseDown` has the camera mod's
+lines right after `super.mouseDown(...)`, so shift-drop's Shift capture lives in
+`pointerDown()` instead). When it fires, move your block to the nearest site with ≥1
+untouched line on both sides — never "fix" it by editing the other mod.** The old
+≥61-line isolation rule is RETIRED (2026-09-15):
 regen now extracts `git diff -U0` islands, so adjacent change blocks stay separate
 hunks automatically — but keep hunks' edit sites ≥3 untouched lines apart, and trust
 `node tools/lclite.mjs doctor` (exit 3 = a hunk's deletions would break a sibling;
