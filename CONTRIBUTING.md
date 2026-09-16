@@ -114,7 +114,8 @@ it bootstraps any competent model onto this machine's discipline):
 
 ```
 You are building a mod for LCLite, the out-of-tree mod overlay for the
-Lost City / 2004Scape Build-289 webclient. The mod to build: <IDEA — one paragraph, what a player should notice>.
+Lost City / 2004Scape webclient (the 289 lineage; installs can be any revision).
+The mod to build: <IDEA — one paragraph, what a player should notice>.
 
 Repo: <path-to>/lclite (git: skulltrick/lclite, branch main) — the overlay and the
 launcher, standalone. The tree to patch is an install: %LOCALAPPDATA%\LCLite\installs\<rev>\
