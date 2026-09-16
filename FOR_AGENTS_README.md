@@ -44,7 +44,18 @@ find[] against the printed hint lines (they include fuzzy line numbers).
 edit `mods/control-panel/files/engine/public/lclite/panel.{js,css}` →
 `node tools/lclite.mjs apply` (re-copies files) → browser check. No rebuild.
 
+## Loop for a LAUNCHER change
+`launcher/` is Go, stdlib only, zero modules in go.mod — keep it that way (the
+whole point is one ~8 MB static binary with no runtime). `go vet` + `go build`
+before committing; `go run build.go` cross-builds. The browser UI is a single
+embedded file, `launcher/ui/index.html`. The launcher is a CLIENT of
+`tools/lclite.mjs`: it must never grow its own copy of hunk/apply logic, only
+shell out and report, so the overlay keeps exactly one implementation.
+Behaviour changes ship with `launcher/README.md` updated in the same commit
+(rule 7 applies to this folder too).
+
 ## Files
+launcher/ Go launcher (main/state/actions/tools/gitops/jobs/pipeline/engine/proxy/mods + ui/index.html; build.go cross-builds) ·
 tools/lclite.mjs applier/picker/build (+`doctor`, `new <mod>`) · tools/regen.mjs hunk extractor
 (+docs/hooks.json, docs/HOOKS.md) · doctor.mjs health report (exit 2 drift / 3
 structural) · lib.mjs shared helpers · root.json host layout (repo dirs/remotes —

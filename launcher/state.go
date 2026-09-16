@@ -1,0 +1,280 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+)
+
+const (
+	clientRepoURL   = "https://github.com/LostCityRS/Client-TS"
+	engineRepoURL   = "https://github.com/LostCityRS/Engine-TS"
+	contentRepoURL  = "https://github.com/LostCityRS/Content"
+	overlayRepoURL  = "https://github.com/skulltrick/lclite"
+	launcherVersion = "0.1.0"
+)
+
+// Rev is one Lost City revision, derived from the client + engine branch lists.
+type Rev struct {
+	Name    string `json:"name"`
+	Client  bool   `json:"client"`
+	Engine  bool   `json:"engine"`
+	Content bool   `json:"content"`
+}
+
+// Local reports whether the pair needed to run a server exists upstream
+// (engine + content). The client repo only matters for building/modding it.
+func (r Rev) Local() bool { return r.Engine && r.Content }
+
+// Install is one root folder containing webclient/ (+ engine/, + lclite/).
+type Install struct {
+	ID      string    `json:"id"`
+	Path    string    `json:"path"`
+	Rev     string    `json:"rev"`
+	Custom  bool      `json:"custom"`
+	Overlay bool      `json:"overlay"`
+	Mods    []string  `json:"mods"`
+	BuiltAt time.Time `json:"built_at"`
+	AddedAt time.Time `json:"added_at"`
+}
+
+// Remote is a saved custom-server target.
+type Remote struct {
+	Name        string `json:"name"`
+	URL         string `json:"url"`
+	LocalClient bool   `json:"local_client"`
+}
+
+type Config struct {
+	DataDir   string     `json:"data_dir"`
+	Installs  []*Install `json:"installs"`
+	Remotes   []*Remote  `json:"remotes"`
+	Revs      []Rev      `json:"revs"`
+	RevsAt    time.Time  `json:"revs_at"`
+	ProxyPort int        `json:"proxy_port"`
+	LastRev   string     `json:"last_rev"`
+}
+
+type Store struct {
+	mu   sync.Mutex
+	path string
+	cfg  Config
+}
+
+func defaultDataDir() string {
+	if v := os.Getenv("LCLITE_LAUNCHER_DATA"); v != "" {
+		return v
+	}
+	if runtime.GOOS == "windows" {
+		if v := os.Getenv("LOCALAPPDATA"); v != "" {
+			return filepath.Join(v, "LCLite")
+		}
+	}
+	if v := os.Getenv("XDG_DATA_HOME"); v != "" {
+		return filepath.Join(v, "lclite")
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "lclite-data"
+	}
+	return filepath.Join(home, ".local", "share", "lclite")
+}
+
+func openStore(dataDir string) (*Store, error) {
+	if dataDir == "" {
+		dataDir = defaultDataDir()
+	}
+	if err := os.MkdirAll(filepath.Join(dataDir, "installs"), 0o755); err != nil {
+		return nil, err
+	}
+	s := &Store{path: filepath.Join(dataDir, "launcher.json")}
+	s.cfg = Config{DataDir: dataDir, ProxyPort: 8890}
+	if raw, err := os.ReadFile(s.path); err == nil {
+		_ = json.Unmarshal(raw, &s.cfg)
+		if s.cfg.ProxyPort == 0 {
+			s.cfg.ProxyPort = 8890
+		}
+	}
+	s.cfg.DataDir = dataDir
+	return s, nil
+}
+
+func (s *Store) save() error {
+	raw, err := json.MarshalIndent(s.cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp := s.path + ".tmp"
+	if err := os.WriteFile(tmp, append(raw, '\n'), 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, s.path)
+}
+
+func (s *Store) snapshot() Config {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cp := s.cfg
+	cp.Installs = append([]*Install(nil), s.cfg.Installs...)
+	cp.Remotes = append([]*Remote(nil), s.cfg.Remotes...)
+	cp.Revs = append([]Rev(nil), s.cfg.Revs...)
+	return cp
+}
+
+func (s *Store) setRevs(revs []Rev) {
+	s.mu.Lock()
+	s.cfg.Revs = revs
+	s.cfg.RevsAt = time.Now()
+	s.mu.Unlock()
+	_ = s.save()
+}
+
+func (s *Store) install(id string) *Install {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, in := range s.cfg.Installs {
+		if strings.EqualFold(in.ID, id) {
+			return in
+		}
+	}
+	return nil
+}
+
+func (s *Store) upsertInstall(in *Install) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, ex := range s.cfg.Installs {
+		if strings.EqualFold(ex.ID, in.ID) {
+			s.cfg.Installs[i] = in
+			_ = s.save()
+			return
+		}
+	}
+	s.cfg.Installs = append(s.cfg.Installs, in)
+	_ = s.save()
+}
+
+func (s *Store) removeInstall(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := s.cfg.Installs[:0]
+	for _, in := range s.cfg.Installs {
+		if !strings.EqualFold(in.ID, id) {
+			out = append(out, in)
+		}
+	}
+	s.cfg.Installs = out
+	_ = s.save()
+}
+
+func (s *Store) setMods(id string, mods []string, built bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, in := range s.cfg.Installs {
+		if strings.EqualFold(in.ID, id) {
+			sort.Strings(mods)
+			in.Mods = mods
+			if built {
+				in.BuiltAt = time.Now()
+			}
+			_ = s.save()
+			return
+		}
+	}
+}
+
+func (s *Store) setLastRev(rev string) {
+	s.mu.Lock()
+	s.cfg.LastRev = rev
+	s.mu.Unlock()
+	_ = s.save()
+}
+
+func (s *Store) addRemote(r Remote) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, ex := range s.cfg.Remotes {
+		if ex.URL == r.URL {
+			s.cfg.Remotes[i] = &r
+			_ = s.save()
+			return
+		}
+	}
+	s.cfg.Remotes = append(s.cfg.Remotes, &r)
+	_ = s.save()
+}
+
+func (s *Store) removeRemote(url string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := s.cfg.Remotes[:0]
+	for _, r := range s.cfg.Remotes {
+		if r.URL != url {
+			out = append(out, r)
+		}
+	}
+	s.cfg.Remotes = out
+	_ = s.save()
+}
+
+func (s *Store) installDir(rev string) string {
+	return filepath.Join(s.cfg.DataDir, "installs", safeName(rev))
+}
+
+func safeName(s string) string {
+	out := make([]rune, 0, len(s))
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '.', r == '-', r == '_':
+			out = append(out, r)
+		default:
+			out = append(out, '_')
+		}
+	}
+	if len(out) == 0 {
+		return "install"
+	}
+	return string(out)
+}
+
+func (c Config) findInstall(id string) *Install {
+	for _, in := range c.Installs {
+		if strings.EqualFold(in.ID, id) {
+			return in
+		}
+	}
+	return nil
+}
+
+func (c Config) findRemote(url string) *Remote {
+	for _, r := range c.Remotes {
+		if r.URL == url {
+			return r
+		}
+	}
+	return nil
+}
+
+func (c Config) installIDs() []string {
+	out := make([]string, 0, len(c.Installs))
+	for _, in := range c.Installs {
+		out = append(out, in.ID)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func (in *Install) engineDir() string  { return filepath.Join(in.Path, "engine") }
+func (in *Install) clientDir() string  { return filepath.Join(in.Path, "webclient") }
+func (in *Install) overlayDir() string { return filepath.Join(in.Path, "lclite") }
+func (in *Install) publicDir() string  { return filepath.Join(in.Path, "engine", "public") }
+
+func (in *Install) String() string {
+	return fmt.Sprintf("%s (%s)", in.ID, in.Path)
+}

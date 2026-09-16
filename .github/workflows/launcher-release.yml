@@ -1,0 +1,49 @@
+name: launcher-release
+
+# Builds the Go launcher for every shipped platform. Runs on tags (attaches the
+# binaries to a release) and on demand (artifacts only), so a broken launcher
+# build is caught by robots rather than by whoever downloads it.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: launcher/go.mod
+
+      - name: Vet + build all targets
+        working-directory: launcher
+        run: |
+          go vet ./...
+          go run build.go
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lclite-launcher
+          path: launcher/dist/*
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: launcher/dist/*
+          body: |
+            LCLite launcher binaries.
+
+            Double-click `LCLite-Windows-amd64.exe` (rename it to `LCLite.exe` and
+            drop it next to `LCLite.bat` in your Lost City checkout — the batch
+            file prefers it automatically). No runtime, no installer: 8 MB and
+            gone. See `launcher/README.md` for what it does.

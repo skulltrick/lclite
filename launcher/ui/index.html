@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LCLite launcher</title>
+<style>
+  :root{
+    --bg:#12100e; --panel:#1b1815; --panel2:#221e1a; --line:#332c25;
+    --text:#e8ded0; --dim:#a2937f; --accent:#e0b356; --accent2:#8fbf6a;
+    --bad:#d9705f; --warn:#d9a75f; --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+  a{color:var(--accent)}
+  header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 16px;background:linear-gradient(180deg,#1f1a15,#171412);border-bottom:1px solid var(--line)}
+  header h1{font-size:16px;margin:0;letter-spacing:.4px}
+  header h1 span{color:var(--accent)}
+  .ver{color:var(--dim);font-size:12px}
+  .spacer{flex:1}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);background:#1d1916;border-radius:999px;padding:3px 9px;font-size:11.5px;color:var(--dim);white-space:nowrap}
+  .chip.ok{color:var(--accent2);border-color:#3a4a2f}
+  .chip.bad{color:var(--bad);border-color:#4a2f2c;cursor:pointer}
+  main{display:grid;grid-template-columns:minmax(330px,1fr) minmax(420px,1.25fr);gap:14px;padding:14px;align-items:start}
+  @media (max-width:980px){main{grid-template-columns:1fr}}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+  section h2{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--accent)}
+  .sub{color:var(--dim);font-size:12px;margin:-4px 0 10px}
+  .row{display:flex;gap:8px;align-items:center}
+  .revlist{display:flex;flex-direction:column;gap:6px;max-height:330px;overflow:auto}
+  .rev{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:#1d1a17}
+  .rev b{font-family:var(--mono);font-size:13.5px}
+  .rev.installed{border-color:#4a4327}
+  .badge{font-size:10.5px;padding:2px 6px;border-radius:5px;border:1px solid var(--line);color:var(--dim)}
+  .badge.on{color:var(--accent2);border-color:#3a4a2f}
+  .badge.mods{color:var(--accent);border-color:#4a4327}
+  .grow{flex:1}
+  button{font:inherit;font-size:12.5px;color:var(--text);background:#2a241e;border:1px solid var(--line);border-radius:7px;padding:6px 11px;cursor:pointer}
+  button:hover:not(:disabled){background:#332b23;border-color:#4a4036}
+  button.primary{background:#3d3418;border-color:#6b5a22;color:#f2dfae}
+  button.primary:hover:not(:disabled){background:#4a3f1c}
+  button.ghost{background:transparent}
+  button.danger{color:var(--bad);border-color:#4a2f2c}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  input[type=text],input[type=number],select{font:inherit;font-size:12.5px;background:#151311;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:6px 8px;width:100%}
+  input:focus,select:focus{outline:1px solid #5b4d2a}
+  label.f{display:block;color:var(--dim);font-size:11.5px;margin:8px 0 3px;text-transform:uppercase;letter-spacing:.6px}
+  .card{border:1px solid var(--line);border-radius:9px;padding:10px;background:var(--panel2);margin-bottom:10px}
+  .card h3{margin:0 0 4px;font-size:13.5px}
+  .path{font-family:var(--mono);font-size:11.5px;color:var(--dim);word-break:break-all}
+  .modrow{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px dashed #2b2621}
+  .modrow:last-child{border-bottom:none}
+  .modrow input{margin-top:3px}
+  .modrow .mname{font-size:12.5px}
+  .modrow .mdesc{color:var(--dim);font-size:11.5px}
+  .modrow.req .mname::after{content:" · required";color:var(--accent)}
+  .status{display:flex;gap:8px;align-items:center;font-size:12.5px}
+  .dot{width:9px;height:9px;border-radius:50%;background:#5c5145}
+  .dot.live{background:var(--accent2);box-shadow:0 0 8px #8fbf6a88}
+  .dot.busy{background:var(--warn);animation:pulse 1.1s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.35}}
+  .log{margin:14px;border:1px solid var(--line);border-radius:10px;background:#0e0c0a;overflow:hidden}
+  .loghead{display:flex;gap:8px;align-items:center;padding:7px 10px;border-bottom:1px solid var(--line);background:#171412;font-size:12px}
+  .logbody{font-family:var(--mono);font-size:11.8px;line-height:1.5;padding:9px 11px;height:250px;overflow:auto;white-space:pre-wrap;color:#cfc4b4}
+  .logbody .err{color:var(--bad)}
+  .logbody .step{color:var(--accent)}
+  .logbody .cmd{color:#7fa6c8}
+  .tabs{display:flex;gap:4px}
+  .tab{padding:3px 9px;border-radius:6px;border:1px solid var(--line);color:var(--dim);cursor:pointer;font-size:11.5px;background:#1b1815}
+  .tab.on{color:var(--text);border-color:#5b4d2a}
+  .note{color:var(--warn);font-size:12px;margin:6px 0 0}
+  .empty{color:var(--dim);font-size:12.5px;padding:6px 0}
+  .inline{display:flex;gap:8px;align-items:flex-end}
+  .inline > div{flex:1}
+  .hint{color:var(--dim);font-size:11.5px;margin-top:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>LCLite <span>launcher</span></h1>
+  <span class="ver" id="ver"></span>
+  <span class="spacer"></span>
+  <span class="chips" id="chips"></span>
+  <button class="ghost" onclick="refreshRevs(true)">Refresh revisions</button>
+  <button class="ghost" onclick="quitLauncher()">Quit launcher</button>
+</header>
+
+<main>
+  <div>
+    <section>
+      <h2>Lost City revisions</h2>
+      <div class="sub" id="revsub">branch list from the Lost City repos</div>
+      <div class="revlist" id="revs"></div>
+    </section>
+
+    <section style="margin-top:14px">
+      <h2>Installs</h2>
+      <div class="sub">managed folders and existing checkouts you pointed at</div>
+      <div id="installs"></div>
+      <div class="card" style="margin-top:10px">
+        <h3>Use an existing folder</h3>
+        <div class="path" id="importpath">no folder picked</div>
+        <div class="row" style="margin-top:8px">
+          <button onclick="pickFolder()">Browse…</button>
+          <button class="primary" onclick="importFolder()">Add it</button>
+        </div>
+        <div class="hint">Any folder holding <b>webclient/</b> and <b>engine/</b> works — LCLite mods are offered when that folder also has <b>lclite/</b> and is on revision 289.</div>
+      </div>
+    </section>
+  </div>
+
+  <div>
+    <section>
+      <h2 id="detailtitle">Install</h2>
+      <div id="detail" class="empty">Pick an install on the left.</div>
+    </section>
+
+    <section style="margin-top:14px">
+      <h2>Server</h2>
+      <div class="card">
+        <div class="status" style="margin-bottom:8px">
+          <span class="dot" id="sdot"></span>
+          <span id="sstatus">no server running</span>
+        </div>
+        <div class="inline">
+          <div>
+            <label class="f">Web port</label>
+            <input type="number" id="port" min="1" max="65535" value="80">
+          </div>
+          <button class="primary" id="playbtn" onclick="play()">Play</button>
+          <button onclick="stopServer()">Stop</button>
+        </div>
+        <div class="hint" id="shint">The client the server serves is the one you built for the selected install.</div>
+      </div>
+
+      <h2 style="margin-top:14px">Custom server</h2>
+      <div class="card">
+        <div class="path">Point the client at any Lost City server — as a bridge, or straight up.</div>
+        <label class="f">Server address</label>
+        <input type="text" id="remoteurl" placeholder="play.example.com:443  ·  http://192.168.1.20:8888">
+        <div class="inline" style="margin-top:8px">
+          <div>
+            <label class="f">Bridge port</label>
+            <input type="number" id="proxyport" min="1" max="65535" value="8890">
+          </div>
+          <div>
+            <label class="f">Serve my build</label>
+            <select id="proxylocal">
+              <option value="0">no — use the server's own client</option>
+              <option value="1">yes — my client, their world</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="primary" onclick="startProxy()">Bridge &amp; play</button>
+          <button onclick="openDirect()">Open directly</button>
+          <button onclick="stopProxy()">Stop bridge</button>
+        </div>
+        <div class="hint">A bridge serves the page on localhost and tunnels everything — http and the game socket — to that address. "Serve my build" swaps in the client bundle built for the selected install, so your mods work on someone else's world. Servers that pin <b>allowedOrigin</b> can refuse the bridged socket; direct open always works.</div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div class="log">
+  <div class="loghead">
+    <div class="tabs">
+      <div class="tab on" data-which="job" onclick="setLog('job')">Task</div>
+      <div class="tab" data-which="server" onclick="setLog('server')">Server</div>
+      <div class="tab" data-which="proxy" onclick="setLog('proxy')">Bridge</div>
+    </div>
+    <span class="grow" id="jobstatus"></span>
+    <button class="ghost" onclick="clearLog()">Clear view</button>
+  </div>
+  <div class="logbody" id="logbody"></div>
+</div>
+
+<script>
+const TOKEN = "__LCLITE_TOKEN__";
+let S = null, sel = null, logWhich = "job", cursors = {job:0, server:0, proxy:0}, lines = [], busyJob = null;
+
+async function api(path, body) {
+  const opt = { headers: { "X-LCLite-Token": TOKEN }, method: body === undefined ? "GET" : "POST" };
+  if (body !== undefined) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(body); }
+  const res = await fetch("/api/" + path, opt);
+  let data = {};
+  try { data = await res.json(); } catch (e) {}
+  if (data && data.ok === false) throw new Error(data.error || "request failed");
+  return data;
+}
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+
+/* ---- state ---- */
+async function refresh() {
+  try {
+    S = await api("state");
+  } catch (e) { console.warn(e); return; }
+  render();
+}
+async function refreshRevs(force) {
+  if (force) logRaw("step", "refreshing the Lost City branch list…");
+  try {
+    const r = await api("revs");
+    if (r.note) logRaw("err", r.note);
+    await refresh();
+  } catch (e) { logRaw("err", "" + e.message); }
+}
+
+/* ---- rendering ---- */
+function render() {
+  document.getElementById("ver").textContent = "v" + S.version + " · " + S.platform + " · " + S.data_dir;
+  renderChips();
+  renderRevs();
+  renderInstalls();
+  renderDetail();
+  renderServer();
+}
+
+function renderChips() {
+  const el = document.getElementById("chips");
+  el.innerHTML = "";
+  for (const t of S.tools) {
+    const d = document.createElement("span");
+    d.className = "chip " + (t.ok ? "ok" : "bad");
+    d.textContent = (t.ok ? "✓ " : "✗ ") + t.name + (t.version ? " " + t.version.replace(/^v/, "") : "");
+    if (!t.ok) { d.title = (t.hint || "") + " — click to install"; d.onclick = installBun; }
+    el.appendChild(d);
+  }
+}
+
+function renderRevs() {
+  const el = document.getElementById("revs");
+  el.innerHTML = "";
+  const installed = new Map((S.installs || []).map(i => [i.rev_label || i.id, i]));
+  const sub = document.getElementById("revsub");
+  sub.textContent = (S.revs_at ? "branches last read " + new Date(S.revs_at).toLocaleString() : "branch list from the Lost City repos");
+  for (const r of S.revs) {
+    const have = installed.get(r.name);
+    const row = document.createElement("div");
+    row.className = "rev" + (have ? " installed" : "");
+    const badges = [];
+    if (r.client) badges.push('<span class="badge on">client</span>');
+    if (r.engine) badges.push('<span class="badge on">engine</span>');
+    if (r.content) badges.push('<span class="badge on">content</span>');
+    if (r.name === "289") badges.push('<span class="badge mods">LCLite mods</span>');
+    if (!r.engine || !r.content) badges.push('<span class="badge">no server side</span>');
+    row.innerHTML = '<b>' + esc(r.name) + '</b>' + badges.join("") + '<span class="grow"></span>';
+    const btn = document.createElement("button");
+    if (have) {
+      btn.textContent = "Open";
+      btn.className = "ghost";
+      btn.onclick = () => { sel = have.id; render(); };
+    } else {
+      btn.textContent = r.engine && r.content ? "Install" : "Client only";
+      btn.className = "primary";
+      btn.disabled = !(r.engine && r.content);
+      btn.onclick = () => install(r.name);
+    }
+    row.appendChild(btn);
+    el.appendChild(row);
+  }
+}
+
+function renderInstalls() {
+  const el = document.getElementById("installs");
+  el.innerHTML = "";
+  if (!S.installs || !S.installs.length) { el.innerHTML = '<div class="empty">Nothing installed yet — pick a revision above.</div>'; return; }
+  for (const i of S.installs) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.style.cursor = "pointer";
+    card.style.borderColor = (sel === i.id) ? "#6b5a22" : "";
+    const modCount = (i.mods || []).length;
+    card.innerHTML = '<h3>' + esc(i.id === i.rev_label ? i.id : i.id + " (" + i.rev_label + ")") + (i.custom ? ' <span class="badge">existing folder</span>' : "") + '</h3>' +
+      '<div class="path">' + esc(i.path) + '</div>' +
+      '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">' +
+        (i.has_overlay ? '<span class="badge on">overlay</span>' : '') +
+        (i.mods_allowed ? '<span class="badge mods">mods ready</span>' : '') +
+        (modCount ? '<span class="badge">' + modCount + ' mods selected</span>' : '') +
+        (i.engine_deps ? '<span class="badge on">deps</span>' : '<span class="badge">needs setup</span>') +
+        (i.client_bundle ? '<span class="badge on">bundle</span>' : '') +
+      '</div>';
+    card.onclick = (e) => { sel = i.id; render(); };
+    el.appendChild(card);
+  }
+}
+
+function currentInstall() { return (S.installs || []).find(i => i.id === sel) || null; }
+
+function renderDetail() {
+  const box = document.getElementById("detail");
+  const title = document.getElementById("detailtitle");
+  const i = currentInstall();
+  if (!i) { title.textContent = "Install"; box.className = "empty"; box.innerHTML = "Pick an install on the left."; return; }
+  box.className = "";
+  title.textContent = "Install · " + i.id;
+  const chosen = new Set((i.mods && i.mods.length) ? i.mods : (i.mods_available || []).map(m => m.name));
+  const mods = (i.mods_available || []).map(m => {
+    const on = m.required || chosen.has(m.name);
+    return '<div class="modrow' + (m.required ? ' req' : '') + '">' +
+      '<input type="checkbox" data-mod="' + esc(m.name) + '"' + (on ? ' checked' : '') + (m.required ? ' disabled' : '') + '>' +
+      '<div><div class="mname">' + esc(m.label) + '</div><div class="mdesc">' + esc(m.desc) + '</div></div></div>';
+  }).join("");
+
+  box.innerHTML =
+    '<div class="card">' +
+      '<h3>' + esc(i.rev_label || i.id) + (i.custom ? " · existing folder" : " · managed install") + '</h3>' +
+      '<div class="path">' + esc(i.path) + '</div>' +
+      '<div style="margin-top:8px" class="hint">' +
+        (i.has_client ? "webclient ✓  " : "webclient ✗  ") +
+        (i.has_engine ? "engine ✓  " : "engine ✗  ") +
+        (i.has_overlay ? "lclite ✓" : "lclite ✗") +
+        (i.built_at && i.built_at !== "0001-01-01T00:00:00Z" ? "  ·  built " + new Date(i.built_at).toLocaleString() : "") +
+      '</div>' +
+    '</div>' +
+    '<div class="card">' +
+      '<h3>LCLite mods</h3>' +
+      (i.mods_allowed
+        ? '<div class="sub" style="margin:2px 0 6px">tick what you want, then apply — everything unticked is stripped back to upstream. Nothing ticked means the full default set.</div>' + (mods || '<div class="empty">no mods found in lclite/mods</div>')
+        : '<div class="note">' + (i.has_overlay
+            ? "LCLite hunks are anchored to revision 289 — this install is " + esc(i.rev_label || "?") + ", so mods stay off."
+            : "No lclite/ folder in this install. Copy your lclite/ folder next to webclient/ and engine/ to enable mods.") + '</div>') +
+      '<div class="row" style="margin-top:10px;flex-wrap:wrap">' +
+        '<button class="primary" onclick="applyMods()"' + (i.mods_allowed ? '' : ' disabled') + '>Apply mods &amp; build</button>' +
+        '<button onclick="stripMods()"' + (i.mods_allowed ? '' : ' disabled') + '>Strip all mods</button>' +
+        '<button onclick="revertMods()"' + (i.has_overlay ? '' : ' disabled') + '>Reset to pristine</button>' +
+        '<button onclick="buildOnly()">Build bundle</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="card">' +
+      '<h3>Housekeeping</h3>' +
+      '<div class="row" style="flex-wrap:wrap">' +
+        '<button onclick="updateInstall()"' + (i.custom ? ' disabled' : '') + '>Update from GitHub</button>' +
+        '<button class="danger" onclick="removeInstall(false)">Forget</button>' +
+        '<button class="danger" onclick="removeInstall(true)"' + (i.custom ? ' disabled' : '') + '>Delete folder</button>' +
+      '</div>' +
+      '<div class="hint">Forget removes it from this list only. Delete folder wipes the cloned revision (never an existing folder you added).</div>' +
+    '</div>';
+
+  const p = document.getElementById("port");
+  if (p && !p.dataset.touched) { p.value = i.rev_label === "289" ? 80 : 8888; }
+}
+
+function renderServer() {
+  const e = S.engine || {}, pr = S.proxy || {};
+  const state = e.state || "stopped", plive = pr.running;
+  const dot = document.getElementById("sdot"), st = document.getElementById("sstatus");
+  dot.className = "dot" + (state === "running" ? " live" : state === "starting" ? " busy" : "");
+  const clientURL = "http://localhost" + (e.port == 80 ? "" : ":" + (e.port || "")) + "/rs2.cgi";
+  if (state === "running") {
+    st.innerHTML = 'serving <b>' + esc(e.install) + '</b> on port ' + e.port +
+      (e.game_port ? ' <span class="chip">game ' + e.game_port + '</span>' : '') +
+      ' — <a href="' + clientURL + '" target="_blank">open the client</a>';
+  } else if (state === "starting") {
+    st.innerHTML = 'starting <b>' + esc(e.install) + '</b>… a first boot repacks the cache, give it a minute';
+  } else if (state === "failed") {
+    st.innerHTML = '<span style="color:var(--bad)">server stopped: ' + esc(e.error || "see the log") + '</span>';
+  } else {
+    st.innerHTML = plive ? 'bridge running on port ' + pr.port + ' → ' + esc(pr.target || '') : "no server running";
+  }
+  document.getElementById("playbtn").disabled = (state === "running" || state === "starting");
+  document.getElementById("shint").textContent = (state === "running")
+    ? "Server log is in the console below (Server tab)."
+    : "Play runs `npm run quickstart` in the selected install's engine/. First boot repacks the cache — watch the Server tab.";
+  if (!document.getElementById("port").dataset.touched && (state === "running" || state === "starting")) document.getElementById("port").value = e.port;
+}
+
+/* ---- actions ---- */
+async function act(fn, label) {
+  try { return await fn(); }
+  catch (e) { logRaw("err", (label ? label + ": " : "") + e.message); }
+}
+async function install(rev) {
+  await act(() => api("install", { rev, client: true, overlay: rev === "289" }), "install");
+  sel = rev; await refresh();
+}
+async function applyMods() {
+  const i = currentInstall(); if (!i) return;
+  const mods = [...document.querySelectorAll('#detail input[data-mod]')].filter(c => c.checked).map(c => c.dataset.mod);
+  await act(() => api("apply", { id: i.id, mods }), "apply");
+  await refresh();
+}
+async function stripMods() {
+  const i = currentInstall(); if (!i) return;
+  if (!confirm("Take every mod off " + i.id + "? (the tree goes back to upstream)")) return;
+  await act(() => api("strip", { id: i.id }), "strip");
+  await refresh();
+}
+async function revertMods() { const i = currentInstall(); if (!i) return; await act(() => api("reset", { id: i.id }), "reset"); await refresh(); }
+async function buildOnly() { const i = currentInstall(); if (!i) return; await act(() => api("build", { id: i.id }), "build"); await refresh(); }
+async function updateInstall() { const i = currentInstall(); if (!i) return; await act(() => api("update", { id: i.id }), "update"); await refresh(); }
+async function removeInstall(wipe) {
+  const i = currentInstall(); if (!i) return;
+  if (wipe && !confirm("Delete " + i.path + " from disk?")) return;
+  await act(() => api("remove", { id: i.id, wipe }), "remove");
+  sel = null; await refresh();
+}
+async function play() {
+  const i = currentInstall();
+  if (!i) { logRaw("err", "pick an install first"); return; }
+  const port = parseInt(document.getElementById("port").value || "0", 10);
+  const r = await act(() => api("run", { id: i.id, port, open: true }), "play");
+  setLog("server");                                    // watch the boot
+  if (r && r.url) logRaw("step", "booting — the client opens at " + r.url);
+  await refresh();
+}
+async function stopServer() { await act(() => api("stop", {}), "stop"); await refresh(); }
+async function startProxy() {
+  const i = currentInstall();
+  const url = document.getElementById("remoteurl").value.trim();
+  const port = parseInt(document.getElementById("proxyport").value || "8890", 10);
+  const local = document.getElementById("proxylocal").value === "1";
+  const r = await act(() => api("proxy/start", { url, port, local_client: local, id: local && i ? i.id : "" }), "bridge");
+  if (r && r.url) logRaw("step", "bridge up: " + r.url);
+  await refresh();
+}
+async function stopProxy() { await act(() => api("proxy/stop", {}), "bridge"); await refresh(); }
+async function openDirect() {
+  const url = document.getElementById("remoteurl").value.trim();
+  await act(() => api("open", { url }), "open");
+}
+async function installBun() { await act(() => api("bun", {}), "bun"); await refresh(); }
+async function quitLauncher() {
+  if (!confirm("Close the launcher? A running server or bridge is stopped too.")) return;
+  await act(() => api("quit", {}), "quit");
+  document.body.innerHTML = '<div style="padding:40px;font:15px system-ui;color:#a2937f">LCLite launcher stopped — close this tab.</div>';
+}
+
+let importPath = "";
+async function pickFolder() {
+  const r = await act(() => api("browse", { start: importPath }), "browse");
+  if (r && r.path) { importPath = r.path; document.getElementById("importpath").textContent = r.path; }
+}
+async function importFolder() {
+  if (!importPath) { logRaw("err", "browse for a folder first"); return; }
+  const r = await act(() => api("import", { path: importPath }), "import");
+  if (r && r.install) { sel = r.install.id; importPath = ""; document.getElementById("importpath").textContent = "no folder picked"; }
+  await refresh();
+}
+
+/* ---- console ---- */
+function setLog(which) {
+  logWhich = which;
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.which === which));
+  const c = { job: "Task", server: "Server", proxy: "Bridge" }[which];
+  logRaw("step", "— showing the " + c.toLowerCase() + " log —");
+}
+function clearLog() { lines = []; document.getElementById("logbody").innerHTML = ""; }
+function logRaw(cls, text) {
+  const body = document.getElementById("logbody");
+  const div = document.createElement("div");
+  if (cls) div.className = cls;
+  div.textContent = text;
+  body.appendChild(div);
+  while (body.childElementCount > 1200) body.removeChild(body.firstChild);
+  body.scrollTop = body.scrollHeight;
+}
+function classify(text) {
+  if (text.startsWith("!!")) return "err";
+  if (text.startsWith("== ")) return "step";
+  if (text.startsWith("$ ")) return "cmd";
+  return "";
+}
+
+async function pollLog() {
+  try {
+    const q = logWhich === "job" ? "job?since=" + cursors.job + (busyJob ? "&id=" + encodeURIComponent(busyJob) : "")
+                                 : "log?which=" + logWhich + "&since=" + cursors[logWhich];
+    const r = await api(q);
+    if (logWhich === "job") {
+      const j = r.job;
+      document.getElementById("jobstatus").innerHTML = j ? (j.kind + " · " + j.status + (j.step ? " · " + j.step : "")) : "";
+      if (j && j.lines) for (const ln of j.lines) { logRaw(classify(ln.text), ln.text); cursors.job = ln.n + 1; }
+      busyJob = j && j.status === "running" ? j.id : null;
+    } else {
+      for (const ln of (r.lines || [])) { logRaw(classify(ln.text), ln.text); cursors[logWhich] = ln.n + 1; }
+    }
+  } catch (e) {}
+}
+
+refresh().then(() => { if (!S.revs_at || (Date.now() - new Date(S.revs_at)) > 6 * 3600e3) refreshRevs(false); });
+setInterval(refresh, 2500);
+setInterval(pollLog, 900);
+document.getElementById("port").addEventListener("input", e => { e.target.dataset.touched = "1"; });
+</script>
+</body>
+</html>

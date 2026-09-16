@@ -35,6 +35,12 @@ see [custom servers](#running-a-custom-2004-server)).
 2. Put LCLite into that folder: `git clone https://github.com/skulltrick/lclite lclite/`
 3. Double-click **`LCLite.bat`** → a checkbox list appears.
 
+Or take the [launcher](#the-launcher-one-file-no-runtime): drop `LCLite.exe`
+(8 MB, no runtime, no installer) next to `LCLite.bat` and the same double-click
+opens a window where you pick a **revision**, install it, tick mods, press Play —
+and can point your client at any other server.
+`LCLite.bat --cli` always gets you the plain terminal picker back.
+
 ```
  1 [X] Camera          wheel zoom, middle-drag rotate, chat scroll
  3 [X] XP drops        floating rows + level tracker
@@ -58,6 +64,36 @@ node lclite/tools/lclite.mjs list         # machine-readable mod state
 node lclite/tools/lclite.mjs uninstall    # back toward pristine upstreams
 ```
 </details>
+
+## The launcher (one file, no runtime)
+
+```
+LCLite.exe        single Go binary · ~8 MB · static · Windows/Linux/macOS
+```
+
+It is a front door, not a reimplementation: every mod operation still runs
+`tools/lclite.mjs`, so the overlay stays the one source of truth. What it adds is
+everything the picker can't do:
+
+- **Revision picker** — reads the Lost City branch lists live (`Client-TS`,
+  `Engine-TS`, `Content`) and installs a revision as a self-contained folder:
+  `webclient/` + `engine/` + `content/` at that branch, `npm install`, client
+  built and deployed. Play 289's modded client and 244's vanilla one side by side.
+- **Existing folder** — point it at any checkout (yours, someone else's) and drive
+  mods/apply/build/play from there.
+- **Mods, still convergent** — tick what you want, *Apply mods & build* passes
+  `--mods a,b` through, so unticked mods are stripped. Offered on 289 only,
+  because that's where the hunks are anchored.
+- **Custom servers** — bridge localhost to any Lost City address, optionally
+  serving **your** built client while the remote supplies the world. That's how
+  your LCLite mods end up in someone else's server.
+
+Design notes, the API, build steps and the known limits:
+[`launcher/README.md`](launcher/README.md). Built it yourself:
+
+```sh
+cd launcher && go run build.go      # → dist/LCLite-<os>-<arch>
+```
 
 ## The mods
 

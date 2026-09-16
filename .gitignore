@@ -11,3 +11,9 @@ scratch/
 node_modules/
 .DS_Store
 Thumbs.db
+
+# launcher builds (release artifacts, not repo content)
+LCLite.exe
+launcher/LCLite.exe
+launcher/LCLite-*
+launcher/dist/

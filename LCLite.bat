@@ -2,20 +2,37 @@
 rem ============================================================================
 rem  LCLite - the friendly way to set up and manage your mods.
 rem
-rem  Double-click this file (or run LCLite.bat from a terminal) from anywhere:
-rem  it works relative to its own folder, lclite/, which must sit in the root
-rem  of your Lost City checkout, next to webclient/ and engine/.
+rem  Double-click this file from anywhere: it works relative to its own folder,
+rem  lclite/, which must sit in the root of your Lost City checkout, next to
+rem  webclient/ and engine/.
+rem
+rem  With LCLite.exe next to it this opens the launcher window in your browser
+rem  (pick a revision, install it, tick mods, play). Add --cli to get the plain
+rem  terminal picker instead; without LCLite.exe everything below still works.
 rem
 rem  Everything is convergent: checked mods are applied, unchecked mods are
-rem  stripped back to pristine upstream code. Rerun it any time to change
-rem  your mod set; it also reseats itself after a Lost City rev update.
-rem  (The heavy lifting lives in tools\lclite.mjs - this is the double-click
-rem   face of it, kept pretty and simple on purpose.)
+rem  stripped back to pristine upstream code. The heavy lifting lives in
+rem  tools\lclite.mjs - this file is just the double-click face of it.
 rem ============================================================================
 setlocal
 title LCLite
 cd /d "%~dp0"
 
+if /i "%~1"=="--cli" ( shift & goto :cli )
+
+if exist "LCLite.exe" (
+  if "%~1"=="" (
+    rem double-click: the launcher lives on its own; this window is its
+    rem console - close it (or use Quit in the UI) to stop the launcher
+    start "LCLite launcher" /min "LCLite.exe"
+    goto :done
+  )
+  rem flags pass through:  --play 289  --port 9000  --no-browser  --data D:\lclite
+  "LCLite.exe" %*
+  goto :done
+)
+
+:cli
 where node >nul 2>nul
 if errorlevel 1 goto :nonode
 
