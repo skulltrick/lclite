@@ -13,12 +13,21 @@ import (
 )
 
 const (
-	clientRepoURL   = "https://github.com/LostCityRS/Client-TS"
-	engineRepoURL   = "https://github.com/LostCityRS/Engine-TS"
-	contentRepoURL  = "https://github.com/LostCityRS/Content"
-	overlayRepoURL  = "https://github.com/skulltrick/lclite"
-	launcherVersion = "0.1.0"
+	clientRepoURL  = "https://github.com/LostCityRS/Client-TS"
+	engineRepoURL  = "https://github.com/LostCityRS/Engine-TS"
+	contentRepoURL = "https://github.com/LostCityRS/Content"
+	overlayRepoURL = "https://github.com/skulltrick/lclite"
 )
+
+// launcherVersion is stamped at build time — the release tag is the source of truth:
+//
+//	go build -ldflags "-X main.launcherVersion=0.2.0"
+//	go run build.go -version v0.2.0      # strips the leading v
+//
+// A plain `go build` keeps the default, so a dev build is visibly not a release
+// rather than quietly claiming a version it isn't. It cannot be a const: -X only
+// writes to string vars.
+var launcherVersion = "dev"
 
 // Rev is one Lost City revision, derived from the client + engine branch lists.
 type Rev struct {

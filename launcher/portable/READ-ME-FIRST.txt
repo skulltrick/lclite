@@ -1,0 +1,69 @@
+LCLite — portable launcher
+==========================
+
+Double-click LCLite.bat (or LCLite.exe). Your browser opens the launcher.
+
+
+WHAT HAPPENS NEXT
+-----------------
+1. Pick the Lost City revision you want. The one Lost City is developing right
+   now is already selected — just press Install if you don't care.
+2. It downloads and builds that revision on your machine. The first build takes
+   a few minutes; later ones are much quicker.
+3. Press Play. Your world starts and the game opens in your browser.
+4. In-game, press F1 for the LCLite panel. Every mod is a toggle: flip one and
+   it applies live, no reload.
+
+Want a second revision (or an old one) side by side? Install it too — they run
+on their own ports and the launcher switches between them. "Join server" lets
+you play on somebody else's Lost City instead of your own.
+
+
+NOTHING IS INSTALLED
+--------------------
+No installer, no registry entries, no services. Everything lives in one folder
+you can delete at any time:
+
+    %LOCALAPPDATA%\LCLite
+
+Delete that folder and Windows is as it was. (Your saved characters live in the
+revision's own folder inside it, under engine\data\players.)
+
+
+BEFORE YOU START — TWO FREE TOOLS ARE NEEDED
+--------------------------------------------
+LCLite downloads Lost City's source code and builds it locally, so it needs:
+
+    Git          https://git-scm.com/downloads
+    Node.js LTS  https://nodejs.org
+
+The bundler (bun) is downloaded and kept by the launcher itself — you don't have
+to install it. If Git or Node.js is missing, the launcher's dashboard shows which
+one and links you to it, rather than failing halfway through an install.
+
+
+"WINDOWS PROTECTED YOUR PC"
+---------------------------
+This build is not code-signed, so SmartScreen may warn you the first time. That
+is expected: click "More info", then "Run anyway". If you would rather check the
+file first, compare its SHA256 with the value in SHA256SUMS.txt from the same
+release:
+
+    certutil -hashfile LCLite.exe SHA256
+
+
+PORTS
+-----
+Your world serves the game on port 80 by default (8888 on Linux/macOS). If that
+port is taken, the launcher tells you and you can type another one. The launcher's
+own page uses a random localhost-only port, so it never collides with anything.
+Nothing here is reachable from the internet unless you deliberately start the
+"Join server" bridge and point it at a remote host.
+
+
+WHAT'S IN THIS FOLDER
+---------------------
+LCLite.exe         the launcher (single file, no runtime)
+LCLite.bat         just starts the exe — use whichever you prefer
+READ-ME-FIRST.txt  this file
+SHA256SUMS.txt     checksums for the download

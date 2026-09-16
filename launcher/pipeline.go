@@ -136,6 +136,11 @@ func (l *Launcher) syncOrClone(j *Job, dir, url, branch, label string) error {
 
 // installRev clones the revision's repos and gets it ready to play.
 func (l *Launcher) installRev(j *Job, rev string, opts installOpts) (*Install, error) {
+	// git is how every revision arrives; without it the first symptom is a raw git
+	// exec error halfway through a clone, which tells a new player nothing.
+	if _, err := exec.LookPath("git"); err != nil {
+		return nil, fmt.Errorf("git is not installed — LCLite downloads each revision with it (https://git-scm.com/downloads), then run this again")
+	}
 	root := l.store.installDir(rev)
 	in := &Install{ID: rev, Path: root, Rev: rev, AddedAt: time.Now()}
 	if err := os.MkdirAll(root, 0o755); err != nil {

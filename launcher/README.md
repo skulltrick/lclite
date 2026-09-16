@@ -168,15 +168,21 @@ own bun on that process's PATH so a world doesn't die with
 ## Building
 
 ```sh
-# one platform
+# one platform (a working copy: --version prints "dev")
 go build -trimpath -ldflags="-s -w" -o LCLite.exe .
 
-# all shipped targets -> dist/
+# all shipped targets -> dist/ + SHA256SUMS.txt
 go run build.go
 
-# one target
-go run build.go windows
+# one target, stamped with a version
+go run build.go windows -version v0.2.0
 ```
+
+`-version` (or the `LCLITE_VERSION` env var) stamps the build:
+`-X main.launcherVersion=…`, so `LCLite.exe --version` reports `0.2.0`. The release
+tag is the source of truth in CI, and a build with no stamp honestly says `dev`.
+Cutting a release — one command, plus how to rehearse it — is documented in
+[../RELEASING.md](../RELEASING.md).
 
 Requires Go 1.24+ (no cgo, no third-party modules — `go.mod` has zero requires).
 `../LCLite.bat` prefers `LCLite.exe` when it sits beside it and falls back to the

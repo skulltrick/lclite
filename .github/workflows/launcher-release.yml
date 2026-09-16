@@ -1,49 +1,186 @@
 name: launcher-release
 
-# Builds the Go launcher for every shipped platform. Runs on tags (attaches the
-# binaries to a release) and on demand (artifacts only), so a broken launcher
-# build is caught by robots rather than by whoever downloads it.
+# Builds LCLite.exe for every platform we ship, smoke-tests it, and publishes the
+# release. The version always comes from the tag — see RELEASING.md.
+#
+#   git tag v0.2.0 && git push origin v0.2.0      -> builds + publishes
+#   Actions -> launcher-release -> Run workflow   -> rehearse (artifacts only)
+#   ...with dry_run off + a version                -> draft release to inspect first
+#
+# Gates run in order and any failure stops the publish: vet, unit tests, then a real
+# boot of the compiled binary (it must serve its own UI) before anything is uploaded.
 
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build + smoke-test only, no release (recommended)"
+        type: boolean
+        default: true
+      version:
+        description: "Version to stamp, e.g. v0.2.0 (required when dry_run is off)"
+        type: string
+        default: ""
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      # go.mod is the single source of truth for the toolchain — this cannot drift
+      # from what a local build uses the way a hardcoded CI version could.
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version-file: launcher/go.mod
           cache-dependency-path: launcher/go.mod
 
-      - name: Vet + build all targets
+      - name: Work out the version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            V="${GITHUB_REF_NAME#v}"
+          else
+            V="${{ inputs.version }}"
+            V="${V#v}"
+            if [ -z "$V" ]; then
+              if [ "${{ inputs.dry_run }}" = "true" ]; then
+                V="dev-$(git rev-parse --short HEAD)"
+              else
+                echo "::error::a version is required for a non-dry run (e.g. v0.2.0)"
+                exit 1
+              fi
+            fi
+          fi
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "building version: $V"
+
+      - name: Vet + unit tests
         working-directory: launcher
         run: |
+          set -euo pipefail
           go vet ./...
-          go run build.go
+          go test ./...
 
-      - name: Upload artifacts
+      - name: Build every platform
+        working-directory: launcher
+        run: go run build.go -version "$VERSION"
+
+      # The gate that catches "it compiles but does not run": boot the artifact, wait
+      # for its own UI on a localhost port, then shut it down.
+      - name: Smoke-test the native binary
+        working-directory: launcher
+        run: |
+          set -euo pipefail
+          BIN=dist/LCLite-linux-amd64
+          chmod +x "$BIN"
+
+          echo "— --version"
+          "$BIN" --version | tee "$RUNNER_TEMP/version.txt"
+          grep -q "$VERSION" "$RUNNER_TEMP/version.txt" || {
+            echo "::error::the binary reports a different version than it was stamped with"; exit 1; }
+
+          echo "— --help"
+          "$BIN" --help > /dev/null
+
+          echo "— boots and serves its own page"
+          "$BIN" --no-browser --data "$RUNNER_TEMP/lcl-smoke" --port 18999 &
+          PID=$!
+          ok=""
+          for _ in $(seq 1 30); do
+            if curl -fsS -o "$RUNNER_TEMP/page.html" http://127.0.0.1:18999/; then ok=1; break; fi
+            sleep 1
+          done
+          kill "$PID" 2>/dev/null || true
+          wait "$PID" 2>/dev/null || true
+          if [ -z "$ok" ]; then echo "::error::the launcher never served its UI"; exit 1; fi
+          grep -q 'const TOKEN' "$RUNNER_TEMP/page.html" || {
+            echo "::error::the served page does not look like the launcher UI"; exit 1; }
+          echo "smoke test: ok"
+
+      # A folder a Windows player can unzip and double-click, not just a bare exe.
+      - name: Package the portable drop
+        run: |
+          set -euo pipefail
+          mkdir -p staging
+          cp launcher/dist/LCLite-windows-amd64.exe staging/LCLite.exe
+          cp launcher/portable/LCLite.bat staging/
+          cp launcher/portable/READ-ME-FIRST.txt staging/
+          cp launcher/dist/SHA256SUMS.txt staging/
+          (cd staging && zip -q -r ../launcher/dist/LCLite-portable-windows-amd64.zip .)
+          unzip -l launcher/dist/LCLite-portable-windows-amd64.zip
+
+      - name: Show what will be published
+        run: |
+          set -euo pipefail
+          ls -lh launcher/dist
+          cat launcher/dist/SHA256SUMS.txt
+
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: lclite-launcher
-          path: launcher/dist/*
+          name: lclite-launcher-${{ steps.version.outputs.version }}
+          path: |
+            launcher/dist/LCLite-*
+            launcher/dist/SHA256SUMS.txt
+          if-no-files-found: error
 
-      - name: Attach to release
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Publish the release
+        # Tag pushes publish; a manual run only ever drafts (inspect, then publish).
+        if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
         uses: softprops/action-gh-release@v2
         with:
-          files: launcher/dist/*
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', steps.version.outputs.version) }}
+          name: LCLite launcher ${{ steps.version.outputs.version }}
+          draft: ${{ github.ref_type != 'tag' }}
+          files: |
+            launcher/dist/LCLite-windows-amd64.exe
+            launcher/dist/LCLite-windows-arm64.exe
+            launcher/dist/LCLite-linux-amd64
+            launcher/dist/LCLite-linux-arm64
+            launcher/dist/LCLite-darwin-amd64
+            launcher/dist/LCLite-darwin-arm64
+            launcher/dist/LCLite-portable-windows-amd64.zip
+            launcher/dist/SHA256SUMS.txt
           body: |
-            LCLite launcher binaries.
+            **If you just want to play, download `LCLite-portable-windows-amd64.zip`**:
+            unzip it anywhere and double-click `LCLite.bat`. The wizard asks which Lost
+            City revision you want, downloads and builds it, and starts your world.
 
-            Double-click `LCLite-Windows-amd64.exe` (rename it to `LCLite.exe` and
-            drop it next to `LCLite.bat` in your Lost City checkout — the batch
-            file prefers it automatically). No runtime, no installer: 8 MB and
-            gone. See `launcher/README.md` for what it does.
+            Bare binaries are below if you prefer — `LCLite-windows-amd64.exe` is the
+            one you want on a normal Windows PC. Drop it next to `LCLite.bat` in your
+            LCLite folder and double-click the batch file, or just run the exe.
+
+            ### Before you start
+            LCLite builds Lost City locally, so it needs two free tools already installed:
+            - [Git](https://git-scm.com/downloads) — used to download each revision
+            - [Node.js LTS](https://nodejs.org) — runs the mod engine
+
+            The bundler (bun) is fetched and kept by the launcher itself. The dashboard
+            names whichever is missing and links you to it.
+
+            ### Nothing is installed
+            No installer, no registry entries. Everything lives in
+            `%LOCALAPPDATA%\LCLite` (`~/.local/share/lclite` elsewhere) — delete that
+            folder and Windows is as it was.
+
+            ### "Windows protected your PC"
+            These builds are not code-signed yet, so SmartScreen may warn on first run:
+            *More info* → *Run anyway*. Verify the download if you like — every asset's
+            SHA256 is in `SHA256SUMS.txt`:
+
+                certutil -hashfile LCLite.exe SHA256
+
+            ### Platforms
+            Windows 10/11 is the tested path. Linux and macOS builds are provided and
+            expected to work (they still need Git + Node.js); bug reports welcome.
+
+            See [`launcher/README.md`](https://github.com/skulltrick/lclite/blob/main/launcher/README.md)
+            for what the launcher does and how it is put together.

@@ -76,6 +76,10 @@ without `LCLITE_ROOT` at all (the layout LCLite grew up in, still supported).
 LCLite.exe        single Go binary · ~8 MB · static · Windows/Linux/macOS
 ```
 
+Releases carry a prebuilt `LCLite-portable-windows-amd64.zip` (exe + batch file +
+`READ-ME-FIRST.txt`) plus the bare binaries and their SHA256s — see
+[RELEASING.md](RELEASING.md) for how they are produced and how to rehearse one.
+
 It is a front door, not a reimplementation: every mod operation still runs
 `tools/lclite.mjs`, so the overlay stays the one source of truth. What it adds is
 everything the picker can't do:
@@ -190,10 +194,10 @@ required to live *inside* the tree it patches.
 
 ## Community & status
 
-CI runs the drift canary weekly and on every PR (pinned upstream revs +
-`apply --check` + structural `doctor`), so mod-breakage is found by robots,
-not by you on patch day. Issues and PRs welcome — see
-[CONTRIBUTING.md](CONTRIBUTING.md).
+CI runs two canaries weekly and on every PR (pinned upstream revs + `apply --check` +
+structural `doctor`), so mod-breakage is found by robots, not by you on patch day. The
+launcher is built and smoke-tested on every release tag. Issues and PRs welcome — see
+[CONTRIBUTING.md](CONTRIBUTING.md) and [RELEASING.md](RELEASING.md).
 
 ## Disclaimer
 
