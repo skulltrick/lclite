@@ -171,7 +171,7 @@
     "    <!-- lclite:control-panel -->",
     "    <!-- lclite control panel -->",
     "    <link rel=\"stylesheet\" href=\"/lclite/panel.css?v=6\">",
-    "    <script src=\"/lclite/panel.js?v=6\" defer></script>",
+    "    <script src=\"/lclite/panel.js?v=7\" defer></script>",
     "",
     "    <script type=\"module\">",
     "        import { Client } from './client/client.js';"

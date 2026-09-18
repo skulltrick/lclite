@@ -85,6 +85,13 @@ const MODS = {
     ],
     'shift-drop': [
         'webclient/src/client/Client.ts'
+    ],
+    'hotkeys': [
+        // the two key hooks in GameShell.ts (claims + releases) and the keybind
+        // block / chatbox prompt in Client.ts; the pure decision core ships as a
+        // files/ copy (webclient/src/client/Hotkeys.ts), like gpu's renderer.
+        'webclient/src/client/GameShell.ts',
+        'webclient/src/client/Client.ts'
     ]
 };
 
@@ -97,7 +104,8 @@ const HUNK_OWNER = {
         ['true-tile', /drawTrueTile|trueTileLine|trueTile\b|true tile|true-tile/i],
         ['anti-cheat', /antiCheatEnabled|antiCheat|ANTICHEAT_|telemetry|mouseTracking\.length|RuneScope/i],
         ['rendering', /lowDetail|smoothShading|smooth-shading/i],
-        ['camera', /cameraZoom|wheelZoom|middleRotate|wheelScrollChat|rotateLastScreen|middleMouseDown|scrollChatbox|onwheel|camFollow|orbitCamera|setVisZoom|viewRadius|visTile|clearPick|World\.click|lostcityClient|applyCameraSettings/]
+        ['camera', /cameraZoom|wheelZoom|middleRotate|wheelScrollChat|rotateLastScreen|middleMouseDown|scrollChatbox|onwheel|camFollow|orbitCamera|setVisZoom|viewRadius|visTile|clearPick|World\.click|lostcityClient|applyCameraSettings/],
+        ['hotkeys', /hotkeys|Hotkeys|hotkeyKey|Press Enter to Chat/]
     ],
     'webclient/src/config/ObjType.ts': [
         ['rendering', /lowDetail|smoothShading|smooth-shading/i]

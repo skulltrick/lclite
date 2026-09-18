@@ -1,0 +1,100 @@
+{
+ "file": "webclient/src/client/GameShell.ts",
+ "mod": "hotkeys",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "a52b321a9f42530f3dd2f1a02cd335c955791a12"
+ },
+ "hunks": [
+  {
+   "find": [
+    "    private onkeydown(e: KeyboardEvent) {",
+    "        this.idleTimer = performance.now();",
+    "",
+    "        const keyCode = KeyCodes.get(e.key);"
+   ],
+   "replace": [
+    "    private onkeydown(e: KeyboardEvent) {",
+    "        this.idleTimer = performance.now();",
+    "        // lclite:hotkeys — the mod claims its bound keys before they reach the engine",
+    "        if (this.hotkeyKeyDown(e)) {",
+    "            e.preventDefault();",
+    "            return;",
+    "        }",
+    "",
+    "        const keyCode = KeyCodes.get(e.key);"
+   ],
+   "note": "src/client/GameShell.ts @ old line 427",
+   "occ": 1,
+   "pos": [
+    427,
+    0,
+    425,
+    428
+   ]
+  },
+  {
+   "find": [
+    "        // }",
+    "",
+    "        this.idleTimer = performance.now();",
+    "",
+    "        const keyCode = KeyCodes.get(e.key);"
+   ],
+   "replace": [
+    "        // }",
+    "",
+    "        this.idleTimer = performance.now();",
+    "        // lclite:hotkeys — release a claimed key (a held WASD camera key clears here)",
+    "        if (this.hotkeyKeyUp(e)) {",
+    "            e.preventDefault();",
+    "            return;",
+    "        }",
+    "",
+    "        const keyCode = KeyCodes.get(e.key);"
+   ],
+   "note": "src/client/GameShell.ts @ old line 487",
+   "occ": 1,
+   "pos": [
+    487,
+    0,
+    484,
+    488
+   ]
+  },
+  {
+   "find": [
+    "    }",
+    "",
+    "    private onfocus(_e: FocusEvent) {",
+    "        this.focus = true;"
+   ],
+   "replace": [
+    "    }",
+    "",
+    "    // lclite:hotkeys — the mod's key hooks. A claim here means the key never reaches the",
+    "    // engine's key queue, so a bound key cannot also type into the chatbox.",
+    "    /// custom: claim a keydown before the engine sees it lclite:hotkeys",
+    "    protected hotkeyKeyDown(_e: KeyboardEvent): boolean {",
+    "        return false;",
+    "    }",
+    "",
+    "    /// custom: the release side of a claimed key lclite:hotkeys",
+    "    protected hotkeyKeyUp(_e: KeyboardEvent): boolean {",
+    "        return false;",
+    "    }",
+    "",
+    "    private onfocus(_e: FocusEvent) {",
+    "        this.focus = true;"
+   ],
+   "note": "src/client/GameShell.ts @ old line 543",
+   "occ": 1,
+   "pos": [
+    543,
+    0,
+    541,
+    544
+   ]
+  }
+ ]
+}

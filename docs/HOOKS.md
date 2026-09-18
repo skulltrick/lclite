@@ -12,8 +12,12 @@
 | webclient/src/client/GameShell.ts | 335 | camera | `/// custom: wheel + middle-drag camera rotate hooks (implemented by Client) lcli` |
 | webclient/src/client/GameShell.ts | 356 | camera | `// custom: middle button release ends camera rotation drag lclite:camera` |
 | webclient/src/client/GameShell.ts | 401 | camera | `// custom: stop rotating if the mouse leaves the canvas mid-drag lclite:camera` |
+| webclient/src/client/GameShell.ts | 427 | hotkeys | `// lclite:hotkeys — the mod claims its bound keys before they reach the engine` |
+| webclient/src/client/GameShell.ts | 487 | hotkeys | `// lclite:hotkeys — release a claimed key (a held WASD camera key clears here)` |
+| webclient/src/client/GameShell.ts | 543 | hotkeys | `// lclite:hotkeys — the mod's key hooks. A claim here means the key never reache` |
 | webclient/src/client/Client.ts | 0 | gpu | `// lclite:gpu` |
 | webclient/src/client/Client.ts | 4 | tcg | `// lclite:tcg` |
+| webclient/src/client/Client.ts | 11 | hotkeys | `// lclite:hotkeys` |
 | webclient/src/client/Client.ts | 87 | xp-drops | `/* ─── custom (lclite "xp-drops" mod) tunables ──────────────────────────────── ` |
 | webclient/src/client/Client.ts | 121 | xp-drops | `/// custom (lclite "xp-drops"): skill id -> staticons sprite index. Pack order i` |
 | webclient/src/client/Client.ts | 355 | camera | `/// custom: OSRS-style camera zoom + middle-button rotate lclite:camera` |
@@ -69,6 +73,8 @@
 | webclient/src/client/Client.ts | 8923 | anti-cheat | `// lclite:anti-cheat` |
 | webclient/src/client/Client.ts | 8993 | anti-cheat | `// lclite:anti-cheat` |
 | webclient/src/client/Client.ts | 9128 | anti-cheat | `// lclite:anti-cheat` |
+| webclient/src/client/Client.ts | 11172 | hotkeys | `// lclite:hotkeys — keybinds: F-key sidebar tabs, Esc closes interfaces, WASD ca` |
+| webclient/src/client/Client.ts | 11310 | hotkeys | `// lclite:hotkeys — a locked chatbox (WASD camera + press-enter-to-chat) prompts` |
 | webclient/src/client/Client.ts | 11334 | stat-orbs | `// custom (lclite "stat-orbs"): read our OWN key here (runs every frame); lclite` |
 | webclient/src/client/Client.ts | 11348 | stat-orbs | `// custom: orbs survive the hidden-minimap state too lclite:stat-orbs` |
 | webclient/src/client/Client.ts | 11449 | stat-orbs | `// custom: OSRS-style stat orbs (lclite TYPE B hook — see lclite/docs/MODS.md) l` |

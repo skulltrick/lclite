@@ -64,6 +64,10 @@ export const MOD_META = {
         label: 'Shift-click drop',
         desc: 'hold Shift and left-click an item to drop it without the menu',
     },
+    'hotkeys': {
+        label: 'Hotkeys',
+        desc: 'F-key sidebar tabs (OSRS defaults, rebindable), Esc closes interfaces, WASD camera with press-enter-to-chat',
+    },
 };
 
 export const meta = name => MOD_META[name] || { label: name, desc: '', required: false };

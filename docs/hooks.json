@@ -47,6 +47,24 @@
     "note": "src/client/GameShell.ts @ old line 401",
     "line": 401,
     "marker": true
+   },
+   {
+    "mod": "hotkeys",
+    "note": "src/client/GameShell.ts @ old line 427",
+    "line": 427,
+    "marker": true
+   },
+   {
+    "mod": "hotkeys",
+    "note": "src/client/GameShell.ts @ old line 487",
+    "line": 487,
+    "marker": true
+   },
+   {
+    "mod": "hotkeys",
+    "note": "src/client/GameShell.ts @ old line 543",
+    "line": 543,
+    "marker": true
    }
   ],
   "webclient/src/client/Client.ts": [
@@ -60,6 +78,12 @@
     "mod": "tcg",
     "note": "src/client/Client.ts @ old line 4",
     "line": 4,
+    "marker": true
+   },
+   {
+    "mod": "hotkeys",
+    "note": "src/client/Client.ts @ old line 11",
+    "line": 11,
     "marker": true
    },
    {
@@ -390,6 +414,18 @@
     "mod": "anti-cheat",
     "note": "src/client/Client.ts @ old line 9129",
     "line": 9128,
+    "marker": true
+   },
+   {
+    "mod": "hotkeys",
+    "note": "src/client/Client.ts @ old line 11172",
+    "line": 11172,
+    "marker": true
+   },
+   {
+    "mod": "hotkeys",
+    "note": "src/client/Client.ts @ old line 11311",
+    "line": 11310,
     "marker": true
    },
    {

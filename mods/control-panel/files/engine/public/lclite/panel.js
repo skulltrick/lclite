@@ -94,6 +94,7 @@
         { id: 'hide-roofs', name: 'Hide roofs', desc: 'Removes roofs everywhere, not only while you stand under them. Off: the game hides them itself as you walk in.', master: { key: 'hideRoofs', def: 'false' } },
         { id: 'low-detail', name: 'Low detail', desc: 'Untextured ground applies instantly; ground decorations and half-size textures need a client refresh (F5).', master: { key: 'lowDetail', def: 'false' } },
         { id: 'shift-drop', name: 'Shift-click drop', desc: 'Hold Shift and left-click an item to drop it straight away, skipping the menu.', master: { key: 'shiftDrop', def: 'true' } },
+        { id: 'hotkeys', name: 'Hotkeys', desc: 'F-key sidebar tabs, Esc closes interfaces, WASD camera with press-enter-to-chat.', master: { key: 'hotkeys', def: 'true' } },
         { id: 'control-panel', name: 'LCLite', desc: 'This panel and the page around it: canvas size, scaling, legacy bar, fullscreen, screenshots.', master: null }
     ];
 
@@ -143,12 +144,47 @@
         { id: 'reset-all', mod: 'control-panel', name: 'Reset all lclite settings', desc: 'Clears every toggle/zoom/placement and reloads.', kind: 'action', run() {
             ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'smoothShading', 'antiCheat', 'gpu', 'statOrbs', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'lcliteLegacyBar', 'tcg', 'lclitePanelTab', 'lclitePanelPinned',
                 'canvasSize', 'canvasScale', 'canvasAutoFit', 'filtering', 'hideRoofs', 'lowDetail', 'shiftDrop'].forEach(k => localStorage.removeItem(k));
+            // hotkeys: wiped by prefix so every current AND future keybind resets too
+            Object.keys(localStorage).filter(k => k.indexOf('hotkeys') === 0).forEach(k => localStorage.removeItem(k));
             // placement keys are namespaced lcm* (drag layer + owners): wipe by
             // prefix so every current AND future movable surface resets too
             Object.keys(localStorage).filter(k => k.startsWith('lcm')).forEach(k => localStorage.removeItem(k));
             toast('Settings cleared — reloading'); setTimeout(() => location.reload(), 500);
         } }
     ];
+
+    // ---- Hotkeys (mods/hotkeys) ---------------------------------------------
+    // Keybinds: F-key sidebar tabs, Esc closes interfaces, WASD camera. The key list
+    // mirrors HOTKEYS_KEY_CHOICES and the defaults mirror HOTKEYS_TAB_DEFAULTS /
+    // HOTKEYS_CAM_DEFAULTS in the engine core (webclient/src/client/Hotkeys.ts) — a
+    // page script cannot import TS, so the lists are kept in step by hand.
+    const HK_KEYS = ['None', 'Esc', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12',
+        'Tab', 'Home', 'End', 'PgUp', 'PgDn', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=',
+        ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
+    const hkOptions = HK_KEYS.map(k => [k, k]);
+    const hkSelect = (id, name, desc, key, def) => ({ id, mod: 'hotkeys', name, desc, key, kind: 'select', def, options: hkOptions, apply(v) { LS.set(key, v); reapply(); } });
+    // [row label, localStorage suffix, OSRS default] — order = HOTKEYS_TABS (tab slot order)
+    const HK_TABS = [
+        ['Combat', 'Combat', 'F1'], ['Skills', 'Skills', 'F2'], ['Quests', 'Quests', 'F3'], ['Inventory', 'Inventory', 'Esc'],
+        ['Worn equipment', 'Worn', 'F4'], ['Prayer', 'Prayer', 'F5'], ['Spellbook', 'Magic', 'F6'],
+        ['Friends', 'Friends', 'F8'], ['Ignore', 'Ignore', 'None'], ['Logout', 'Logout', 'F9'],
+        ['Game options', 'Options', 'F10'], ['Player controls', 'Controls', 'None'], ['Music', 'Music', 'None']
+    ];
+    MODS.push(
+        { id: 'hk-fkeys', mod: 'hotkeys', name: 'F-key tabs', desc: 'Bound keys open sidebar tabs. A bound letter is claimed from the chatbox unless "Press enter to chat" is on.', key: 'hotkeysFkeys', kind: 'toggle', def: 'true' },
+        { id: 'hk-esc', mod: 'hotkeys', name: 'Esc closes interfaces', desc: 'Esc closes the open interface (bank, shop, dialogue) instead of only switching to the Inventory tab.', key: 'hotkeysEscClose', kind: 'toggle', def: 'true' },
+        { id: 'hk-wasd', mod: 'hotkeys', name: 'WASD camera', desc: 'W/A/S/D rotate and pitch the camera, exactly like the arrow keys. Off by default.', key: 'hotkeysWasd', kind: 'toggle', def: 'false' },
+        { id: 'hk-lock', mod: 'hotkeys', name: 'Press enter to chat', desc: 'The chatbox stays locked ("Press Enter to Chat...") so W/A/S/D cannot type into it; Enter opens it. Only applies while WASD camera is on.', key: 'hotkeysChatLock', kind: 'toggle', def: 'true' }
+    );
+    for (const [label, suffix, def] of HK_TABS) {
+        MODS.push(hkSelect('hk-tab-' + suffix, label + ' tab', 'Key that opens the ' + label + ' sidebar tab.', 'hotkeysKey' + suffix, def));
+    }
+    MODS.push(
+        hkSelect('hk-cam-up', 'Camera up', 'Key that raises the camera pitch.', 'hotkeysKeyCamUp', 'W'),
+        hkSelect('hk-cam-down', 'Camera down', 'Key that lowers the camera pitch.', 'hotkeysKeyCamDown', 'S'),
+        hkSelect('hk-cam-left', 'Camera left', 'Key that rotates the camera left.', 'hotkeysKeyCamLeft', 'A'),
+        hkSelect('hk-cam-right', 'Camera right', 'Key that rotates the camera right.', 'hotkeysKeyCamRight', 'D')
+    );
 
     // ---- effective mod list (registry ∪ manifest ∪ rows) ------------------
     // Built once per renderRows(manifest): known registry mods filtered to installed
@@ -637,8 +673,19 @@
         open(!panel.classList.contains('open'));
     });
     root.querySelector('#lcm-close').addEventListener('click', () => open(false));
+    // The Hotkeys mod (mods/hotkeys) binds keys to sidebar tabs, F1 included. While it
+    // does AND the game canvas holds the keyboard, that key belongs to the game — the
+    // FAB still opens this panel. Only the mod's own rows are read; nothing else is.
+    const hotkeysBinding = keyName => {
+        if (LS.get('hotkeys', 'true') !== 'true') return false;
+        if (LS.get('hotkeysFkeys', 'true') !== 'true') return false;   // tab keys off ⇒ F1 is the panel's again
+        return MODS.some(f => f.mod === 'hotkeys' && String(f.id).indexOf('hk-tab-') === 0 && LS.get(f.key, f.def) === keyName);
+    };
     document.addEventListener('keydown', e => {
-        if (e.key === 'F1') { e.preventDefault(); open(!panel.classList.contains('open')); }
+        if (e.key === 'F1') {
+            if (hotkeysBinding('F1') && document.activeElement === document.getElementById('canvas')) return;   // the game owns it
+            e.preventDefault(); open(!panel.classList.contains('open'));
+        }
         if (e.key === 'Escape' && panel.classList.contains('open')) open(false);
         if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName) && !panel.classList.contains('open')) { e.preventDefault(); open(true); searchEl.focus(); }
     });
