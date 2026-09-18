@@ -73,7 +73,10 @@ const MODS = {
         'webclient/src/client/Client.ts'
     ],
     'control-panel': [
-        'engine/view/client.ejs'
+        // the page chrome: the head (title, favicon, the panel's own tags) plus the
+        // `revision` local that the <title> and the script tag's data-rev read
+        'engine/view/client.ejs',
+        'engine/src/web.ts'
     ],
     // Client.ts is shared; routing is by `// lclite:<mod>` marker (A1), so listing it
     // here only says "diff this file for these mods too".

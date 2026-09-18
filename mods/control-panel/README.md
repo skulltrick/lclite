@@ -1,10 +1,23 @@
 # mods/control-panel
 
 The F1 settings overlay itself — the only mod that is *entirely* page-side plus
-one tiny bundle-side reserve hunk. panel.js/panel.css live in `files/` and are
-copied verbatim to `engine/public/lclite/` by `apply`; the hunks are just the
-client.ejs `<link>`/`<script>` tags and the bundle.ts terser-reserve block for
+two tiny engine-side hunks (the bundle.ts terser reserves and the `revision` local
+the page title reads). panel.js/panel.css live in `files/` and are
+copied verbatim to `engine/public/lclite/` by `apply`; the hunks are the
+client.ejs `<link>`/`<script>` tags + `<title>`, engine/src/web.ts's `revision`
+local, and the bundle.ts terser-reserve block for
 the cross-realm names (`lostcityClient`, `lcmAnchor`, …).
+
+## The look is the LAUNCHER'S (do not invent a second theme)
+
+The panel is the same product as the window players press Play in, so its palette
+is not a design decision made here: every value on `:root` and every control
+recipe (button, input, scrollbar, tag, toast) is lifted from
+`launcher/ui/index.html` — warm near-black surfaces, ONE gold accent
+(`--lcm-accent` = the launcher's `--accent`), cream text. When the launcher's
+theme changes, change panel.css in the same commit, or the two drift into two
+products. The exception is the **logo mark**, which is copied art rather than a
+theme colour (see the favicon bullet) — its fills stay literal in panel.js.
 
 ## What's in the box
 
@@ -15,7 +28,11 @@ the cross-realm names (`lostcityClient`, `lcmAnchor`, …).
   action). Single-toggle mods intentionally have NO settings rows (RuneLite law:
   no config => no section).
 - `files/engine/public/lclite/panel.css` — the whole look; theme vars on `:root`
-  (`--lcm-*`), gold `--lcm-gold` is the favorite-star color.
+  (`--lcm-*`), all of them the launcher's values (see the section above).
+  `--lcm-accent` is the single accent colour (gold): favorite star, active tab,
+  checked switch, FAB glow, snap dots, drag ghost, tooltip/toast edge. The old
+  Zanaris-blue `--lcm-moon*` / bolt-mark vars are GONE — the mark is the
+  launcher's gold moon now, and one accent beats two.
 - `files/engine/public/favicon.svg` + `favicon.ico` — the browser-tab icon: the
   launcher's own mark (gold crescent + sparkle cluster, `#f7e2ac`→`#e6bb63`→`#b8862c`),
   shipped as page assets so a tab shows the LCLite moon instead of a 404. The ejs head
@@ -24,13 +41,25 @@ the cross-realm names (`lostcityClient`, `lcmAnchor`, …).
   page has no icon link at all. `tools/make_favicon.py` rasterizes the `.ico` from the
   same geometry as the svg (Pillow, 8x supersampled, 16/32/48 sizes) — change the art in
   BOTH (svg by hand, ico by re-running the tool) and bump the `?v=`.
-- `patches/client_ejs.json` — the two tags (currently `?v=6` — see below), the
-  favicon `<link>` pair in the head, and the
+  The panel's own mark (FAB + header, `MARK()` in panel.js) is the SAME art at the same
+  48-unit viewBox, inlined with per-instance mask/gradient ids — three copies of one
+  logo, so change all three together or none.
+- `patches/client_ejs.json` — the two tags (currently `?v=7`/`?v=9` — see below), the
+  favicon `<link>` pair in the head, the `<title>` (and the `data-rev` attribute the
+  panel's header chip reads — see the next bullet), and the
   canvas-sizing logic itself: `setSize()` now takes ANY decimal (clamped 0.25x..8x),
   canonicalises it into `canvasSize`, remembers the fixed scale in `canvasScale` and keeps
   the legacy dropdown in step (appending a `(custom)` option for odd values). The panel's
   **Canvas scale** slider and **Fit to window** toggle are the only UI for it, so that page
   code ships here.
+- `patches/web_ts.json` — one added local in the engine's `/rs2.cgi` render:
+  `revision: Environment.engine.revision`. The page `<title>` reads it as
+  `LCLite - <%= revision %>`, so a tab names the install it belongs to without the
+  overlay templating anything at apply time, and the ejs script tag passes the same
+  value as `data-rev` for the panel's header chip (plus a title self-heal in case this
+  hunk ever fails to apply on a new rev). `engine.revision` comes from world.json /
+  `ENGINE_REVISION` — the engine's own number, which every Lost City branch sets to its
+  own revision (274 → 274, 289 → 289), so other installs are right for free.
 - `tools/canvas_size_test.mjs` — harness for the above (legacy 1x/2x/3x unchanged,
   decimals, clamping, canonicalisation, dropdown sync). Mod-logic changes to sizing must
   keep it green:
@@ -69,12 +98,15 @@ the cross-realm names (`lostcityClient`, `lcmAnchor`, …).
 
 ## Version-keying (stale-cache law, MODS.md "The contract")
 
-The ejs tags carry `?v=N`. ANY revision of panel.js or panel.css shipped to a
-live server MUST bump N in the hunk (edit the live client.ejs, then
-`node tools/regen.mjs` BEFORE `apply` — regen-before-apply or the manifest
-thinks control-panel uninstalled). Brave re-serves stale plain paths past hard
-refresh; the panel has no self-heal stamp (it IS the page chrome), so the
-version key is the only defense.
+The ejs tags carry `?v=N` (`panel.css?v=7`, `panel.js?v=9` today). ANY revision of
+panel.js or panel.css shipped to a live server MUST bump N in the hunk (edit the
+live client.ejs, then `node tools/regen.mjs` BEFORE `apply` — regen-before-apply or
+the manifest thinks control-panel uninstalled). Brave re-serves stale plain paths
+past hard refresh; the panel has no self-heal stamp for its own FILES (it IS the
+page chrome, and a stale panel.js cannot replace itself), so the version key is the
+only defense. The one self-heal it does carry is the tab title: `data-rev` on the
+script tag lets a loaded panel.js put `LCLite - <rev>` back if the `<title>` hunk
+did not apply.
 
 ## Deliberate divergences / notes
 

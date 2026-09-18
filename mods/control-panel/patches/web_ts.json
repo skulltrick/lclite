@@ -1,0 +1,38 @@
+{
+ "file": "engine/src/web.ts",
+ "mod": "control-panel",
+ "generated_from": {
+  "repo": "engine",
+  "head": "0c7cf6555d0cf92d2348999b2fd27c6ceff5ffbf"
+ },
+ "hunks": [
+  {
+   "find": [
+    "        return reply.viewAsync('client.ejs', {",
+    "            nodeid: Environment.node.id,",
+    "            members: Environment.node.members,",
+    "            lowmem",
+    "        });"
+   ],
+   "replace": [
+    "        return reply.viewAsync('client.ejs', {",
+    "            nodeid: Environment.node.id,",
+    "            members: Environment.node.members,",
+    "            // lclite:control-panel",
+    "            // the page <title> reads this: the engine's own revision, so every",
+    "            // install titles itself \"LCLite - <rev>\" with nothing to template",
+    "            revision: Environment.engine.revision,",
+    "            lowmem",
+    "        });"
+   ],
+   "note": "src/web.ts @ old line 152",
+   "occ": 1,
+   "pos": [
+    152,
+    0,
+    149,
+    153
+   ]
+  }
+ ]
+}

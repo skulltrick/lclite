@@ -102,6 +102,7 @@
 | webclient/src/dash3d/Model.ts | 1722 | camera | `// lclite:camera` |
 | webclient/bundle.ts | 59 | tcg | `// lclite:tcg — the window['tcg*'] surface shared between the bundled core` |
 | webclient/bundle.ts | 131 | control-panel | `'id',  // lclite:control-panel` |
+| engine/view/client.ejs | 4 | control-panel | `<!-- lclite:control-panel -->` |
 | engine/view/client.ejs | 9 | control-panel | `<!-- lclite:control-panel -->` |
 | engine/view/client.ejs | 263 | control-panel | `// lclite:control-panel` |
 | engine/view/client.ejs | 303 | control-panel | `// lclite:control-panel` |
@@ -110,3 +111,4 @@
 | engine/view/client.ejs | 401 | tcg | `<!-- lclite:tcg -->` |
 | webclient/src/config/ObjType.ts | 428 | rendering | `// custom: save/restore instead of hard-resetting, so the smooth-shading setting` |
 | webclient/src/config/ObjType.ts | 513 | rendering | `// lclite:rendering` |
+| engine/src/web.ts | 152 | control-panel | `// lclite:control-panel` |

@@ -8,6 +8,34 @@
  "hunks": [
   {
    "find": [
+    "",
+    "<head>",
+    "    <title>2004Scape Game</title>",
+    "",
+    "    <meta charset=\"utf-8\">"
+   ],
+   "replace": [
+    "",
+    "<head>",
+    "    <!-- lclite:control-panel -->",
+    "    <!-- lclite: the tab title carries the engine's OWN revision (world.json /",
+    "         ENGINE_REVISION), passed as a local by src/web.ts -> every install titles",
+    "         itself \"LCLite - <rev>\" with nothing to template at apply time. -->",
+    "    <title>LCLite - <%= revision %></title>",
+    "",
+    "    <meta charset=\"utf-8\">"
+   ],
+   "note": "view/client.ejs @ old line 5",
+   "occ": 1,
+   "pos": [
+    4,
+    1,
+    2,
+    6
+   ]
+  },
+  {
+   "find": [
     "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=0.7\">",
     "",
     "    <style>",
@@ -170,8 +198,10 @@
     "",
     "    <!-- lclite:control-panel -->",
     "    <!-- lclite control panel -->",
-    "    <link rel=\"stylesheet\" href=\"/lclite/panel.css?v=6\">",
-    "    <script src=\"/lclite/panel.js?v=7\" defer></script>",
+    "    <link rel=\"stylesheet\" href=\"/lclite/panel.css?v=8\">",
+    "    <!-- data-rev feeds the panel's header chip (and a title self-heal) from the",
+    "         same revision local, so the page never shows a stale number. -->",
+    "    <script src=\"/lclite/panel.js?v=9\" data-rev=\"<%= revision %>\" defer></script>",
     "",
     "    <script type=\"module\">",
     "        import { Client } from './client/client.js';"

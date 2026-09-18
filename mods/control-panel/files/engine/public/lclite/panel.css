@@ -1,61 +1,78 @@
 /* lclite control panel — RuneLite-inspired settings overlay for the Lost City webclient.
    Docking: FAB pinned to the top-right of the viewport, panel drops down from it.
-   Row descriptions are hover tooltips (#lclite-tip) instead of per-row subtext. */
+   Row descriptions are hover tooltips (#lclite-tip) instead of per-row subtext.
+
+   THEME = THE LAUNCHER'S. The panel is the same product as the window you press Play
+   in, so every value below is lifted from launcher/ui/index.html :root, and the
+   control recipes (button/input/scrollbar/tag/toast) are that file's own — keep the
+   two in step: warm near-black surfaces, ONE gold accent, cream text. */
 :root {
-    --lcm-bg: #15181d;
-    --lcm-bg-2: #1d2128;
-    --lcm-bg-3: #262b34;
-    --lcm-border: #333a46;
-    --lcm-accent: #3b82f6;
-    --lcm-gold: #e0b44a;
-    --lcm-moon: #4e97a8;          /* Zanaris moon blue (sampled from ref) */
-    --lcm-moon-2: #39707f;        /* deep night-blue shadow */
-    --lcm-moon-lite: #8acce9;     /* pale moonlight highlight */
-    --lcm-text: #d7dce4;
-    --lcm-text-dim: #8a93a3;
-    --lcm-green: #04a800;
+    --lcm-bg: #181512;            /* launcher section.panel gradient, bottom stop */
+    --lcm-bg-2: #1c1815;          /* its top stop: header, hovers, raised rows */
+    --lcm-bg-3: #211c18;          /* launcher --panel2: raised / pressed surface */
+    --lcm-raise: #221d17;         /* launcher .toast: the surface ABOVE the panel */
+    --lcm-input: #100e0c;         /* launcher input bg — a well, not a panel */
+    --lcm-hover: #221e1a;         /* launcher .install:hover / .choice:hover */
+    --lcm-border: #332c25;        /* launcher --line */
+    --lcm-border-hover: #4a4034;  /* launcher .rev:hover */
+    --lcm-accent: #e6bb63;        /* launcher --accent — the ONLY accent colour */
+    --lcm-accent-dim: #8a6f2f;    /* launcher --accent-dim */
+    --lcm-accent-rgb: 230,187,99; /* --accent as components, for the rgba() glows */
+    --lcm-text: #ece2d3;          /* launcher --text */
+    --lcm-text-dim: #ac9d88;      /* launcher --dim */
+    --lcm-green: #8fbf6a;         /* launcher --good */
 }
 
 /* fixed, full-viewport, pointer-transparent host: children opt back into events.
    This lets the tooltip anchor to viewport coords while still living inside #lclite-root
    (the panel's outside-click handler checks root.contains(target)). */
-#lclite-root { position: fixed; inset: 0; z-index: 9000; pointer-events: none; font-family: 'Segoe UI', Arial, Helvetica, sans-serif; font-size: 13px; color: var(--lcm-text); }
+#lclite-root { position: fixed; inset: 0; z-index: 9000; pointer-events: none; font-family: system-ui, 'Segoe UI', Roboto, Helvetica, sans-serif; font-size: 13px; color: var(--lcm-text); }
 #lclite-root[hidden] { display: none; }
 #lclite-root > * { pointer-events: auto; }
 
 #lclite-fab {
     position: absolute; top: 14px; right: 18px;
     width: 44px; height: 44px; border-radius: 12px;
-    background: var(--lcm-bg-2); border: 1px solid var(--lcm-border);
+    background: linear-gradient(180deg, #2b241d, #221c17);   /* launcher button */
+    border: 1px solid var(--lcm-border);
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
     box-shadow: 0 4px 14px rgba(0,0,0,.55);
     transition: border-color .15s, transform .15s, background .15s;
 }
-#lclite-fab:hover { border-color: var(--lcm-accent); background: var(--lcm-bg-3); transform: scale(1.06); }
+#lclite-fab:hover { border-color: var(--lcm-border-hover); background: linear-gradient(180deg, #332a22, #282019); transform: scale(1.06); }
 #lclite-fab.active { border-color: var(--lcm-accent); box-shadow: 0 0 0 1px var(--lcm-accent), 0 4px 14px rgba(0,0,0,.55); }
 
-/* the LCLite mark — Zanaris-blue crescent + carved gold bolt */
-.lclite-mark { width: 24px; height: 24px; }
-.lclite-mark .mk-moon { fill: var(--lcm-moon); }
-.lclite-mark .mk-bolt { fill: var(--lcm-gold); stroke: var(--lcm-bg-2); stroke-width: 1; paint-order: stroke fill; }
-#lclite-fab:hover .lclite-mark .mk-moon { fill: var(--lcm-moon-lite); }
-#lclite-fab.active .lclite-mark .mk-moon { fill: var(--lcm-moon-lite); }
+/* the LCLite mark — the launcher's OWN logo: a gold-gradient crescent with the
+   sparkle cluster, the same geometry as logo() in launcher/ui/index.html and
+   files/engine/public/favicon.svg (change the art in all three, or not at all).
+   Its fills ride INLINE in panel.js — literal launcher values, not theme vars: a
+   logo is not a theme colour, and it must match the launcher pixel for pixel. Sized
+   a touch above the old bolt mark: the launcher crescent fills ~71% of its 48-unit
+   box, not ~80%. */
+.lclite-mark { width: 26px; height: 26px; display: block; }
+#lclite-fab:hover .lclite-mark, #lclite-fab.active .lclite-mark { filter: brightness(1.12) drop-shadow(0 0 5px rgba(var(--lcm-accent-rgb), .55)); }
 
 #lclite-panel {
     position: absolute; top: 66px; right: 18px; width: 420px; max-width: calc(100vw - 36px);
-    background: var(--lcm-bg); border: 1px solid var(--lcm-border); border-radius: 10px;
-    box-shadow: 0 10px 34px rgba(0,0,0,.65);
+    /* the launcher's card recipe: section.panel's gradient + --line + --radius + --shadow */
+    background: linear-gradient(180deg, var(--lcm-bg-2), var(--lcm-bg));
+    border: 1px solid var(--lcm-border); border-radius: 12px;
+    box-shadow: 0 10px 30px #0008, 0 2px 6px #0006;
     display: none; overflow: hidden;
 }
 #lclite-panel.open { display: block; animation: lcm-in .16s ease-out; }
 @keyframes lcm-in { from { opacity: 0; transform: translateY(-8px) scale(.98); } to { opacity: 1; transform: none; } }
 
-.lcm-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--lcm-bg-2); border-bottom: 1px solid var(--lcm-border); }
-.lcm-head .lclite-mark { width: 16px; height: 16px; }
+.lcm-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: linear-gradient(180deg, #1f1a16, var(--lcm-bg-2)); border-bottom: 1px solid var(--lcm-border); }
+.lcm-head .lclite-mark { width: 18px; height: 18px; }
 .lcm-title { font-weight: 600; letter-spacing: .3px; flex: 1; }
+/* the engine's revision, as a launcher tag (their .rev .tag.mods: gold on a dark
+   brown border) — filled from the script tag's data-rev; hidden when unknown */
+.lcm-rev { flex: none; font-size: 10px; font-weight: 600; letter-spacing: .5px; color: var(--lcm-accent); border: 1px solid #5b4a20; border-radius: 999px; padding: 1px 7px; }
+.lcm-rev[hidden] { display: none; }
 .lcm-x { cursor: pointer; color: var(--lcm-text-dim); font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 5px; }
-.lcm-x:hover { color: #fff; background: var(--lcm-bg-3); }
+.lcm-x:hover { color: var(--lcm-text); background: var(--lcm-hover); }
 
 /* pin/lock button in the header — when active the panel survives game clicks */
 .lcm-lock {
@@ -63,38 +80,44 @@
     display: inline-flex; align-items: center; outline: none;
 }
 .lcm-lock svg { width: 14px; height: 14px; display: block; }
-.lcm-lock:hover { color: #fff; background: var(--lcm-bg-3); }
-.lcm-lock.active { color: var(--lcm-gold); background: var(--lcm-bg-3); box-shadow: inset 0 0 0 1px var(--lcm-border); }
+.lcm-lock:hover { color: var(--lcm-text); background: var(--lcm-hover); }
+.lcm-lock.active { color: var(--lcm-accent); background: var(--lcm-bg-3); box-shadow: inset 0 0 0 1px var(--lcm-border); }
 .lcm-lock:focus-visible { box-shadow: 0 0 0 1px var(--lcm-accent); }
 
 /* RuneLite-style tabs */
-.lcm-tabs { display: flex; gap: 2px; padding: 8px 12px 0; background: var(--lcm-bg); }
+.lcm-tabs { display: flex; gap: 2px; padding: 8px 12px 0; background: transparent; }
 .lcm-tab {
     appearance: none; background: transparent; border: 1px solid transparent; border-bottom: none;
     color: var(--lcm-text-dim); font: inherit; font-size: 12px; font-weight: 600;
     padding: 6px 14px; border-radius: 8px 8px 0 0; cursor: pointer; letter-spacing: .2px;
 }
-.lcm-tab:hover { color: var(--lcm-text); background: var(--lcm-bg-2); }
-.lcm-tab.active { color: #fff; background: var(--lcm-bg-2); border-color: var(--lcm-border); }
+.lcm-tab:hover { color: var(--lcm-text); background: #ffffff0d; }
+.lcm-tab.active { color: var(--lcm-text); background: var(--lcm-bg-3); border-color: var(--lcm-border); }
 
 .lcm-search { margin: 8px 12px 4px; position: relative; }
 .lcm-search input {
-    width: 100%; box-sizing: border-box; background: var(--lcm-bg-2); color: var(--lcm-text);
-    border: 1px solid var(--lcm-border); border-radius: 7px; padding: 6px 9px; font-size: 12px; outline: none;
+    width: 100%; box-sizing: border-box; background: var(--lcm-input); color: var(--lcm-text);
+    border: 1px solid var(--lcm-border); border-radius: 9px; padding: 6px 9px; font-size: 12px; outline: none;
+    transition: border-color .15s;
 }
+.lcm-search input:hover { border-color: var(--lcm-border-hover); }
 .lcm-search input:focus { border-color: var(--lcm-accent); }
 
 /* taller panel: give the body most of the viewport height */
 .lcm-body { max-height: min(74vh, calc(100vh - 230px)); overflow-y: auto; padding: 6px 12px 12px; }
-.lcm-body::-webkit-scrollbar { width: 8px; }
-.lcm-body::-webkit-scrollbar-thumb { background: var(--lcm-bg-3); border-radius: 4px; }
+/* the launcher's scrollbar, verbatim (thin, transparent track, inset rounded thumb) */
+.lcm-body { scrollbar-width: thin; scrollbar-color: #4a4238 transparent; }
+.lcm-body::-webkit-scrollbar { width: 11px; }
+.lcm-body::-webkit-scrollbar-track { background: transparent; }
+.lcm-body::-webkit-scrollbar-thumb { background: #3f382f; border-radius: 99px; border: 3px solid transparent; background-clip: content-box; }
+.lcm-body::-webkit-scrollbar-thumb:hover { background: #5a5145; background-clip: content-box; }
 
 /* mod rows (Mods tab): favorite star + name + real description + gear + master switch */
 .lcm-prow {
     display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: 8px;
     border: 1px solid transparent;
 }
-.lcm-prow:hover { background: var(--lcm-bg-2); border-color: var(--lcm-border); }
+.lcm-prow:hover { background: var(--lcm-hover); border-color: var(--lcm-border); }
 .lcm-prow.dim { display: none; }
 .lcm-pmain { flex: 1; min-width: 0; cursor: pointer; }
 .lcm-pname { font-weight: 600; }
@@ -111,9 +134,9 @@
 }
 .lcm-fav svg { width: 16px; height: 16px; }
 .lcm-prow:hover .lcm-fav, .lcm-fav.on { opacity: 1; }
-.lcm-fav:hover { color: var(--lcm-gold); transform: scale(1.15); }
-.lcm-fav.on { color: var(--lcm-gold); }
-.lcm-fav.on svg path { fill: var(--lcm-gold); }
+.lcm-fav:hover { color: var(--lcm-accent); transform: scale(1.15); }
+.lcm-fav.on { color: var(--lcm-accent); }
+.lcm-fav.on svg path { fill: var(--lcm-accent); }
 /* settings gear: jumps straight to the mod's Settings section */
 .lcm-gear {
     flex: none; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 6px;
@@ -123,11 +146,11 @@
 }
 .lcm-gear svg { width: 15px; height: 15px; }
 .lcm-prow:hover .lcm-gear { opacity: 1; }
-.lcm-gear:hover { color: #fff; background: var(--lcm-bg-3); }
+.lcm-gear:hover { color: var(--lcm-text); background: var(--lcm-bg-3); }
 .lcm-pcore {
     flex: none; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
-    color: var(--lcm-moon-lite); border: 1px solid var(--lcm-moon-2); border-radius: 5px; padding: 2px 7px;
-    background: var(--lcm-bg-2);
+    color: var(--lcm-accent); border: 1px solid #5b4a20; border-radius: 999px; padding: 2px 8px;
+    background: transparent;
 }
 
 .lcm-group { margin-top: 10px; }
@@ -141,8 +164,8 @@
 .lcm-group.collapsed .chev { transform: rotate(-90deg); }
 .lcm-group.collapsed .lcm-gbody { display: none; }
 .lcm-group.hideresult { display: none; }
-.lcm-group.flash .lcm-ghead { color: #fff; }
-@keyframes lcm-flash { from { background: rgba(59,130,246,.25); } to { background: transparent; } }
+.lcm-group.flash .lcm-ghead { color: var(--lcm-text); }
+@keyframes lcm-flash { from { background: rgba(var(--lcm-accent-rgb), .22); } to { background: transparent; } }
 .lcm-group.flash { animation: lcm-flash .9s ease-out; border-radius: 7px; }
 .lcm-offnote { color: var(--lcm-text-dim); font-size: 11.5px; font-style: italic; padding: 6px; }
 .lcm-status { display: block; font-size: 10.5px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--lcm-accent); margin-top: 1px; }
@@ -151,36 +174,37 @@
 .lcm-row {
     display: flex; align-items: center; gap: 10px; padding: 7px 6px; border-radius: 7px;
 }
-.lcm-row:hover { background: var(--lcm-bg-2); }
+.lcm-row:hover { background: var(--lcm-hover); }
 .lcm-row.dim { display: none; }
 .lcm-label { flex: 1; min-width: 0; }
 .lcm-name { cursor: help; }
-.lcm-name:hover { color: #fff; }
+.lcm-name:hover { color: var(--lcm-text); }
 .lcm-badge { font-size: 9px; color: var(--lcm-accent); border: 1px solid var(--lcm-accent); border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: 1px; }
 
 /* sliding toggle */
 .lcm-switch { position: relative; width: 34px; height: 19px; flex: none; }
 .lcm-switch input { opacity: 0; width: 0; height: 0; }
 .lcm-slider {
-    position: absolute; inset: 0; background: var(--lcm-bg-3); border: 1px solid var(--lcm-border);
+    position: absolute; inset: 0; background: var(--lcm-input); border: 1px solid var(--lcm-border);
     border-radius: 19px; cursor: pointer; transition: .15s;
 }
 .lcm-slider:before {
     content: ''; position: absolute; width: 13px; height: 13px; left: 2px; top: 2px;
     background: var(--lcm-text-dim); border-radius: 50%; transition: .15s;
 }
-.lcm-switch input:checked + .lcm-slider { background: var(--lcm-accent); border-color: var(--lcm-accent); }
-.lcm-switch input:checked + .lcm-slider:before { transform: translateX(15px); background: #fff; }
+/* checked = the launcher's gold control (.modcheck): gold gradient, dark mark on it */
+.lcm-switch input:checked + .lcm-slider { background: linear-gradient(180deg, #d3ab55, #a98531); border-color: var(--lcm-accent-dim); }
+.lcm-switch input:checked + .lcm-slider:before { transform: translateX(15px); background: #241d0e; }
 
 /* zoom slider */
 .lcm-zoom { display: flex; flex-direction: column; gap: 4px; padding: 7px 6px; border-radius: 7px; }
-.lcm-zoom:hover { background: var(--lcm-bg-2); }
+.lcm-zoom:hover { background: var(--lcm-hover); }
 .lcm-zoom.dim { display: none; }
 .lcm-zoom .lcm-zrow { display: flex; align-items: center; gap: 8px; }
 .lcm-zoom input[type=range] { flex: 1; accent-color: var(--lcm-accent); height: 18px; }
 .lcm-zval { width: 44px; text-align: right; font-variant-numeric: tabular-nums; color: var(--lcm-green); font-weight: 600; }
-.lcm-zreset { background: var(--lcm-bg-3); border: 1px solid var(--lcm-border); color: var(--lcm-text-dim); border-radius: 6px; font-size: 11px; padding: 3px 8px; cursor: pointer; }
-.lcm-zreset:hover { color: #fff; border-color: var(--lcm-accent); }
+.lcm-zreset { background: linear-gradient(180deg, #2b241d, #221c17); border: 1px solid var(--lcm-border); color: var(--lcm-text-dim); border-radius: 9px; font-size: 11px; padding: 3px 9px; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+.lcm-zreset:hover { color: var(--lcm-text); border-color: var(--lcm-border-hover); background: linear-gradient(180deg, #332a22, #282019); }
 
 /* color row (true-tile outline color etc.): native swatch + hex readout */
 .lcm-color { flex: none; width: 30px; height: 24px; padding: 0; border: 1px solid var(--lcm-border); border-radius: 6px; background: var(--lcm-bg-3); cursor: pointer; }
@@ -189,9 +213,9 @@
 /* hover tooltip — shared node, positioned in viewport coords by panel.js */
 #lclite-tip {
     position: fixed; z-index: 9500; max-width: 240px;
-    background: #0d0f12; color: var(--lcm-text); border: 1px solid var(--lcm-border);
-    border-left: 2px solid var(--lcm-accent);
-    border-radius: 6px; padding: 6px 9px; font-size: 11.5px; line-height: 1.4;
+    background: var(--lcm-raise); color: var(--lcm-text); border: 1px solid var(--lcm-border);
+    border-left: 3px solid var(--lcm-accent);
+    border-radius: 10px; padding: 6px 9px; font-size: 11.5px; line-height: 1.4;
     box-shadow: 0 6px 18px rgba(0,0,0,.6);
     opacity: 0; visibility: hidden; transform: translateX(4px);
     transition: opacity .12s, transform .12s, visibility .12s;
@@ -201,9 +225,9 @@
 
 /* toast */
 #lclite-toast {
-    position: absolute; bottom: 18px; right: 18px; background: var(--lcm-bg-2); color: var(--lcm-text);
+    position: absolute; bottom: 18px; right: 18px; background: var(--lcm-raise); color: var(--lcm-text);
     border: 1px solid var(--lcm-border); border-left: 3px solid var(--lcm-green);
-    padding: 7px 12px; border-radius: 7px; font-size: 12px; opacity: 0; transform: translateY(4px);
+    padding: 7px 12px; border-radius: 10px; font-size: 12px; opacity: 0; transform: translateY(4px);
     transition: .2s; pointer-events: none; white-space: nowrap;
 }
 #lclite-toast.show { opacity: 1; transform: none; }
@@ -217,17 +241,17 @@
 #lcm-snap.on { display: block; }
 .lcm-dot {
     position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 3px;
-    background: rgba(59,130,246,.30); border: 1.5px solid var(--lcm-accent);
-    box-shadow: 0 0 8px rgba(59,130,246,.55); transition: transform .1s, background .1s;
+    background: rgba(var(--lcm-accent-rgb), .30); border: 1.5px solid var(--lcm-accent);
+    box-shadow: 0 0 8px rgba(var(--lcm-accent-rgb), .55); transition: transform .1s, background .1s;
 }
 .lcm-dot.hot { background: var(--lcm-accent); transform: scale(1.45); }
 /* affordance: while Alt is held, draggable surfaces advertise themselves */
-body.lcm-alt [data-lcm-surface] { cursor: move; outline: 1px dashed rgba(59,130,246,.65); outline-offset: 2px; }
+body.lcm-alt [data-lcm-surface] { cursor: move; outline: 1px dashed rgba(var(--lcm-accent-rgb), .65); outline-offset: 2px; }
 
 /* drag ghost for canvas-drawn surfaces (xp tracker): the real thing keeps
    drawing at its live anchor, this frame is what you drag */
 #lcm-ghost {
     position: fixed; z-index: 9700; pointer-events: none; display: none;
     border: 2px solid var(--lcm-accent); border-radius: 4px;
-    background: rgba(59,130,246,.15); box-shadow: 0 0 14px rgba(59,130,246,.4);
+    background: rgba(var(--lcm-accent-rgb), .15); box-shadow: 0 0 14px rgba(var(--lcm-accent-rgb), .4);
 }

@@ -59,6 +59,12 @@
     const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const cap = s => String(s ?? '').replace(/(^|[-_ ]\w)/g, m => m.toUpperCase()).replace(/[-_]/g, ' ');
 
+    // the engine's revision, handed over by the ejs script tag (data-rev, set from
+    // the engine's own config). The server writes the same value into <title>, so
+    // this is only for the header chip and for repairing the title if that hunk
+    // ever fails to apply on a new rev — absent => both features stand down.
+    const REV = String((document.currentScript && document.currentScript.dataset && document.currentScript.dataset.rev) || '');
+
     // mod registry ---------------------------------------------------------
     // id = the lclite/mods/<id> folder name (matches installed.json).
     // master: {key, def} — the mod's on/off. master.invert: the row's switch is
@@ -226,14 +232,28 @@
         };
     }
 
-    // LCLite mark: a crescent moon in Zanaris blue (the blue of the Lost City
-    // quest that gives this project its name) struck by a gold bolt — "lite".
-    // Mask-carved so the crescent's inner edge is a perfect arc at any size;
-    // unique mask ids because the mark appears in both the FAB and the header.
+    // LCLite mark: THE LAUNCHER'S OWN LOGO — a gold-gradient crescent (one disc cut
+    // out of another by a mask, so the inner edge is a perfect arc at any size) plus
+    // the three-star cluster. Geometry and colours are identical to logo() in
+    // launcher/ui/index.html and to files/engine/public/favicon.svg; change the art
+    // in all three or in none. Fills are inline (a gradient needs a per-instance id)
+    // and deliberately literal, not theme vars: a logo is not a theme colour.
+    // BOTH ids must be unique — the mark renders twice (FAB + header) and a duplicate
+    // id would make the second copy lose its mask and gradient.
     let markSeq = 0;
     const MARK = () => {
-        const id = 'lcmoon-' + (++markSeq);
-        return `<svg class="lclite-mark" viewBox="0 0 24 24" aria-hidden="true"><defs><mask id="${id}"><circle cx="12" cy="12" r="9.6" fill="#fff"/><circle cx="16.7" cy="9.5" r="8.2" fill="#000"/></mask></defs><circle class="mk-moon" cx="12" cy="12" r="9.6" mask="url(#${id})"/><path class="mk-bolt" d="M14.9 5 10.1 12.8h2.6L11.3 19l5.1-8.2h-2.6z"/></svg>`;
+        const id = 'lcmark' + (++markSeq);
+        return `<svg class="lclite-mark" viewBox="0 0 48 48" aria-hidden="true"><defs>`
+            + `<linearGradient id="${id}g" x1="0" y1="0" x2="1" y2="1">`
+            + `<stop offset="0" stop-color="#f7e2ac"/><stop offset="0.55" stop-color="#e6bb63"/><stop offset="1" stop-color="#b8862c"/>`
+            + `</linearGradient>`
+            + `<mask id="${id}m"><rect width="48" height="48" fill="#fff"/><circle cx="31" cy="17" r="15.5" fill="#000"/></mask>`
+            + `</defs>`
+            + `<circle class="mk-moon" cx="23" cy="24" r="17" fill="url(#${id}g)" mask="url(#${id}m)"/>`
+            + `<path class="mk-star" d="M33 22.5l1.5 3.4 3.4 1.5-3.4 1.5-1.5 3.4-1.5-3.4-3.4-1.5 3.4-1.5z" fill="#fff3d0" opacity=".92"/>`
+            + `<circle cx="41" cy="15" r="1.5" fill="#fff3d0" opacity=".75"/>`
+            + `<circle cx="37" cy="33" r="1.1" fill="#fff3d0" opacity=".6"/>`
+            + `</svg>`;
     };
     // padlock icons for the pin button (stroke-only so they inherit currentColor)
     const ICON_UNLOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V8a4 4 0 0 1 7.7-1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="5" y="10" width="12" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
@@ -261,6 +281,7 @@
             <div class="lcm-head">
                 ${MARK()}
                 <span class="lcm-title">LCLite</span>
+                <span class="lcm-rev" title="The Lost City revision this install runs"${REV ? '' : ' hidden'}>${esc(REV)}</span>
                 <span class="lcm-lock" id="lcm-lock" role="button" tabindex="0" aria-pressed="false"></span>
                 <span class="lcm-x" id="lcm-close" title="Close (F1)">✕</span>
             </div>
@@ -276,6 +297,11 @@
         </div>
         <div id="lclite-tip" role="tooltip"></div>`;
     document.body.appendChild(root);
+
+    // the tab title is written server-side (client.ejs) from this same revision; if
+    // that hunk ever fails to apply on a new rev, the tab is stuck on upstream's
+    // "2004Scape Game" — so the panel puts the product name back.
+    if (REV && document.title.indexOf('LCLite') === -1) { document.title = `LCLite - ${REV}`; }
 
     const panel = root.querySelector('#lclite-panel');
     const fab = root.querySelector('#lclite-fab');
