@@ -1,0 +1,52 @@
+{
+ "file": "webclient/src/wordfilter/WordFilter.ts",
+ "mod": "no-censor",
+ "rev": "289",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "a52b321a9f42530f3dd2f1a02cd335c955791a12"
+ },
+ "hunks": [
+  {
+   "find": [
+    "        const lowercase: string = trimmed.toLowerCase();",
+    "        const filtered: string[] = [...lowercase];",
+    "        this.filterTlds(filtered);",
+    "        this.filterBadWords(filtered);",
+    "        this.filterDomains(filtered);",
+    "        this.filterFragments(filtered);",
+    "        for (let index: number = 0; index < this.whitelist.length; index++) {",
+    "            let offset: number = -1;"
+   ],
+   "replace": [
+    "        const lowercase: string = trimmed.toLowerCase();",
+    "        const filtered: string[] = [...lowercase];",
+    "        // lclite:no-censor",
+    "        /// \"Disable profanity filter\" (mods/no-censor). The four passes below are the",
+    "        /// ONLY censoring in this method — everything else is formatting (format() up",
+    "        /// top, the whitelist restore and the sentence-case tail), so skipping them",
+    "        /// returns the text exactly as upstream formats it, same chat alphabet and",
+    "        /// same capitalisation, with no masking. Read per CALL, not cached: filter()",
+    "        /// runs on chat events only (never per frame), so the panel switch applies to",
+    "        /// the very next message. This is the mod's own key (rule 5); 'false' means",
+    "        /// the player wants the filter back, and then this is upstream verbatim.",
+    "        if (localStorage.getItem('noCensor') === 'false') {",
+    "            this.filterTlds(filtered);",
+    "            this.filterBadWords(filtered);",
+    "            this.filterDomains(filtered);",
+    "            this.filterFragments(filtered);",
+    "        }",
+    "        for (let index: number = 0; index < this.whitelist.length; index++) {",
+    "            let offset: number = -1;"
+   ],
+   "note": "src/wordfilter/WordFilter.ts @ old line 49",
+   "occ": 1,
+   "pos": [
+    48,
+    4,
+    46,
+    53
+   ]
+  }
+ ]
+}

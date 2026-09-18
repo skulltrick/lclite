@@ -735,6 +735,28 @@
     "line": 152,
     "marker": true
    }
+  ],
+  "webclient/src/wordfilter/WordFilter.ts": [
+   {
+    "mod": "no-censor",
+    "note": "src/wordfilter/WordFilter.ts @ old line 49",
+    "line": 48,
+    "marker": true
+   }
+  ],
+  "engine/src/cache/wordenc/WordEnc.ts": [
+   {
+    "mod": "no-censor",
+    "note": "src/cache/wordenc/WordEnc.ts @ old line 34",
+    "line": 34,
+    "marker": true
+   },
+   {
+    "mod": "no-censor",
+    "note": "src/cache/wordenc/WordEnc.ts @ old line 73",
+    "line": 72,
+    "marker": true
+   }
   ]
  }
 }

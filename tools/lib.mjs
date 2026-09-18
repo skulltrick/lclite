@@ -61,6 +61,11 @@ export const MOD_META = {
         label: 'Disable anti-cheat',
         desc: 'Disables the client sending legacy mouse/camera/anticheat packets.',
     },
+    'no-censor': {
+        label: 'Disable profanity filter',
+        // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this)
+        desc: "Chat is not censored: your own messages, other players' and private messages alike.",
+    },
     'gpu': {
         label: 'GPU',
         desc: 'Uses your GPU; chat, interfaces, orbs and walk-clicks stay pixel-exact on the CPU.',

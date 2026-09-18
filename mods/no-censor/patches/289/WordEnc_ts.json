@@ -1,0 +1,80 @@
+{
+ "file": "engine/src/cache/wordenc/WordEnc.ts",
+ "mod": "no-censor",
+ "rev": "289",
+ "generated_from": {
+  "repo": "engine",
+  "head": "0c7cf6555d0cf92d2348999b2fd27c6ceff5ffbf"
+ },
+ "hunks": [
+  {
+   "find": [
+    "    private static whitelist = ['cook', \"cook's\", 'cooks', 'seeks', 'sheet'];",
+    "",
+    "    static load(_dir: string): void {",
+    "        const wordenc = Jagfile.load('data/raw/wordenc');"
+   ],
+   "replace": [
+    "    private static whitelist = ['cook', \"cook's\", 'cooks', 'seeks', 'sheet'];",
+    "",
+    "    // lclite:no-censor",
+    "    /// \"Disable profanity filter\" (mods/no-censor). The server stops PRE-censoring",
+    "    /// chat: raw text is packed out and each client's own WordFilter decides, which",
+    "    /// is the only layer that can honour a per-player setting. Display-neutral for",
+    "    /// everyone else — the client filters every incoming message on receipt, so a",
+    "    /// vanilla client sees exactly what it always saw. Only chat calls filter()",
+    "    /// (MessagePublicHandler + MessagePrivateEncoder); if upstream ever calls it on",
+    "    /// names or validation, revisit this. See mods/no-censor/README.md.",
+    "    static censor: boolean = false;",
+    "",
+    "    static load(_dir: string): void {",
+    "        const wordenc = Jagfile.load('data/raw/wordenc');"
+   ],
+   "note": "src/cache/wordenc/WordEnc.ts @ old line 34",
+   "occ": 1,
+   "pos": [
+    34,
+    0,
+    32,
+    35
+   ]
+  },
+  {
+   "find": [
+    "        const lowercase = trimmed.toLowerCase();",
+    "        const filtered = [...lowercase];",
+    "        this.wordEncTlds.filter(filtered);",
+    "        this.wordEncBadWords.filter(filtered);",
+    "        this.wordEncDomains.filter(filtered);",
+    "        this.wordEncFragments.filter(filtered);",
+    "        for (let index = 0; index < this.whitelist.length; index++) {",
+    "            let offset = -1;"
+   ],
+   "replace": [
+    "        const lowercase = trimmed.toLowerCase();",
+    "        const filtered = [...lowercase];",
+    "        // lclite:no-censor",
+    "        /// The four masking passes, and nothing else: format() above and the",
+    "        /// sentence-case tail below still run, so the raw text goes out in the",
+    "        /// game's own chat alphabet. `censor` is false because the client — the",
+    "        /// layer that can see a player's setting — now owns the decision.",
+    "        if (this.censor) {",
+    "            this.wordEncTlds.filter(filtered);",
+    "            this.wordEncBadWords.filter(filtered);",
+    "            this.wordEncDomains.filter(filtered);",
+    "            this.wordEncFragments.filter(filtered);",
+    "        }",
+    "        for (let index = 0; index < this.whitelist.length; index++) {",
+    "            let offset = -1;"
+   ],
+   "note": "src/cache/wordenc/WordEnc.ts @ old line 73",
+   "occ": 1,
+   "pos": [
+    72,
+    4,
+    70,
+    77
+   ]
+  }
+ ]
+}

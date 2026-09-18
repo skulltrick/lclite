@@ -95,6 +95,14 @@ const MODS = {
     'anti-cheat': [
         'webclient/src/client/Client.ts'
     ],
+    'no-censor': [
+        // BOTH halves of one policy: the client's WordFilter is the layer that can
+        // honour a per-player setting, so it decides what gets masked, and the
+        // server stops PRE-censoring chat (WordEnc.filter) because the client
+        // re-filters every incoming message itself — display-neutral for vanilla.
+        'webclient/src/wordfilter/WordFilter.ts',
+        'engine/src/cache/wordenc/WordEnc.ts'
+    ],
     'control-panel': [
         // the page chrome: the head (title, favicon, the panel's own tags) plus the
         // `revision` local that the <title> and the script tag's data-rev read
