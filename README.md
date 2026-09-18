@@ -31,9 +31,9 @@ City lands code under a mod's anchor, the installer says exactly where it moved
 
 ## Quick start
 
-1. **Get the launcher** — grab `LCLite-portable-windows-amd64.zip` from
-   [Releases](https://github.com/skulltrick/lclite/releases), or
-   [build it](#the-launcher). It's one ~8 MB static binary, no runtime.
+1. **Get the launcher** — one line: `cd launcher && go run build.go`, or grab the
+   portable zip from [Releases](https://github.com/skulltrick/lclite/releases) when
+   one is published. It's a single ~8 MB static binary with no runtime.
 2. **Double-click `LCLite.bat`** — the wizard asks which revision you want (the
    branch Lost City is developing right now is pre-picked), then clones, builds
    and starts it for you. A first boot repacks the cache, so give it a minute.
