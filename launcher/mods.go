@@ -101,7 +101,7 @@ func listModsFromOverlay(overlay string) []ModInfo {
 		}
 		out = append(out, info)
 	}
-	// Sorted by the name players read, like the F1 panel's Mods tab does — the
+	// Sorted by the name players read, like the F1 panel's list does — the
 	// folder name is an implementation detail ('control-panel' is "LCLite").
 	sort.Slice(out, func(i, j int) bool {
 		return strings.ToLower(out[i].Label) < strings.ToLower(out[j].Label)

@@ -13,12 +13,12 @@ TYPE B — engine mod       anything that touches the game client's internals (c
 
 ## TYPE A — UI-only mod (start here if you can)
 
-The panel has two tabs (RuneLite's two surfaces): a **Mods** tab (one row per
-installed mod: name + description + master switch) and a **Settings** tab
-(collapsible sections, one per mod, shown only for mods that HAVE sub-settings —
-sections open collapsed, a Mods-row click or header click expands one for the
-session). A pin button in the header keeps the panel open through in-game
-clicks. Everything is driven by two registries in `panel.js`:
+The panel shows ONE mod at a time (RuneLite's plugin-list-then-config shape): a
+**list** (one row per installed mod: name + description + master switch, favorites
+pinned to the top) and, when you click a row or its gear, that mod's own view —
+its row again with its settings under it and nothing else. The header's back
+chevron (or Esc) returns to the list. A pin button in the header keeps the panel
+open through in-game clicks. Everything is driven by two registries in `panel.js`:
 
 1. Add the mod's row to `MODS` (or nothing, if it's a single toggle — see below):
 
@@ -26,9 +26,9 @@ clicks. Everything is driven by two registries in `panel.js`:
 {
     id: 'my-mod',                 // unique
     mod: 'my-mod',                // the mods/<folder> this row belongs to —
-                                  // that's what groups it into its Settings section
+                                  // that's what puts it in that mod's view
     name: 'My mod',               // row title (the ONLY visible text on the row)
-    desc: 'What it does, one line.',  // hover tooltip on the title + searchable text
+    desc: 'One line for the mod list.',  // hover tooltip on the title + searchable text
     kind: 'toggle',                   // 'toggle' | 'slider' | 'select' | 'action'
     key: 'myMod',                 // the localStorage key — your settings bus!
     def: 'false'                      // default value as string
@@ -220,9 +220,9 @@ cp -r .. lclite && cd lclite && node tools/lclite.mjs        # t/ is the host ro
   carries the attribute). Also never `fetch(..., {cache: 'force-cache'})` a mod
   data file — 'no-cache' revalidates and stays 304-cheap. That includes the
   panel's own `installed.json` read: a stale disk copy of that file silently
-  GHOSTS a fully working mod from the Mods tab (it's the row filter).
+  GHOSTS a fully working mod from the list (it's the row filter).
 - **`installed.json` is derived state — regen BEFORE apply when you hand-edit
-  live files.** The Mods tab filters rows by `engine/public/lclite/installed.json`,
+  live files.** The list filters rows by `engine/public/lclite/installed.json`,
   which `apply` rebuilds from `modInstalled()` = "every hunk replacement is
   verbatim in the tree". Editing a live file (say, the ejs `?v=` bump) while the
   committed hunk JSON still holds the old text makes that mod read as NOT

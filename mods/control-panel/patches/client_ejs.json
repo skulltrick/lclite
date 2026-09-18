@@ -202,11 +202,11 @@
     "",
     "    <!-- lclite:control-panel -->",
     "    <!-- lclite control panel -->",
-    "    <link rel=\"stylesheet\" href=\"/lclite/panel.css?v=8\">",
+    "    <link rel=\"stylesheet\" href=\"/lclite/panel.css?v=9\">",
     "    <!-- data-rev feeds the panel's header chip (and a title self-heal) from the",
     "         same revision local — guarded like the title above, so an empty value just",
     "         hides the chip instead of breaking the page. -->",
-    "    <script src=\"/lclite/panel.js?v=9\" data-rev=\"<%= typeof revision === 'number' ? revision : '' %>\" defer></script>",
+    "    <script src=\"/lclite/panel.js?v=10\" data-rev=\"<%= typeof revision === 'number' ? revision : '' %>\" defer></script>",
     "",
     "    <script type=\"module\">",
     "        import { Client } from './client/client.js';"

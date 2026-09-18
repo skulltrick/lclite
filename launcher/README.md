@@ -149,7 +149,7 @@ one scroll for the page).
    and the buttons stay disabled.
 
    A mod's **name and one-line description are the in-game panel's** (the F1
-   panel's Mods tab): the launcher reads `MOD_META` from `tools/lib.mjs`, which
+   panel's mod list): the launcher reads `MOD_META` from `tools/lib.mjs`, which
    mirrors `MOD_REGISTRY` in the control-panel mod, and `node tools/doctor.mjs`
    prints a note when the two wordings drift apart. Order is alphabetical by the
    name you read, like the panel.

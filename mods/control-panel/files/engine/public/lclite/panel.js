@@ -7,15 +7,18 @@
  * Degrades gracefully: if the client bundle exposes nothing, toggles still persist and
  * take effect on reload, and the legacy green control bar stays visible.
  *
- * Structure mirrors RuneLite's two surfaces in one popover:
- *   MODS tab     — one row per installed mod: favorite star + name + description
- *                  + gear (jumps to its Settings section) + master switch.
- *                  Favorited mods sort to the top of the list; the rest are
- *                  alphabetical by name.
- *   SETTINGS tab — collapsible section per mod (only mods that HAVE sub-settings;
- *                  single-toggle mods live entirely on the Mods tab, like
- *                  RuneLite mods with no config). Sections start collapsed;
- *                  a jump or header click expands them for the page session.
+ * Structure — ONE mod at a time, RuneLite's plugin-list-then-config shape:
+ *   THE LIST  — one row per installed mod: favorite star + name + description
+ *               + gear + master switch. Favorited mods sort to the top; the rest
+ *               are alphabetical by name. Typing in the search box filters the
+ *               list (a mod row matches on its settings' names too, so a query
+ *               for "outline" still finds the mod that owns it).
+ *   A MOD     — click a row (or its gear) and the panel shows THAT mod alone: its
+ *               own row (identity, star, master switch, live status) with its
+ *               settings under it, nothing else. The header swaps the logo for a
+ *               back chevron and titles itself with the mod; Esc backs out too.
+ *               Single-toggle mods have no settings, so clicking them toasts
+ *               instead (RuneLite: no config => nothing to open).
  * Master switch keys: a single-toggle mod's master IS its own engine key (no new
  * state). Camera is the only multi-setting mod, so its master 'camera' is the one
  * key the engine reads cooperatively (applyCameraSettings zeroes zoom + all cam
@@ -108,16 +111,16 @@
     // kind: 'toggle' writes 'true'/'false'; 'action' fires; 'slider' writes a float
     // desc is the hover tooltip text (and search fodder), not visible subtext
     // NOTE: single-toggle mods (stat-orbs, xp-drops, anti-cheat, rendering, gpu)
-    // intentionally have NO row here — their master switch on the Mods tab IS
-    // their only setting (RuneLite: no config => no settings panel). true-tile
-    // graduated: master trueTile on the Mods tab, plus the look rows below.
+    // intentionally have NO row here — their master switch on their list row IS
+    // their only setting (RuneLite: no config => nothing to open). true-tile
+    // graduated: master trueTile on its row, plus the look rows below.
     const MODS = [
         { id: 'wheel-zoom', mod: 'camera', name: 'Wheel zoom', desc: 'Scroll the mouse wheel to zoom the camera.', key: 'wheelZoom', kind: 'toggle', def: 'true' },
         { id: 'middle-rotate', mod: 'camera', name: 'Middle-drag rotate', desc: 'Hold middle mouse + drag to rotate. Drag follows the mouse (OSRS style).', key: 'middleRotate', kind: 'toggle', def: 'true' },
         { id: 'wheel-scroll-chat', mod: 'camera', name: 'Wheel scrolls chat', desc: 'Mouse wheel over the chatbox scrolls history instead of zooming.', key: 'wheelScrollChat', kind: 'toggle', def: 'true' },
         { id: 'zoom', mod: 'camera', name: 'Camera zoom', desc: '0.4× close-up to 2.6× wide. Mouse wheel still works in-game.', kind: 'slider', min: 0.4, max: 2.6, step: 0.05, def: '1', unit: '×', get: liveZoom, apply(v) { LS.set('cameraZoom', String(v)); reapply(); } },
         // true-tile settings: the engine re-reads every key each frame, so all of
-        // these apply live. Only the master needs no row — the Mods-tab switch is
+        // these apply live. Only the master needs no row — its row's switch IS
         // trueTile itself; these are the look of the tile.
         { id: 'true-tile-color', mod: 'true-tile', name: 'Outline color', desc: 'Color of the true-tile border.', kind: 'color', key: 'trueTileColor', def: '#00ff00' },
         { id: 'true-tile-outline', mod: 'true-tile', name: 'Border thickness', desc: 'Width of the true-tile outline, in pixels.', key: 'trueTileOutline', kind: 'slider', min: 1, max: 8, step: 1, def: '1', unit: 'px' },
@@ -148,7 +151,7 @@
             if (typeof hideControls === 'function') hideControls(); else toast('No legacy bar present');
         } },
         { id: 'reset-all', mod: 'control-panel', name: 'Reset all lclite settings', desc: 'Clears every toggle/zoom/placement and reloads.', kind: 'action', run() {
-            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'smoothShading', 'antiCheat', 'gpu', 'statOrbs', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'lcliteLegacyBar', 'tcg', 'lclitePanelTab', 'lclitePanelPinned',
+            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'smoothShading', 'antiCheat', 'gpu', 'statOrbs', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'lcliteLegacyBar', 'tcg', 'lclitePanelMod', 'lclitePanelPinned',
                 'canvasSize', 'canvasScale', 'canvasAutoFit', 'filtering', 'hideRoofs', 'lowDetail', 'shiftDrop'].forEach(k => localStorage.removeItem(k));
             // hotkeys: wiped by prefix so every current AND future keybind resets too
             Object.keys(localStorage).filter(k => k.indexOf('hotkeys') === 0).forEach(k => localStorage.removeItem(k));
@@ -278,16 +281,13 @@
     root.innerHTML = `
         <div id="lclite-toast"></div>
         <div id="lclite-panel" role="dialog" aria-label="Client settings">
-            <div class="lcm-head">
+            <div class="lcm-head" id="lcm-head">
+                <span class="lcm-back" id="lcm-back" role="button" tabindex="0" title="Back to the mod list (Esc)">‹</span>
                 ${MARK()}
-                <span class="lcm-title">LCLite</span>
+                <span class="lcm-title" id="lcm-title">LCLite</span>
                 <span class="lcm-rev" title="The Lost City revision this install runs"${REV ? '' : ' hidden'}>${esc(REV)}</span>
                 <span class="lcm-lock" id="lcm-lock" role="button" tabindex="0" aria-pressed="false"></span>
                 <span class="lcm-x" id="lcm-close" title="Close (F1)">✕</span>
-            </div>
-            <div class="lcm-tabs" role="tablist">
-                <button class="lcm-tab" id="lcm-tab-mods" role="tab">Mods</button>
-                <button class="lcm-tab" id="lcm-tab-settings" role="tab">Settings</button>
             </div>
             <div class="lcm-search"><input id="lcm-search" type="search" placeholder="Search…" autocomplete="off"></div>
             <div class="lcm-body" id="lcm-body"></div>
@@ -307,12 +307,16 @@
     const fab = root.querySelector('#lclite-fab');
     const body = root.querySelector('#lcm-body');
     const searchEl = root.querySelector('#lcm-search');
-    const tabModsEl = root.querySelector('#lcm-tab-mods');
-    const tabSettingsEl = root.querySelector('#lcm-tab-settings');
+    const headEl = root.querySelector('#lcm-head');
+    const titleEl = root.querySelector('#lcm-title');
+    const backEl = root.querySelector('#lcm-back');
     let toastTimer = 0;
-    let currentTab = LS.get('lclitePanelTab', 'mods');
-    if (currentTab === 'mods') currentTab = 'mods';   // migrated from old builds
-    if (currentTab !== 'mods' && currentTab !== 'settings') currentTab = 'mods';
+    // The panel shows ONE mod at a time (see renderView): '' = the mod list, otherwise
+    // the id of the mod whose settings are open. Persisted like the old tab was, so
+    // reopening the panel returns you where you were. Builds before the drill-down
+    // persisted which TAB was open; nothing reads that any more, so drop it.
+    localStorage.removeItem('lclitePanelTab');
+    let openMod = String(LS.get('lclitePanelMod', ''));
 
     function toast(msg) {
         toastEl.textContent = msg;
@@ -383,11 +387,15 @@
     };
 
     // ---- MODS tab ----------------------------------------------------------
-    function modRow(p) {
+    function modRow(p, detail) {
         const row = document.createElement('div');
-        row.className = 'lcm-prow';
+        row.className = 'lcm-prow' + (detail ? ' detail' : '');
         row.dataset.mod = p.id;
-        row.dataset.name = (p.name + ' ' + p.desc).toLowerCase();
+        // the row's search text carries its SETTINGS too, so typing a setting name
+        // ("outline", "zoom") still finds the mod that owns it — there is no
+        // cross-mod settings list to search any more, only the drill-down
+        row.dataset.name = (p.name + ' ' + p.desc + ' ' +
+            MODS.filter(f => f.mod === p.id).map(f => f.name + ' ' + (f.desc || '')).join(' ')).toLowerCase();
         const badge = p.badge ? `<span class="lcm-badge">${esc(p.badge)}</span>` : '';
         const status = typeof p.status === 'function' ? '<span class="lcm-status" style="display:none"></span>' : '';
         const hasRows = MODS.some(f => f.mod === p.id);
@@ -397,7 +405,7 @@
                 <div class="lcm-pname">${esc(p.name)}${badge}${status}</div>
                 <div class="lcm-pdesc">${esc(p.desc)}</div>
             </div>
-            ${hasRows ? `<button class="lcm-gear" type="button" title="Open ${esc(p.name)} settings">${ICON_GEAR}</button>` : ''}`;
+            ${hasRows && !detail ? `<button class="lcm-gear" type="button" title="Open ${esc(p.name)} settings">${ICON_GEAR}</button>` : ''}`;
         const main = row.querySelector('.lcm-pmain');
 
         row.querySelector('.lcm-fav').addEventListener('click', () => {
@@ -408,10 +416,10 @@
             // its alphabetical slot, which a stable sort over the already-sorted
             // list can't do
             modsList = buildModList(installedSet);
-            renderCurrentTab();              // both tabs share the order
+            renderView();                    // the list (and this view) re-sorts
         });
         const gear = row.querySelector('.lcm-gear');
-        if (gear) gear.addEventListener('click', () => setTab('settings', p.id));
+        if (gear) gear.addEventListener('click', () => openModView(p.id));
 
         if (p.master) {
             const inv = !!p.master.invert;
@@ -420,7 +428,7 @@
                 LS.set(p.master.key, (input.checked !== inv) ? 'true' : 'false');
                 afterWrite({ id: 'mod-master-' + p.id });
                 toast(inv ? `${p.name}: ${input.checked ? 'on' : 'off'}` : `${p.name}: ${input.checked ? 'enabled' : 'disabled'}`);
-                renderCurrentTab();          // section visibility can change
+                renderView();                // section visibility can change
             });
             row.appendChild(wrapSwitch(input));
         } else {
@@ -431,10 +439,13 @@
             row.appendChild(chip);
         }
 
-        // RuneLite behaviour: clicking the mod (not its switch) opens its config
+        // RuneLite behaviour: clicking the mod (not its switch) opens its config. In
+        // the mod's OWN view (detail) the row is its header, so a click there is a
+        // no-op rather than reopening what you are already looking at.
         main.addEventListener('click', () => {
+            if (detail) return;
             if (!hasRows) { toast(`${p.name}: this mod has no settings`); return; }
-            setTab('settings', p.id);
+            openModView(p.id);
         });
 
         if (typeof p.status === 'function') {
@@ -550,38 +561,19 @@
         return row;
     }
 
-    function settingsSection(p, collapsed) {
+    // One mod's settings. No header and no collapse: the panel shows a single mod at a
+    // time, so there is nothing to collapse it against — the mod's own row directly
+    // above it carries the name, the favorite star and the master switch. (Camera's
+    // master used to ride this header because it gates a whole sub-tree; every mod's
+    // master lives on its row now, which is what the row above provides.)
+    function settingsSection(p) {
         const list = MODS.filter(f => f.mod === p.id);
         const grp = document.createElement('div');
-        grp.className = 'lcm-group' + (collapsed ? ' collapsed' : '');
+        grp.className = 'lcm-group';
         grp.dataset.section = p.id;
+        const gbody = document.createElement('div');
+        gbody.className = 'lcm-gbody';
         const masterOn = !p.master || LS.get(p.master.key, p.master.def) === 'true';
-        if (!masterOn) grp.classList.add('plugoff');
-        grp.innerHTML = `<div class="lcm-ghead"><span class="chev">▼</span><span class="lcm-gname">${esc(p.name)}</span></div><div class="lcm-gbody"></div>`;
-        const head = grp.querySelector('.lcm-ghead');
-        head.addEventListener('click', e => {
-            if (e.target.closest('.lcm-switch')) return;   // the master owns the switch
-            // classList.toggle returns true when the class IS now applied
-            if (head.parentElement.classList.toggle('collapsed')) expandedSections.delete(p.id);
-            else expandedSections.add(p.id);
-        });
-
-        if (p.master && p.id === 'camera') {
-            // camera's master gates a whole settings tree (zoom/rotate/chat rows),
-            // so it also rides the section header; other mods' masters live only
-            // on their Mods-tab row (true-tile/control-panel sections read it via
-            // the plugoff note instead)
-            const input = switchInput(LS.get(p.master.key, p.master.def) === 'true');
-            input.addEventListener('change', () => {
-                LS.set(p.master.key, input.checked ? 'true' : 'false');
-                afterWrite({ id: 'mod-master-' + p.id });
-                toast(`${p.name}: ${input.checked ? 'enabled' : 'disabled'}`);
-                renderCurrentTab();
-            });
-            head.appendChild(wrapSwitch(input));
-        }
-
-        const gbody = grp.querySelector('.lcm-gbody');
         if (!masterOn) {
             const off = document.createElement('div');
             off.className = 'lcm-offnote';
@@ -592,75 +584,53 @@
                 gbody.appendChild(f.kind === 'toggle' ? toggleRow(f) : f.kind === 'slider' ? sliderRow(f) : f.kind === 'select' ? selectRow(f) : f.kind === 'color' ? colorRow(f) : actionRow(f));
             }
         }
-        return { grp, count: masterOn ? list.length : 0 };
+        grp.appendChild(gbody);
+        return grp;
     }
 
-    // ---- tab rendering ---------------------------------------------------------
+    // ---- view rendering --------------------------------------------------------
     let modsList = [];   // rebuilt by renderRows(manifest)
     let installedSet = null;   // last manifest seen (rebuild target for favorite re-sorts)
-    // Settings sections start COLLAPSED (the Mods tab is the entry point). An
-    // expansion — from clicking a mod row, clicking a section header, or from
-    // typing a search that hits it — is remembered only for this page session
-    // (never persisted): reload/reopen starts clean, like RuneLite's accordion.
-    const expandedSections = new Set();
 
-    function renderModsTab() {
+    // The list, or the one mod you clicked. That mod's own row comes along (identity,
+    // favorite star, master switch, live status) with its settings directly under it:
+    // the old Settings tab rendered every section at once, which is what this replaces.
+    function renderView() {
+        let p = openMod ? modsList.find(m => m.id === openMod) : null;
+        // a persisted id can go stale (mod uninstalled, or its rows went away): fall
+        // back to the list instead of opening an empty panel
+        if (openMod && (!p || !MODS.some(f => f.mod === openMod))) { openMod = ''; p = null; }
+        headEl.classList.toggle('detail', !!p);
+        titleEl.textContent = p ? p.name : 'LCLite';
+        searchEl.placeholder = p ? `Search ${p.name}…` : 'Search…';
         body.innerHTML = '';
-        for (const p of modsList) body.appendChild(modRow(p));
-    }
-
-    function renderSettingsTab() {
-        body.innerHTML = '';
-        for (const p of modsList) {
-            const rows = MODS.filter(f => f.mod === p.id);
-            if (!rows.length) continue;   // RuneLite: no config => no section
-            const { grp } = settingsSection(p, !expandedSections.has(p.id));
-            body.appendChild(grp);
+        if (p) {
+            body.appendChild(modRow(p, true));
+            body.appendChild(settingsSection(p));
+        } else {
+            for (const m of modsList) body.appendChild(modRow(m));
         }
-    }
-
-    function renderCurrentTab() {
-        const isP = currentTab === 'mods';
-        tabModsEl.classList.toggle('active', isP);
-        tabSettingsEl.classList.toggle('active', !isP);
-        if (isP) renderModsTab(); else renderSettingsTab();
         applySearch();
     }
 
-    function setTab(tab, focusMod) {
-        currentTab = tab;
-        LS.set('lclitePanelTab', tab);
-        if (focusMod) expandedSections.add(focusMod);   // survives re-renders this session
-        renderCurrentTab();
-        if (focusMod) {
-            const sec = body.querySelector(`[data-section="${focusMod}"]`);
-            if (sec) {
-                sec.scrollIntoView({ block: 'nearest' });
-                sec.classList.add('flash');
-                setTimeout(() => sec.classList.remove('flash'), 900);
-            }
-        }
+    // Open a mod's settings ('' = back to the list). The only writer of the persisted
+    // view key.
+    function openModView(id) {
+        openMod = String(id || '');
+        LS.set('lclitePanelMod', openMod);
+        renderView();
+        body.scrollTop = 0;
+        layoutPanel();
     }
-    tabModsEl.addEventListener('click', () => setTab('mods'));
-    tabSettingsEl.addEventListener('click', () => setTab('settings'));
+    backEl.addEventListener('click', () => openModView(''));
 
-    // header-click expansion is recorded by the section's own toggle handler
-    // (no deferred bookkeeping — it must be synchronous so tab switches and
-    // master-switch re-renders see the current state)
-
-    // search filters whichever tab is showing; mods-tab sections are flat so a
-    // query also expands collapsed settings sections that would otherwise hide hits
+    // Search filters whatever is on screen: mod rows in the list, the open mod's own
+    // rows in a mod's view. A mod row also matches on its settings' names (see modRow),
+    // so typing a setting still finds the mod that owns it — and opening that mod then
+    // shows only the rows that hit, because the query carries over.
     function applySearch() {
         const q = searchEl.value.trim().toLowerCase();
         hideTip();
-        if (currentTab === 'settings' && q) {
-            body.querySelectorAll('.lcm-group.collapsed').forEach(g => {
-                const hit = [...g.querySelectorAll('[data-name]')].some(r => r.dataset.name.includes(q));
-                if (hit) g.classList.remove('collapsed'), g.dataset.auto = '1';
-            });
-        } else {
-            body.querySelectorAll('.lcm-group[data-auto]').forEach(g => { g.classList.add('collapsed'); delete g.dataset.auto; });
-        }
         body.querySelectorAll('[data-name]').forEach(el => {
             el.classList.toggle('dim', q !== '' && !el.dataset.name.includes(q));
         });
@@ -677,7 +647,7 @@
         // null (manifest unreadable = pre-selection install): show everything.
         installedSet = installed;
         modsList = buildModList(installed);
-        renderCurrentTab();
+        renderView();
     }
     renderRows(null);
     // hide controls for mods you unchecked at install time (installer writes the manifest)
@@ -692,7 +662,7 @@
         panel.classList.toggle('open', v);
         fab.classList.toggle('active', v);
         if (!v) hideTip();
-        if (v) { searchEl.value = ''; renderCurrentTab(); searchEl.focus(); layoutPanel(); }
+        if (v) { searchEl.value = ''; renderView(); searchEl.focus(); layoutPanel(); }
     };
     fab.addEventListener('click', () => {
         if (performance.now() < suppressClick) return;   // drag-release echo
@@ -712,7 +682,10 @@
             if (hotkeysBinding('F1') && document.activeElement === document.getElementById('canvas')) return;   // the game owns it
             e.preventDefault(); open(!panel.classList.contains('open'));
         }
-        if (e.key === 'Escape' && panel.classList.contains('open')) open(false);
+        if (e.key === 'Escape' && panel.classList.contains('open')) {
+            if (openMod) openModView('');   // back out of a mod's settings first
+            else open(false);
+        }
         if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName) && !panel.classList.contains('open')) { e.preventDefault(); open(true); searchEl.focus(); }
     });
     document.addEventListener('click', e => {
@@ -1044,5 +1017,5 @@
     }, 400);
 
     // expose a tiny API for future mods
-    window.lclite = { register(m) { MODS.push(m); renderCurrentTab(); }, toast, reapply, client };
+    window.lclite = { register(m) { MODS.push(m); renderView(); }, toast, reapply, client };
 })();

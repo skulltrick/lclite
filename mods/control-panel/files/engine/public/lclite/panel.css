@@ -84,15 +84,17 @@
 .lcm-lock.active { color: var(--lcm-accent); background: var(--lcm-bg-3); box-shadow: inset 0 0 0 1px var(--lcm-border); }
 .lcm-lock:focus-visible { box-shadow: 0 0 0 1px var(--lcm-accent); }
 
-/* RuneLite-style tabs */
-.lcm-tabs { display: flex; gap: 2px; padding: 8px 12px 0; background: transparent; }
-.lcm-tab {
-    appearance: none; background: transparent; border: 1px solid transparent; border-bottom: none;
-    color: var(--lcm-text-dim); font: inherit; font-size: 12px; font-weight: 600;
-    padding: 6px 14px; border-radius: 8px 8px 0 0; cursor: pointer; letter-spacing: .2px;
+/* drill-down: there is no tab strip any more. Inside a mod's settings the header
+   shows a back chevron IN PLACE of the logo (the panel is one mod deep, so the
+   title doubles as "where am I"); the logo still brands the list view. */
+.lcm-back {
+    display: none; cursor: pointer; color: var(--lcm-text-dim);
+    font-size: 17px; line-height: 1; padding: 0 6px 2px; border-radius: 5px;
 }
-.lcm-tab:hover { color: var(--lcm-text); background: #ffffff0d; }
-.lcm-tab.active { color: var(--lcm-text); background: var(--lcm-bg-3); border-color: var(--lcm-border); }
+.lcm-head.detail .lcm-back { display: inline-block; }
+.lcm-head.detail .lclite-mark { display: none; }
+.lcm-back:hover { color: var(--lcm-text); background: var(--lcm-hover); }
+.lcm-back:focus-visible { box-shadow: 0 0 0 1px var(--lcm-accent); }
 
 .lcm-search { margin: 8px 12px 4px; position: relative; }
 .lcm-search input {
@@ -120,6 +122,7 @@
 .lcm-prow:hover { background: var(--lcm-hover); border-color: var(--lcm-border); }
 .lcm-prow.dim { display: none; }
 .lcm-pmain { flex: 1; min-width: 0; cursor: pointer; }
+.lcm-prow.detail .lcm-pmain { cursor: default; }   /* already open — nothing to click through to */
 .lcm-pname { font-weight: 600; }
 .lcm-pdesc {
     color: var(--lcm-text-dim); font-size: 11.5px; line-height: 1.35; margin-top: 2px;
@@ -153,20 +156,10 @@
     background: transparent;
 }
 
-.lcm-group { margin-top: 10px; }
-.lcm-group > .lcm-ghead {
-    display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
-    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px;
-    color: var(--lcm-text-dim); padding: 4px 0;
-}
-.lcm-group .lcm-ghead .lcm-switch { margin-left: auto; }
-.lcm-ghead .chev { transition: transform .15s; font-size: 9px; }
-.lcm-group.collapsed .chev { transform: rotate(-90deg); }
-.lcm-group.collapsed .lcm-gbody { display: none; }
+/* one mod's settings, under that mod's own row — no group header, no accordion:
+   the panel shows a single mod at a time, so there is nothing to collapse against */
+.lcm-group { margin-top: 6px; }
 .lcm-group.hideresult { display: none; }
-.lcm-group.flash .lcm-ghead { color: var(--lcm-text); }
-@keyframes lcm-flash { from { background: rgba(var(--lcm-accent-rgb), .22); } to { background: transparent; } }
-.lcm-group.flash { animation: lcm-flash .9s ease-out; border-radius: 7px; }
 .lcm-offnote { color: var(--lcm-text-dim); font-size: 11.5px; font-style: italic; padding: 6px; }
 .lcm-status { display: block; font-size: 10.5px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--lcm-accent); margin-top: 1px; }
 

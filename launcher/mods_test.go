@@ -43,7 +43,7 @@ export const meta = name => MOD_META[name] || {};
 }
 
 // The list is ordered by what players read, not by folder name — the panel's
-// Mods tab does the same, so "LCLite" sorts under L, not C.
+// list does the same, so "LCLite" sorts under L, not C.
 func TestModListSortsByLabel(t *testing.T) {
 	overlay := t.TempDir()
 	for _, name := range []string{"control-panel", "camera", "xp-drops"} {

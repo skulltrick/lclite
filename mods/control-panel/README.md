@@ -21,16 +21,16 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
 
 ## What's in the box
 
-- `files/engine/public/lclite/panel.js` — everything: registry, both tabs,
-  tooltips, toast, pin, the alt-drag placement layer (`window.lcmAnchor`),
-  legacy-bar coordination. Structure: `MOD_REGISTRY` (Mods-tab rows: id/name/
-  desc/master/status) + `MODS` (Settings-tab rows: toggle/slider/color/select/
-  action). Single-toggle mods intentionally have NO settings rows (RuneLite law:
-  no config => no section).
+- `files/engine/public/lclite/panel.js` — everything: registry, the list and the
+  per-mod view, tooltips, toast, pin, the alt-drag placement layer (`window.lcmAnchor`),
+  legacy-bar coordination. Structure: `MOD_REGISTRY` (the list's rows: id/name/
+  desc/master/status) + `MODS` (a mod's own settings rows: toggle/slider/color/
+  select/action). Single-toggle mods intentionally have NO settings rows (RuneLite
+  law: no config => nothing to open, so clicking one toasts).
 - `files/engine/public/lclite/panel.css` — the whole look; theme vars on `:root`
   (`--lcm-*`), all of them the launcher's values (see the section above).
-  `--lcm-accent` is the single accent colour (gold): favorite star, active tab,
-  checked switch, FAB glow, snap dots, drag ghost, tooltip/toast edge. The old
+  `--lcm-accent` is the single accent colour (gold): favorite star, checked
+  switch, back chevron, FAB glow, snap dots, drag ghost, tooltip/toast edge. The old
   Zanaris-blue `--lcm-moon*` / bolt-mark vars are GONE — the mark is the
   launcher's gold moon now, and one accent beats two.
 - `files/engine/public/favicon.svg` + `favicon.ico` — the browser-tab icon: the
@@ -44,7 +44,7 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
   The panel's own mark (FAB + header, `MARK()` in panel.js) is the SAME art at the same
   48-unit viewBox, inlined with per-instance mask/gradient ids — three copies of one
   logo, so change all three together or none.
-- `patches/client_ejs.json` — the two tags (currently `?v=7`/`?v=9` — see below), the
+- `patches/client_ejs.json` — the two tags (currently `?v=9`/`?v=10` — see below), the
   favicon `<link>` pair in the head, the `<title>` (and the `data-rev` attribute the
   panel's header chip reads — see the next bullet), and the
   canvas-sizing logic itself: `setSize()` now takes ANY decimal (clamped 0.25x..8x),
@@ -79,11 +79,13 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
 
 ## Settings contract (keys the panel owns)
 
-- `lclitePanelTab` — last-open tab. `lclitePanelPinned` — pin state.
+- `lclitePanelMod` — which mod's view is open ('' = the list), so reopening the
+  panel returns you where you were. `lclitePanelPinned` — pin state. (The old
+  `lclitePanelTab` key is deleted at boot: the tab it named no longer exists.)
 - `lcmFavMods` — comma-separated favorite mod ids. Panel-owned *display* state:
   the list is favorites first, then alphabetical by name (case-insensitive
   localeCompare; favorites also sort alphabetically among themselves). Star at
-  the left of each Mods row toggles it; unfavoriting rebuilds the list so the
+  the left of each row toggles it; unfavoriting rebuilds the list so the
   mod drops back into its alphabetical slot. The `lcm` prefix means "Reset all
   lclite settings" wipes it along with placement keys.
 - Master switches write each mod's OWN engine key (see MODS.md "The contract").
@@ -91,8 +93,9 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
   a DISABLE control (checked ⇔ key 'false'). Only "Disable anti-cheat" uses it
   (key stays `antiCheat` — the engine reads it; checked ON = packets OFF).
 - Per-mod gear button (right of the description, before the switch): appears
-  only on mods that HAVE settings rows; click jumps to the expanded section in
-  Settings (same path as clicking the row body, just discoverable).
+  only on mods that HAVE settings rows, and only in the list — click opens that
+  mod's view (the same path as clicking the row body, just discoverable). It is
+  hidden inside the mod's own view, where it would point at itself.
 - Canvas sizing (the page's key, the panel's controls): `canvasSize` is THE value
   `setSize()` applies at boot — `'auto'` (fit the window) or a decimal taken as the fixed
   scale (clamped 0.25x..8x). `canvasScale` is the last FIXED scale, kept by `setSize()`
@@ -104,7 +107,7 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
 
 ## Version-keying (stale-cache law, MODS.md "The contract")
 
-The ejs tags carry `?v=N` (`panel.css?v=8`, `panel.js?v=9` today). ANY revision of
+The ejs tags carry `?v=N` (`panel.css?v=9`, `panel.js?v=10` today). ANY revision of
 panel.js or panel.css shipped to a live server MUST bump N in the hunk (edit the
 live client.ejs, then `node tools/regen.mjs` BEFORE `apply` — regen-before-apply or
 the manifest thinks control-panel uninstalled). Brave re-serves stale plain paths
@@ -119,10 +122,21 @@ did not apply.
 - The panel talks to the engine ONLY through localStorage + the reserved
   `window.lostcityClient`/`window.lcmAnchor` API. No hub reads: every mod's
   master key is written here but read by that mod at its own hook site.
-- camera's master also rides its Settings section header because it gates a
-  whole sub-tree; other sections just grey out (plugoff) when their Mods-tab
-  master is off.
-- TCG/anti-cheat Mods-tab rows carry a live `status()` line (positional
-  `window.tcgInfo()` contract) refreshed on the panel's 400ms sync tick.
-- The row click-to-settings behaviour predates the gear and stays (RuneLite
-  parity); the gear exists because discoverability beat parity here.
+- EVERY mod's master lives on its own row, in the list and inside its view, so
+  turning a mod off never requires leaving its settings; a mod whose master is
+  off shows the offnote in place of its rows. (Camera's master used to ride the
+  section header as well, because it gates a whole sub-tree — with no section
+  header left, the row is the one place it lives.)
+- A mod's view is its row PLUS its settings, with no group header: the row
+  already carries the name, the star, the status line and the master, and a
+  header over a single open section would just repeat the name.
+- TCG/anti-cheat rows carry a live `status()` line (positional `window.tcgInfo()`
+  contract) refreshed on the panel's 400ms sync tick.
+- The row click-to-open behaviour predates the gear and stays (RuneLite parity);
+  the gear exists because discoverability beat parity here. Inside a mod's own
+  view the row's body click is a no-op — the row is that view's header, not a
+  link to itself.
+- Search spans the drill-down: a list row matches on its settings' names and
+  descriptions too, so "outline" finds True tile; opening it carries the query
+  into the view and shows only the rows that hit. That replaces the cross-mod
+  settings search the Settings tab used to provide.
