@@ -151,10 +151,12 @@ bun run mods/hotkeys/tools/hotkeys_test.ts      # 94 checks: key names, defaults
 LCLITE_ROOT=<install> node tools/regen.mjs      # 6 hunks (3 GameShell, 3 Client)
 LCLITE_ROOT=<install> node tools/lclite.mjs apply --check   # ✗0
 LCLITE_ROOT=<install> node tools/doctor.mjs     # exit 0
-bash mods/hotkeys/tools/acceptance.sh           # pristine clones at the pins +
-                                                # apply == the live install, byte
-                                                # for byte (21 files), then a
-                                                # strip/re-apply converge round-trip
+bash mods/hotkeys/tools/acceptance.sh           # whole-corpus gate (all 13 mods):
+                                                # pristine clones at the pins READ
+                                                # FROM THE CORPUS + apply == the live
+                                                # install, byte for byte (22 files),
+                                                # then a strip/re-apply converge
+                                                # round-trip, re-compared
 ```
 
 Live checks that needed a browser (CDP, dev bundle): F2 switches the sidebar

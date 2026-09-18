@@ -91,6 +91,14 @@ holds for the launcher's installs too. `doctor` treats a pin that is merely olde
 than HEAD as a note (the launcher clones branch tips) and a shallow clone it can't
 compare as a note as well — the hunk counts are the authority.
 
+Scripted form of the same thing (pins read from the corpus, so a re-pin can never
+leave it testing old revisions; byte-compares against your live install and then
+proves the converge round-trip is byte-stable):
+
+```
+bash mods/hotkeys/tools/acceptance.sh   # overrides: LCLITE_ACCEPT_REPO / _INSTALL / _TMP / _MOD
+```
+
 Also prove independence: `node tools/lclite.mjs apply --mods <yours>` applies
 your mod + the required ones and strips the rest without errors.
 
