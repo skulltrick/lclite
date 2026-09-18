@@ -113,11 +113,13 @@
         { id: 'shift-drop', name: 'Shift-click drop', desc: 'Hold Shift and left-click an item to drop it straight away, skipping the menu.', master: { key: 'shiftDrop', def: 'true' } },
         { id: 'hotkeys', name: 'Hotkeys', desc: 'F-key sidebar tabs, Esc closes interfaces, WASD camera with press-enter-to-chat.', master: { key: 'hotkeys', def: 'true' } },
         { id: 'wiki-lookup', name: 'Wiki lookup', desc: 'A wiki button on the minimap: click it, then click any NPC, object or item to open its OSRS wiki page. Optionally also a Wiki row in every right-click menu.', master: { key: 'wikiLookup', def: 'true' } },
+        { id: 'ground-items', name: 'Ground item labels', desc: 'Labels on the items lying on the ground. Hold Alt to see every item and click the - / + boxes to hide or show one.', master: { key: 'groundItems', def: 'true' } },
         { id: 'control-panel', name: 'LCLite', desc: 'This panel and the page around it: canvas size, scaling, legacy bar, fullscreen, screenshots.', master: null }
     ];
 
     // settings rows -----------------------------------------------------------
-    // kind: 'toggle' writes 'true'/'false'; 'action' fires; 'slider' writes a float
+    // kind: 'toggle' writes 'true'/'false'; 'action' fires; 'slider' writes a float;
+    // 'text' writes the raw string (an item-name list) on commit
     // desc is the hover tooltip text (and search fodder), not visible subtext
     // NOTE: single-toggle mods (stat-orbs, xp-drops, anti-cheat, gpu)
     // intentionally have NO row here — their master switch on their list row IS
@@ -182,6 +184,8 @@
         { id: 'reset-all', mod: 'control-panel', name: 'Reset all lclite settings', desc: 'Clears every toggle/zoom/placement and reloads.', kind: 'action', run() {
             ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'antiCheat', 'gpu', 'statOrbs', 'statOrbsSize', 'statOrbsNumbers', 'statOrbsFill', 'statOrbsPulse', 'statOrbsHpColor', 'statOrbsPrayerColor', 'statOrbsRunColor', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'hoverTile', 'hoverTileColor', 'hoverTileOutline', 'hoverTileFill', 'lcliteLegacyBar', 'tcg', 'tcgHud', 'tcgHudCredits', 'tcgHudRate', 'tcgHudProgress', 'lclitePanelMod', 'lclitePanelPinned',
                 'canvasSize', 'canvasScale', 'canvasAutoFit', 'filtering', 'hideRoofs', 'lowDetail', 'shiftDrop', 'wikiLookup', 'wikiLookupButton', 'wikiLookupMenu', 'wikiLookupStyle', 'noCensor'].forEach(k => localStorage.removeItem(k));
+            // ground-items: wiped by prefix so its two free-text name lists go too
+            Object.keys(localStorage).filter(k => k.indexOf('groundItems') === 0).forEach(k => localStorage.removeItem(k));
             // hotkeys: wiped by prefix so every current AND future keybind resets too
             Object.keys(localStorage).filter(k => k.indexOf('hotkeys') === 0).forEach(k => localStorage.removeItem(k));
             // placement keys are namespaced lcm* (drag layer + owners): wipe by
@@ -269,7 +273,19 @@
             if (!q) { return; }
             window.open('https://oldschool.runescape.wiki/w/Special:Search?search=' + encodeURIComponent(q) + '&utm_source=lclite', '_blank');
             toast('Wiki search opened');
-        } }
+        } },
+
+        // ground-items (mods/ground-items) — RuneLite's Ground Items, 2004 flavour.
+        // The two name lists are free text: they are also written by Alt+clicking an
+        // item in game, so the rows show (and accept) the very same comma-separated
+        // string the engine reads at its own per-frame hook.
+        { id: 'ground-items-value', mod: 'ground-items', name: 'Min high alch value', desc: 'Only label items whose high alch value is above this. 0 labels every item that is not on the hidden list.', key: 'groundItemsValue', kind: 'slider', min: 0, max: 1000000, step: 1000, def: '0', unit: ' gp' },
+        { id: 'ground-items-shown', mod: 'ground-items', name: 'Shown items', desc: 'Item names to always label, comma separated — they get the shown-item colour. Alt+click an item in game to add it here.', key: 'groundItemsShown', kind: 'text', def: '', placeholder: 'Dragon bones, Ranarr weed' },
+        { id: 'ground-items-hidden', mod: 'ground-items', name: 'Hidden items', desc: 'Item names to never label, comma separated. Alt+click the - box in game to add one (a right-click on a label does the same).', key: 'groundItemsHidden', kind: 'text', def: '', placeholder: 'Bones, Ashes, Coins' },
+        { id: 'ground-items-show-value', mod: 'ground-items', name: 'Show high alch value', desc: 'Append the high alch value to each label, e.g. "Rune platebody (39K gp)".', key: 'groundItemsShowValue', kind: 'toggle', def: 'false' },
+        { id: 'ground-items-color', mod: 'ground-items', name: 'Label color', desc: 'Colour of a normal label.', kind: 'color', key: 'groundItemsColor', def: '#ffffff' },
+        { id: 'ground-items-listed-color', mod: 'ground-items', name: 'Shown-item color', desc: 'Colour of an item on your Shown items list.', kind: 'color', key: 'groundItemsHighlightColor', def: '#ff9040' },
+        { id: 'ground-items-hidden-color', mod: 'ground-items', name: 'Hidden-item color', desc: 'Colour of a hidden item while Alt is held (it is the only time a hidden item is labelled).', kind: 'color', key: 'groundItemsHiddenColor', def: '#808080' }
     );
 
     // ---- effective mod list (registry ∪ manifest ∪ rows) ------------------
@@ -643,6 +659,27 @@
         return row;
     }
 
+    // text row: a free-text settings value (ground-items' two item-name lists). Writes
+    // the RAW string on `change` (Enter/blur) rather than per keystroke, so the engine
+    // never reads a half-typed list — and a re-render cannot eat a keystroke, because
+    // the value is only read when the field is committed. The engine trims and
+    // case-folds the names itself.
+    function textRow(f) {
+        const cur = LS.get(f.key, f.def);
+        const row = document.createElement('div');
+        row.className = 'lcm-row';
+        row.dataset.name = f.name.toLowerCase() + ' ' + (f.desc || '').toLowerCase();
+        row.innerHTML = `${labelHtml(f)}
+            <input type="text" class="lcm-text" value="${esc(cur)}" placeholder="${esc(f.placeholder || '')}" spellcheck="false" autocomplete="off">`;
+        const inp = row.querySelector('input');
+        inp.addEventListener('change', () => {
+            LS.set(f.key, inp.value);
+            reapply();
+            toast(`${f.name}: ${inp.value.trim() || 'empty'}`);
+        });
+        return row;
+    }
+
     // One mod's settings. No header and no collapse: the panel shows a single mod at a
     // time, so there is nothing to collapse it against — the mod's own row directly
     // above it carries the name, the favorite star and the master switch. (Camera's
@@ -663,7 +700,7 @@
             gbody.appendChild(off);
         } else {
             for (const f of list) {
-                gbody.appendChild(f.kind === 'toggle' ? toggleRow(f) : f.kind === 'slider' ? sliderRow(f) : f.kind === 'select' ? selectRow(f) : f.kind === 'color' ? colorRow(f) : actionRow(f));
+                gbody.appendChild(f.kind === 'toggle' ? toggleRow(f) : f.kind === 'slider' ? sliderRow(f) : f.kind === 'select' ? selectRow(f) : f.kind === 'color' ? colorRow(f) : f.kind === 'text' ? textRow(f) : actionRow(f));
             }
         }
         grp.appendChild(gbody);

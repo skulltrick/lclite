@@ -19,6 +19,7 @@
 | webclient/src/client/Client.ts | 4 | tcg | `// lclite:tcg` |
 | webclient/src/client/Client.ts | 11 | hotkeys | `// lclite:hotkeys` |
 | webclient/src/client/Client.ts | 19 | wiki-lookup | `` |
+| webclient/src/client/Client.ts | 28 | ground-items | `` |
 | webclient/src/client/Client.ts | 71 | hover-tile | `// lclite:hover-tile` |
 | webclient/src/client/Client.ts | 87 | xp-drops | `/* ─── custom (lclite "xp-drops" mod) tunables ──────────────────────────────── ` |
 | webclient/src/client/Client.ts | 121 | xp-drops | `/// custom (lclite "xp-drops"): skill id -> staticons sprite index. Pack order i` |
@@ -58,10 +59,12 @@
 | webclient/src/client/Client.ts | 4478 | hide-roofs | `// lclite:hide-roofs` |
 | webclient/src/client/Client.ts | 4572 | xp-drops | `/// custom (lclite "xp-drops" mod): "Skill +N" rows drifting up from the bottom ` |
 | webclient/src/client/Client.ts | 4575 | xp-drops | `// custom (lclite "xp-drops"): tracker panel + drop rows into the game buffer. l` |
+| webclient/src/client/Client.ts | 4801 | ground-items | `// lclite:ground-items` |
 | webclient/src/client/Client.ts | 4804 | true-tile | `// lclite:true-tile` |
 | webclient/src/client/Client.ts | 4868 | anti-cheat | `// lclite:anti-cheat` |
 | webclient/src/client/Client.ts | 5074 | true-tile | `/// custom (lclite "true-tile" mod): OSRS-style true tile — an outline on lclite` |
 | webclient/src/client/Client.ts | 5098 | hover-tile | `// lclite:hover-tile` |
+| webclient/src/client/Client.ts | 5162 | ground-items | `// lclite:ground-items` |
 | webclient/src/client/Client.ts | 5403 | anti-cheat | `// lclite:anti-cheat` |
 | webclient/src/client/Client.ts | 5572 | anti-cheat | `// lclite:anti-cheat` |
 | webclient/src/client/Client.ts | 6685 | xp-drops | `// custom: a gained amount (xp > stored) = drop; equal/below = login lclite:xp-d` |
@@ -70,6 +73,7 @@
 | webclient/src/client/Client.ts | 8190 | tcg | `// lclite:tcg — health 0 is the death announcement; the core` |
 | webclient/src/client/Client.ts | 8244 | tcg | `// lclite:tcg — see the HITMARK2 watch above` |
 | webclient/src/client/Client.ts | 8282 | shift-drop | `// lclite:shift-drop` |
+| webclient/src/client/Client.ts | 8290 | ground-items | `// lclite:ground-items` |
 | webclient/src/client/Client.ts | 8364 | shift-drop | `// lclite:shift-drop` |
 | webclient/src/client/Client.ts | 8585 | wiki-lookup | `// lclite:wiki-lookup` |
 | webclient/src/client/Client.ts | 8609 | anti-cheat | `// lclite:anti-cheat` |

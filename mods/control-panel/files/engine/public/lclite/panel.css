@@ -203,6 +203,11 @@
 .lcm-color { flex: none; width: 30px; height: 24px; padding: 0; border: 1px solid var(--lcm-border); border-radius: 6px; background: var(--lcm-bg-3); cursor: pointer; }
 .lcm-hex { flex: none; font-family: Consolas, monospace; font-size: 11px; color: var(--lcm-text-dim); text-transform: uppercase; width: 60px; }
 
+/* free-text row (ground-items' two item-name lists) */
+.lcm-text { flex: 1; min-width: 0; background: var(--lcm-bg-3); color: var(--lcm-text); border: 1px solid var(--lcm-border); border-radius: 6px; padding: 4px 6px; font: inherit; font-size: 11.5px; }
+.lcm-text:focus { outline: none; border-color: var(--lcm-accent); }
+.lcm-text::placeholder { color: var(--lcm-text-dim); }
+
 /* hover tooltip — shared node, positioned in viewport coords by panel.js */
 #lclite-tip {
     position: fixed; z-index: 9500; max-width: 240px;

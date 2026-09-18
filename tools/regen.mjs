@@ -87,6 +87,15 @@ const MODS = {
     'stat-orbs': [
         'webclient/src/client/Client.ts'
     ],
+    'ground-items': [
+        // One file only: the labels are drawn from entityOverlays() (the areaGame
+        // buffer, before otherOverlays composites the interfaces) and the label
+        // boxes are consumed at the top of mouseLoop(). Everything else — the
+        // high-alch value, the label text, the list edits, the box hit test, the
+        // Alt state — ships as the files/ payload webclient/src/client/
+        // GroundItems.ts, so nothing in World.ts or PixFont.ts is touched.
+        'webclient/src/client/Client.ts'
+    ],
     'tcg': [
         'webclient/src/client/Client.ts',
         'webclient/bundle.ts',

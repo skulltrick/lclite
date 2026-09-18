@@ -91,6 +91,11 @@ export const MOD_META = {
         // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this)
         desc: 'A wiki button on the minimap: click it, then click any NPC, object or item to open its OSRS wiki page. Optionally also a Wiki row in every right-click menu.',
     },
+    'ground-items': {
+        label: 'Ground item labels',
+        // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this)
+        desc: 'Labels on the items lying on the ground. Hold Alt to see every item and click the - / + boxes to hide or show one.',
+    },
 };
 
 export const meta = name => MOD_META[name] || { label: name, desc: '', required: false };

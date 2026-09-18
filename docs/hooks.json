@@ -94,6 +94,12 @@
     "marker": true
    },
    {
+    "mod": "ground-items",
+    "note": "src/client/Client.ts @ old line 28",
+    "line": 28,
+    "marker": true
+   },
+   {
     "mod": "hover-tile",
     "note": "src/client/Client.ts @ old line 71",
     "line": 71,
@@ -328,6 +334,12 @@
     "marker": true
    },
    {
+    "mod": "ground-items",
+    "note": "src/client/Client.ts @ old line 4801",
+    "line": 4801,
+    "marker": true
+   },
+   {
     "mod": "true-tile",
     "note": "src/client/Client.ts @ old line 4804",
     "line": 4804,
@@ -349,6 +361,12 @@
     "mod": "hover-tile",
     "note": "src/client/Client.ts @ old line 5098",
     "line": 5098,
+    "marker": true
+   },
+   {
+    "mod": "ground-items",
+    "note": "src/client/Client.ts @ old line 5162",
+    "line": 5162,
     "marker": true
    },
    {
@@ -397,6 +415,12 @@
     "mod": "shift-drop",
     "note": "src/client/Client.ts @ old line 8282",
     "line": 8282,
+    "marker": true
+   },
+   {
+    "mod": "ground-items",
+    "note": "src/client/Client.ts @ old line 8290",
+    "line": 8290,
     "marker": true
    },
    {
