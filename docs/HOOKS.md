@@ -18,7 +18,7 @@
 | webclient/src/client/Client.ts | 0 | gpu | `// lclite:gpu` |
 | webclient/src/client/Client.ts | 4 | tcg | `// lclite:tcg` |
 | webclient/src/client/Client.ts | 11 | hotkeys | `// lclite:hotkeys` |
-| webclient/src/client/Client.ts | 73 | hover-tile | `// lclite:hover-tile` |
+| webclient/src/client/Client.ts | 71 | hover-tile | `// lclite:hover-tile` |
 | webclient/src/client/Client.ts | 87 | xp-drops | `/* ─── custom (lclite "xp-drops" mod) tunables ──────────────────────────────── ` |
 | webclient/src/client/Client.ts | 121 | xp-drops | `/// custom (lclite "xp-drops"): skill id -> staticons sprite index. Pack order i` |
 | webclient/src/client/Client.ts | 355 | camera | `/// custom: OSRS-style camera zoom + middle-button rotate lclite:camera` |

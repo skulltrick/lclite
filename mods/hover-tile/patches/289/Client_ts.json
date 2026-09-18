@@ -9,26 +9,26 @@
  "hunks": [
   {
    "find": [
+    "import WordFilter from '#/wordfilter/WordFilter.js';",
+    "import WordPack from '#/wordfilter/WordPack.js';",
     "",
-    "import JagFX from '#/sound/JagFX.js';",
-    "",
-    "const CLIENT_VERSION = 289;"
+    "import JagFX from '#/sound/JagFX.js';"
    ],
    "replace": [
-    "",
-    "import JagFX from '#/sound/JagFX.js';",
+    "import WordFilter from '#/wordfilter/WordFilter.js';",
+    "import WordPack from '#/wordfilter/WordPack.js';",
     "// lclite:hover-tile",
     "import { hoverTileRaster, hoverTileRead, hoverTileSettings } from '#/client/HoverTile.js'; // custom (lclite \"hover-tile\" mod): settings parse + the tile-quad rasterizer",
     "",
-    "const CLIENT_VERSION = 289;"
+    "import JagFX from '#/sound/JagFX.js';"
    ],
-   "note": "src/client/Client.ts @ old line 73",
+   "note": "src/client/Client.ts @ old line 71",
    "occ": 1,
    "pos": [
-    73,
-    0,
     71,
-    74
+    0,
+    69,
+    72
    ]
   },
   {
