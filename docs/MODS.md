@@ -131,7 +131,13 @@ block (legacy regex fallback). **EJS trap: inside a `<script>` block those
 `<!--` is a comment, so a multi-line one is a syntax error the browser reports at
 load. Use `// lclite:<mod>` for markers and comments inside page script blocks (the
 marker regex does not care which comment form it is) and keep `<!-- -->` for the HTML
-region.** **`-U0` islands merge: an insertion with NO unchanged line between it and
+region.** **Second EJS trap: a template local is a page-breaking coupling.** A local
+you add in a render call (`src/web.ts`) and read in the template lives in a DIFFERENT
+file, so the two hunks fail independently on rev-upgrade day — and ejs throws
+`ReferenceError` on an undefined local, which 500s the whole page rather than
+degrading. Guard every read (`<%= typeof revision === 'number' ? revision : '' %>`)
+so a half-applied rev renders without the value instead of dying. Same for attributes
+(`data-foo="<%= typeof x === 'number' ? x : '' %>"`).** **`-U0` islands merge: an insertion with NO unchanged line between it and
 another mod's insertion is one island, and regen reports `MIXED MARKERS <a>,<b>` — the
 majority marker wins, so one mod silently swallows the other's hunk. A "natural" hook
 site can be unusable for exactly this reason (`Client.mouseDown` has the camera mod's
