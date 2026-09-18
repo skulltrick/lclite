@@ -5,6 +5,12 @@ Hunks are minimal `{find, replace}` line arrays anchored by unique text; regen
 extracts them from `git diff -U0` of the live tree. Deep context:
 `docs/hunk-system-assessment.md`, `docs/archive/actions-2026-09.md`.
 
+**Hunks are per-revision.** A mod ships one corpus per revision it supports —
+`mods/<mod>/patches/<rev>/` — declared in `revs.json`, verified by
+`tools/matrix.mjs`, ported by `tools/port.mjs`. Read
+[docs/REVS.md](docs/REVS.md) before touching anything about revisions: it is the
+authority on the model, the resolution rule and the workflows.
+
 ## Where things live (read this before running anything)
 
 - **This repo is the overlay, on its own** — `mods/`, `tools/`, `docs/` and the
@@ -57,7 +63,17 @@ extracts them from `git diff -U0` of the live tree. Deep context:
    dirty-by-design; only lclite/ gets commits. (README's "commit modded state
    before upgrading" step is a manual-merge fallback for drift emergencies only —
    run it, upgrade, reseat, then `git reset` back before the next regen.)
-7. **Update `mods/<name>/README.md` in the same commit as any behavior change.**
+8. **A mod is all-or-nothing per revision.** If it cannot be fully re-anchored on a
+   revision it does not go there partially: `port.mjs` reverts it, and the launcher lists
+   it as unavailable. Half a mod is a broken mod (camera without its visibility hook,
+   control-panel without its terser reserves — the latter mangles the page-facing API
+   silently). Never hand-place the missing hunks of a mod you skipped.
+9. **A revision's corpus has exactly one author: regen.** Never hand-write a patch JSON
+   for a revision, and never hand-edit the applied lines of a ported revision without
+   running regen afterwards — regen is what turns "the tree on that revision is right"
+   into "that revision's corpus is right". And a revision must be declared in `revs.json`
+   BEFORE regen will file a corpus under it.
+10. **Update `mods/<name>/README.md` in the same commit as any behavior change.**
    It is the ONLY handoff the next agent's resume reads (design intent, what's
    in the box, the settings contract, deliberate divergences — see mods/tcg for
    the layout). A stale README is a stale map: one honest line costs less than
@@ -65,12 +81,16 @@ extracts them from `git diff -U0` of the live tree. Deep context:
    the first nontrivial change to one writes it.
 
 ## Loop for a TYPE B (engine) change
-edit live tree (marker!) → `node tools/regen.mjs` → `node tools/lclite.mjs apply --check`
-(0 ✗) → `node tools/doctor.mjs` (exit 0) → acceptance: pristine `t/` clones +
-`LCLITE_ROOT` apply must be byte-identical to the live tree (README §acceptance)
-→ `node tools/lclite.mjs build` → commit lclite repo (and webclient/engine
-commit messages per README) . Anchor drift is expected occasionally; reseat
-find[] against the printed hint lines (they include fuzzy line numbers).
+edit live tree (marker!) → `node tools/regen.mjs` (writes that revision's corpus) →
+`node tools/lclite.mjs apply --check` (0 ✗) → `node tools/doctor.mjs` (exit 0) →
+`node tools/matrix.mjs` (every declared revision still green — a new hunk on the primary
+can expire a revision that inherits it) → acceptance: pristine clones + `LCLITE_ROOT`
+apply must be byte-identical to the live tree (README §acceptance) →
+`node tools/lclite.mjs build` → commit lclite repo (and webclient/engine commit
+messages per README). Anchor drift is expected occasionally; reseat find[] against the
+printed hint lines (they include fuzzy line numbers). For a revision with its OWN
+corpus, the same edit needs `node tools/port.mjs <rev>` + regen afterwards — that is the
+recurring cost of a non-inheriting revision, and why `inherits` is the default.
 
 ## Loop for a TYPE A (panel) change
 edit `mods/control-panel/files/engine/public/lclite/panel.{js,css}` →
@@ -91,13 +111,17 @@ never updates, or a poll that un-ticks your boxes, looks fine in a still).
 
 ## Files
 launcher/ Go launcher (main/state/actions/tools/gitops/jobs/pipeline/engine/proxy/mods + ui/index.html; build.go cross-builds) ·
-tools/lclite.mjs applier/picker/build (+`doctor`, `new <mod>`) · tools/regen.mjs hunk extractor
-(+docs/hooks.json, docs/HOOKS.md) · doctor.mjs health report (exit 2 drift / 3
-structural — also 3 when there is no host tree here, and its pin check is
-ancestry-aware: a pin older than HEAD is a note, a shallow clone it can't compare
-is a note) · lib.mjs shared helpers · root.json host layout (repo dirs/remotes —
-edit for custom 2004-lineage servers) · mods/<name>/{patches/*.json, files/, README.md}.
-Commands: `node tools/lclite.mjs [apply|build|pick|list|doctor|new <mod>|uninstall]`.
+tools/lclite.mjs applier/picker/build (+`doctor`, `new <mod>`, `--rev`) · tools/regen.mjs hunk extractor
+(writes mods/<mod>/patches/<rev>/ + docs/hooks.json, docs/HOOKS.md for the primary) ·
+doctor.mjs health report (exit 2 drift / 3 structural — also 3 when there is no host
+tree here; audits EVERY corpus's pins/markers, not just the tree's) ·
+matrix.mjs replays every declared revision over pristine clones (the gate on
+`inherits`) · port.mjs re-anchors the primary corpus onto another revision (assisted
+reseat + typecheck gate, all-or-nothing per mod) · lib.mjs shared helpers (+ the
+reseater) · revs.json the revision declaration (primary + supported + inherits) ·
+root.json host layout (repo dirs/remotes — edit for custom 2004-lineage servers) ·
+mods/<name>/{patches/<rev>/*.json, files/, README.md}.
+Commands: `node tools/lclite.mjs [apply|build|pick|list|doctor|new <mod>|uninstall] [--rev <rev>]`.
 
 ## References beyond this repo
 The SERVER side of the stack is documented too: the Lost City content repo has a

@@ -1,0 +1,212 @@
+{
+ "file": "webclient/src/client/Client.ts",
+ "mod": "tcg",
+ "rev": "254",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "d340fc258c8d3becb1b7680793415621b40064e2"
+ },
+ "hunks": [
+  {
+   "find": [
+    "import { stopMidi, setMidiVolume, playMidi } from '#3rdparty/tinymidipcm.js';",
+    "",
+    "import { ClientCode } from '#/client/ClientCode.js';",
+    "import GameShell from '#/client/GameShell.js';"
+   ],
+   "replace": [
+    "import { stopMidi, setMidiVolume, playMidi } from '#3rdparty/tinymidipcm.js';",
+    "",
+    "// lclite:tcg",
+    "import '#/tcg/tcg_core.js'; // custom (lclite \"tcg\" mod): credits/packs/collection minigame — side-effect import installs the window['tcg*'] API",
+    "import { ClientCode } from '#/client/ClientCode.js';",
+    "import GameShell from '#/client/GameShell.js';"
+   ],
+   "note": "src/client/Client.ts @ old line 3",
+   "occ": 1,
+   "pos": [
+    3,
+    0,
+    1,
+    4
+   ]
+  },
+  {
+   "find": [
+    "            this.stream = new ClientStream(await ClientStream.openSocket(window.location.host, window.location.protocol === 'https:'));",
+    "",
+    "            const userhash = JString.toUserhash(username);",
+    "            const loginServer = Number(userhash >> 16n) & 0x1f;"
+   ],
+   "replace": [
+    "            this.stream = new ClientStream(await ClientStream.openSocket(window.location.host, window.location.protocol === 'https:'));",
+    "",
+    "            // lclite:tcg — tell the (window) core who just logged in; it loads that",
+    "            // account's save and opens its settle window (login burst rebases silently).",
+    "            (window as any)['tcgSetAccount']?.(username);",
+    "            const userhash = JString.toUserhash(username);",
+    "            const loginServer = Number(userhash >> 16n) & 0x1f;"
+   ],
+   "note": "src/client/Client.ts @ old line 1951",
+   "occ": 1,
+   "pos": [
+    1951,
+    0,
+    1949,
+    1952
+   ]
+  },
+  {
+   "find": [
+    "                                    // empty",
+    "                                }",
+    "                            } else if (this.chatInput.startsWith('::')) {",
+    "                                this.out.pIsaac(ClientProt.CLIENT_CHEAT);"
+   ],
+   "replace": [
+    "                                    // empty",
+    "                                }",
+    "                                // lclite:tcg — ::tcg opens the album; staff subcommands (give/roll)",
+    "                                // are gated on staffmodlevel inside the core. Visible fallback so a",
+    "                                // failed tcg hunk never looks like a dead chat command.",
+    "                            } else if (this.chatInput === '::tcg' || this.chatInput.startsWith('::tcg ')) {",
+    "                                const tcgApi: any = (window as any)['tcgCommand'];",
+    "                                if (typeof tcgApi === 'function') {",
+    "                                    tcgApi(this.chatInput.substring(5).trim(), this.staffmodlevel);",
+    "                                } else {",
+    "                                    this.addChat(0, 'TCG mod engine not loaded (lclite apply + rebuild needed).', '');",
+    "                                }",
+    "                            } else if (this.chatInput.startsWith('::')) {",
+    "                                this.out.pIsaac(ClientProt.CLIENT_CHEAT);"
+   ],
+   "note": "src/client/Client.ts @ old line 3338",
+   "occ": 1,
+   "pos": [
+    3338,
+    0,
+    3336,
+    3339
+   ]
+  },
+  {
+   "find": [
+    "                        this.statBaseLevel[stat] = i + 2;",
+    "                    }",
+    "                }",
+    "",
+    "                this.ptype = -1;",
+    "                return true;",
+    "            }"
+   ],
+   "replace": [
+    "                        this.statBaseLevel[stat] = i + 2;",
+    "                    }",
+    "                }",
+    "",
+    "                // custom (lclite \"tcg\"): feed the credit economy from real xp — 100c/1k xp lclite:tcg",
+    "                // + level-up bonus. The core owns ALL dedupe: first-sight adopts the",
+    "                // baseline, the post-login settle window rebases the burst silently,",
+    "                // and offline-trained jumps (or drains) never retro-pay or flood chunks.",
+    "                (window as any)['tcgOnXp']?.(stat, xp);",
+    "",
+    "                this.ptype = -1;",
+    "                return true;",
+    "            }"
+   ],
+   "note": "src/client/Client.ts @ old line 6917",
+   "occ": 1,
+   "pos": [
+    6917,
+    0,
+    6913,
+    6919
+   ]
+  },
+  {
+   "find": [
+    "                player.faceEntity = -1;",
+    "            }",
+    "        }",
+    ""
+   ],
+   "replace": [
+    "                player.faceEntity = -1;",
+    "            }",
+    "            // lclite:tcg — the LOCAL player aiming at an npc (attack/cast/follow",
+    "            // target) marks it engaged, beta InteractingChanged parity: one-shot",
+    "            // kills credit even before any hitsplat lands. Indices >= 32768 are",
+    "            // players (faceEntity offset), -1 = clear; both ignored.",
+    "            if (index === LOCAL_PLAYER_INDEX && player.faceEntity >= 0 && player.faceEntity < 32768) {",
+    "                (window as any)['tcgEngageNpc']?.(player.faceEntity, this.loopCycle);",
+    "            }",
+    "        }",
+    ""
+   ],
+   "note": "src/client/Client.ts @ old line 8108",
+   "occ": 1,
+   "pos": [
+    8108,
+    0,
+    8106,
+    8109
+   ]
+  },
+  {
+   "find": [
+    "                npc.combatCycle = this.loopCycle + 400;",
+    "                npc.health = buf.g1();",
+    "                npc.totalHealth = buf.g1();",
+    "            }",
+    "",
+    "            if ((mask & NpcUpdate.ANIM) !== 0) {"
+   ],
+   "replace": [
+    "                npc.combatCycle = this.loopCycle + 400;",
+    "                npc.health = buf.g1();",
+    "                npc.totalHealth = buf.g1();",
+    "                // lclite:tcg — health 0 is the death announcement; the core",
+    "                // credits it iff we engaged this npc recently (kill credits).",
+    "                (window as any)['tcgNpcHit']?.(id, npc.health, npc.totalHealth, this.loopCycle, npc.type ? npc.type.vislevel : -1, npc.type && npc.type.name ? npc.type.name : '');",
+    "            }",
+    "",
+    "            if ((mask & NpcUpdate.ANIM) !== 0) {"
+   ],
+   "note": "src/client/Client.ts @ old line 8395",
+   "occ": 1,
+   "pos": [
+    8395,
+    0,
+    8392,
+    8397
+   ]
+  },
+  {
+   "find": [
+    "                npc.combatCycle = this.loopCycle + 400;",
+    "                npc.health = buf.g1();",
+    "                npc.totalHealth = buf.g1();",
+    "            }",
+    "",
+    "            if ((mask & NpcUpdate.CHANGETYPE) !== 0) {"
+   ],
+   "replace": [
+    "                npc.combatCycle = this.loopCycle + 400;",
+    "                npc.health = buf.g1();",
+    "                npc.totalHealth = buf.g1();",
+    "                // lclite:tcg — see the HITMARK2 watch above",
+    "                (window as any)['tcgNpcHit']?.(id, npc.health, npc.totalHealth, this.loopCycle, npc.type ? npc.type.vislevel : -1, npc.type && npc.type.name ? npc.type.name : '');",
+    "            }",
+    "",
+    "            if ((mask & NpcUpdate.CHANGETYPE) !== 0) {"
+   ],
+   "note": "src/client/Client.ts @ old line 8449",
+   "occ": 1,
+   "pos": [
+    8449,
+    0,
+    8446,
+    8451
+   ]
+  }
+ ]
+}

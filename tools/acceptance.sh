@@ -4,9 +4,12 @@
 # files/ payload, installed.json) — and then a CONVERGE round-trip (strip down
 # to one mod, re-apply everything) must land back on those same bytes.
 #
-# The pins are READ FROM THE CORPUS (`mods/*/patches/*.json` -> generated_from),
-# never hardcoded here: a hardcoded pin silently tests last month's revisions
-# after a re-pin, which looks exactly like a pass.
+# The pins are READ FROM THE CORPUS (`mods/*/patches/<primary>/*.json` ->
+# generated_from), never hardcoded here: a hardcoded pin silently tests last month's
+# revisions after a re-pin, which looks exactly like a pass. Only the PRIMARY revision
+# has pins of its own — every other revision is either the same bytes (it inherits) or
+# has its own corpus, and `node tools/matrix.mjs` is what proves those against pristine
+# clones. This script is the primary's byte-identity gate.
 #
 # Overrides (all optional): LCLITE_ACCEPT_REPO, LCLITE_ACCEPT_INSTALL,
 # LCLITE_ACCEPT_TMP, LCLITE_ACCEPT_MOD (the one mod kept in the converge pass).
@@ -24,13 +27,23 @@ TMPROOT="${LOCALAPPDATA:+$LOCALAPPDATA/Temp}"; TMPROOT="${TMPROOT:-${TMPDIR:-/tm
 T="${LCLITE_ACCEPT_TMP:-$TMPROOT/lclite-accept}"
 KEEP="${LCLITE_ACCEPT_MOD:-gpu}"
 
+# the revision whose corpus this gate is about (revs.json's primary)
+PRIMARY="$(node -e '
+    const fs = require("fs"), path = require("path");
+    try { console.log(JSON.parse(fs.readFileSync(path.join(process.argv[1], "revs.json"), "utf8")).primary); }
+    catch { console.log("289"); }
+' "$REPO")"
+PRIMARY="${LCLITE_ACCEPT_REV:-$PRIMARY}"
+echo "primary revision $PRIMARY"
+
 # pins straight out of the corpus
 pin() {
     node -e '
         const fs = require("fs"), path = require("path");
         const want = process.argv[1], root = path.join(process.argv[2], "mods");
+        const rev = process.argv[3];
         for (const m of fs.readdirSync(root)) {
-            const d = path.join(root, m, "patches");
+            const d = path.join(root, m, "patches", rev);
             if (!fs.existsSync(d)) continue;
             for (const f of fs.readdirSync(d)) {
                 if (!f.endsWith(".json")) continue;
@@ -40,7 +53,7 @@ pin() {
         }
         console.error("!! no patch JSON pins repo " + want);
         process.exit(1);
-    ' "$1" "$REPO"
+    ' "$1" "$REPO" "$PRIMARY"
 }
 WC_PIN="$(pin webclient)" || exit 1
 EN_PIN="$(pin engine)" || exit 1
@@ -70,9 +83,9 @@ mkdir -p "$T/lclite"
 tar -C "$REPO" --exclude=.git --exclude=t --exclude=node_modules -cf - . | tar -C "$T/lclite" -xf -
 [ -f "$T/lclite/tools/lclite.mjs" ] || { echo "!! the overlay copy has no tools/"; exit 1; }
 
-echo "== apply --no-build against the pristine tree =="
+echo "== apply --no-build against the pristine tree (corpus $PRIMARY) =="
 cd "$T/lclite" || exit 1
-node tools/lclite.mjs apply --no-build 2>&1 | tail -16
+node tools/lclite.mjs apply --no-build --rev "$PRIMARY" 2>&1 | tail -16
 # prove it landed in the HARNESS tree, not in the live install
 for f in webclient/src/client/Client.ts webclient/src/client/GameShell.ts webclient/src/gpu/GpuRenderer.ts engine/view/client.ejs; do
     [ -f "$T/$f" ] || { echo "!! $f missing from the harness tree"; exit 1; }
@@ -85,11 +98,11 @@ echo "harness tree carries the hunks + payloads ✔"
 # the live install. Re-run after the converge pass; the second run must print
 # the identical count and the identical clean result.
 compare() {
-    python - "$T" "$INSTALL" "$REPO" "$1" <<'PY'
+    python - "$T" "$INSTALL" "$REPO" "$1" "$PRIMARY" <<'PY'
 import json, glob, os, sys, filecmp
-t, install, repo, label = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+t, install, repo, label, primary = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
 files = set()
-for f in glob.glob(os.path.join(repo, 'mods/*/patches/*.json')):
+for f in glob.glob(os.path.join(repo, 'mods/*/patches/%s/*.json' % primary)):
     d = json.load(open(f))
     if d.get('file'):
         files.add(d['file'])
@@ -123,9 +136,9 @@ echo "== byte-comparing every patched file against the live install =="
 compare "apply" || { echo "acceptance FAILED"; exit 1; }
 
 echo "== converge round-trip: keep only [$KEEP], then re-apply everything =="
-node tools/lclite.mjs apply --no-build --mods "$KEEP" 2>&1 | tail -6
+node tools/lclite.mjs apply --no-build --rev "$PRIMARY" --mods "$KEEP" 2>&1 | tail -6
 grep -q "lclite:$KEEP" "$T/webclient/src/client/Client.ts" || { echo "!! the kept mod's hunk is gone after the strip"; exit 1; }
-node tools/lclite.mjs apply --no-build 2>&1 | tail -16
+node tools/lclite.mjs apply --no-build --rev "$PRIMARY" 2>&1 | tail -16
 echo "== re-comparing after the round-trip (must match the first pass exactly) =="
 compare "converge" || { echo "acceptance FAILED: the round-trip is not byte-stable"; exit 1; }
 

@@ -9,6 +9,13 @@ TYPE B — engine mod       anything that touches the game client's internals (c
                           renderer, input, packets, interfaces)
 ```
 
+> **Revisions.** A mod ships one corpus per revision it supports:
+> `mods/<mod>/patches/<rev>/`, declared in `revs.json` and verified by
+> `tools/matrix.mjs`. This document is about *authoring* a mod, and it is written for
+> the **primary** revision — the one mods are written on and regenerated against. The
+> revision model itself, and how a mod is ported to another revision, live in
+> [REVS.md](REVS.md).
+
 ---
 
 ## TYPE A — UI-only mod (start here if you can)
@@ -117,7 +124,7 @@ etc.). Use `bundle.ts` (prod) only for final builds.
 Add the file to `MODS` in `tools/regen.mjs` (new folder = new mod, e.g. `mods/xp-drops`),
 then, from the overlay repo:
 ```
-LCLITE_ROOT=<install> node tools/regen.mjs   # rewrites mods/*/patches/*.json from git diff
+LCLITE_ROOT=<install> node tools/regen.mjs   # rewrites mods/*/patches/<rev>/*.json from git diff
 ```
 (`regen` diffs the tree at `LCLITE_ROOT`; without it the tools look one level above the
 overlay — see CONTRIBUTING for its refusals and `--prune`.)
@@ -194,7 +201,7 @@ cp -r .. lclite && cd lclite && node tools/lclite.mjs        # t/ is the host ro
   per-frame don't need it. The wheel writes `cameraZoom` back. Names are stable
   strings — they survive minification untouched.
 - **Two reserved names** in `webclient/bundle.ts` terser config (patched via
-  `mods/control-panel/patches/bundle_ts.json`; they *must* stay listed):
+  `mods/control-panel/patches/289/bundle_ts.json`; they *must* stay listed):
   `lostcityClient` (the Client instance, exposed on `window`) and
   `applyCameraSettings` (the re-apply entry point). If your engine mod needs a new
   public method or field the panel touches, add it there too — anything else gets
@@ -340,7 +347,7 @@ is for other people's servers and pure-local cosmetics.
 ## Authoring for distribution (a mod folder others can install)
 
 A third-party lclite mod IS just a folder — no new framework:
-1. `mods/<name>/patches/*.json` hunks, every added block marker-first (`lclite:<mod>`).
+1. `mods/<name>/patches/<rev>/*.json` hunks, every added block marker-first (`lclite:<mod>`).
 2. optional `files/` payload (copied verbatim; stripped only if unedited).
 3. optional panel row (MOD_REGISTRY entry in control-panel's panel.js — or rely on the
    synthesized row; ship the row as your own files/ copy if you want rich UI).

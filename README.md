@@ -66,6 +66,12 @@ inside one as `lclite/` and the tools find it without `LCLITE_ROOT`.
 
 Twelve mods, one folder each. Names are the ones you'll read in the panel.
 
+They are not tied to one revision. Pick **274** or **254** in the launcher instead of
+**289** and the same mods come with it, each revision from hunks that were re-anchored
+against that revision's own source. The launcher tells you exactly which mods a
+revision gets; how that works, and how a revision is added, is
+[docs/REVS.md](docs/REVS.md).
+
 | | Mod | What you notice |
 |---|---|---|
 | ☾ | **Camera** | Wheel zoom (0.4–2.6×, eased), middle-drag rotate, one-shot walk pick, chatbox scroll — the OSRS feel |
@@ -120,6 +126,21 @@ LCLITE_ROOT=<install> node tools/lclite.mjs                 # picker → apply �
 A failing hunk prints `↳ where the anchor moved`; fix that `find[]`, rerun, then
 `node tools/regen.mjs` snapshots the reseat so the overlay tracks the new rev.
 Full walkthrough: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### And when a *revision* moves on
+
+Every revision LCLite supports is declared in [`revs.json`](revs.json), and
+`node tools/matrix.mjs` replays all of them over pristine clones to prove the claim is
+still true. A revision whose source drifted gets ported in one command:
+
+```
+node tools/port.mjs 254      # re-anchor the corpus, drop what will not compile there
+LCLITE_ROOT=<install> node tools/regen.mjs
+```
+
+`port.mjs` prints every hunk it re-anchored and every one it could not place, with the
+anchor text and where that text went. Details, and the honest list of what is not
+ported yet: [docs/REVS.md](docs/REVS.md).
 
 ## Custom 2004 server
 

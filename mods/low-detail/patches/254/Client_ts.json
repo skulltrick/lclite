@@ -1,0 +1,82 @@
+{
+ "file": "webclient/src/client/Client.ts",
+ "mod": "low-detail",
+ "rev": "254",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "d340fc258c8d3becb1b7680793415621b40064e2"
+ },
+ "hunks": [
+  {
+   "find": [
+    "        Client.lowMem = false;",
+    "        ClientBuild.lowMem = false;",
+    "    }",
+    ""
+   ],
+   "replace": [
+    "        Client.lowMem = false;",
+    "        ClientBuild.lowMem = false;",
+    "",
+    "        // lclite:low-detail",
+    "        /// custom (lclite \"low-detail\" mod): RuneLite's Low Detail as a panel switch",
+    "        /// instead of a second webclient (?lowmem=1). Read ONCE, during construction,",
+    "        /// because Pix3D.lowMem decides the texture + texel-pool layout at unpack time",
+    "        /// (half-size textures, lowMem raster path) — flipping it live would leave",
+    "        /// already-uploaded textures in the other layout, so the per-frame hook in",
+    "        /// gameDrawMain() deliberately only drives World.lowMem.",
+    "        /// Client.lowMem is NOT touched: that flag is the low-memory CLIENT launch mode",
+    "        /// (no music/sounds, lowMemory reported to the server), not a graphics setting.",
+    "        if (localStorage.getItem('lowDetail') === 'true') {",
+    "            World.lowMem = true;",
+    "            Pix3D.lowMem = true;",
+    "            ClientBuild.lowMem = true;",
+    "        }",
+    "        // lclite:low-detail",
+    "    }",
+    ""
+   ],
+   "note": "src/client/Client.ts @ old line 607",
+   "occ": 1,
+   "pos": [
+    607,
+    0,
+    605,
+    608
+   ]
+  },
+  {
+   "find": [
+    "        this.sceneCycle++;",
+    "",
+    "        this.addPlayers(true);",
+    "        this.addNpcs(true);"
+   ],
+   "replace": [
+    "        this.sceneCycle++;",
+    "",
+    "        // lclite:low-detail",
+    "        /// custom (lclite \"low-detail\" mod): the live half of the switch — the panel",
+    "        /// toggle has to change the world without a reload. World.lowMem is read per",
+    "        /// ground triangle (textured ground falls back to its flat average colour) and",
+    "        /// the scene builder re-derives ClientBuild.lowMem from it on every build",
+    "        /// (ground decorations + off-level geometry), so this one assignment is what",
+    "        /// makes the switch work in game. Client.lowMem (launch mode) is honoured so a",
+    "        /// ?lowmem=1 session is never downgraded by us.",
+    "        World.lowMem = localStorage.getItem('lowDetail') === 'true' || Client.lowMem;",
+    "        // lclite:low-detail",
+    "",
+    "        this.addPlayers(true);",
+    "        this.addNpcs(true);"
+   ],
+   "note": "src/client/Client.ts @ old line 4411",
+   "occ": 1,
+   "pos": [
+    4411,
+    0,
+    4409,
+    4412
+   ]
+  }
+ ]
+}

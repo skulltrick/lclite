@@ -1,0 +1,31 @@
+{
+ "file": "webclient/src/client/Client.ts",
+ "mod": "gpu",
+ "rev": "254",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "d340fc258c8d3becb1b7680793415621b40064e2"
+ },
+ "hunks": [
+  {
+   "find": [
+    "import { playWave, setWaveVolume } from '#3rdparty/audio.js';",
+    "import { stopMidi, setMidiVolume, playMidi } from '#3rdparty/tinymidipcm.js';"
+   ],
+   "replace": [
+    "// lclite:gpu",
+    "import '#/gpu/GpuRenderer.js'; // custom (lclite \"gpu\" mod v2): WebGPU renderer; side-effect import wires the patches",
+    "import { playWave, setWaveVolume } from '#3rdparty/audio.js';",
+    "import { stopMidi, setMidiVolume, playMidi } from '#3rdparty/tinymidipcm.js';"
+   ],
+   "note": "src/client/Client.ts @ old line 0",
+   "occ": 1,
+   "pos": [
+    0,
+    0,
+    0,
+    1
+   ]
+  }
+ ]
+}

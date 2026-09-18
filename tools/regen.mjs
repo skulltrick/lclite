@@ -19,7 +19,7 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadRootManifest } from './lib.mjs';
+import { loadRootManifest, loadRevManifest, supportedRevs, hostRev, patchJsonName } from './lib.mjs';
 
 const TOOLS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const LCLITE = path.resolve(TOOLS_DIR, '..');           // the overlay root
@@ -29,6 +29,29 @@ const LCLITE = path.resolve(TOOLS_DIR, '..');           // the overlay root
 const ROOT = path.resolve(process.env.LCLITE_ROOT || path.join(LCLITE, '..'));
 const PRUNE = process.argv.includes('--prune');
 const ROOT_REPOS = loadRootManifest(LCLITE).repos.map(r => r.dir + '/');
+
+// WHICH REVISION this run describes. Regen writes mods/<mod>/patches/<rev>/, and the
+// rev is the tree's own branch — a corpus is only ever a statement about the revision
+// its hunks were generated from, so letting it be ambiguous is how you end up with 289
+// anchors filed under 274. --rev overrides for the odd case (CI, a detached tree).
+const REVS = loadRevManifest(LCLITE);
+const REV = (() => {
+    const i = process.argv.indexOf('--rev');
+    const explicit = i >= 0 ? process.argv[i + 1] : null;
+    const rev = explicit || hostRev(ROOT);
+    if (!rev) {
+        console.error(`regen — cannot tell which revision ${ROOT} is at (no git branch in webclient/ or engine/).`);
+        console.error('  pass --rev <rev> explicitly if the tree is detached.');
+        process.exit(3);
+    }
+    if (!supportedRevs(REVS).includes(rev)) {
+        console.error(`regen — "${rev}" is not a revision this overlay supports (${supportedRevs(REVS).join(', ')}).`);
+        console.error('  add it to revs.json first: a corpus for an undeclared revision is a corpus nothing reads.');
+        process.exit(3);
+    }
+    return rev;
+})();
+console.log(`regen — revision ${REV} at ${ROOT}`);
 
 // Files each mod's hunks may come from. With markers (A1) this is only "which files to
 // diff" — routing is decided per island by its marker, not by which mod listed the file.
@@ -299,33 +322,41 @@ if (extracted === 0) {
     process.exit(2);
 }
 for (const [owner, entries] of out) {
-    const dir = path.join(LCLITE, 'mods', owner, 'patches');
+    const dir = path.join(LCLITE, 'mods', owner, 'patches', REV);
     fs.mkdirSync(dir, { recursive: true });
     for (const e of entries) {
-        fs.writeFileSync(path.join(dir, path.basename(e.f).replace(/\W+/, '_') + '.json'), JSON.stringify({
-            file: e.f, mod: owner, generated_from: { repo: e.repo, head: e.head }, hunks: e.hunks
+        fs.writeFileSync(path.join(dir, patchJsonName(e.f)), JSON.stringify({
+            file: e.f, mod: owner, rev: REV, generated_from: { repo: e.repo, head: e.head }, hunks: e.hunks
         }, null, 1));
         total += e.hunks.length;
         console.log(`[${owner}] ${e.f}: ${e.hunks.length} hunks`);
     }
 }
-// clean stale patch files: any json whose (file, mod) pair was not written this run.
-// Destructive, so it needs --prune: a convergent `apply --mods <one>` STRIPS the other
-// mods, and their reverted files look exactly like "stale patches" from in here.
+// clean stale patch files: any json in THIS revision's corpus whose (file, mod) pair was
+// not written this run. Scoped to the rev directory on purpose — another revision's
+// corpus is never this run's business. Destructive, so it needs --prune: a convergent
+// `apply --mods <one>` STRIPS the other mods, and their reverted files look exactly like
+// "stale patches" from in here.
 for (const owner of new Set([...Object.keys(MODS), ...out.keys()])) {
-    const dir = path.join(LCLITE, 'mods', owner, 'patches');
+    const dir = path.join(LCLITE, 'mods', owner, 'patches', REV);
     if (!fs.existsSync(dir)) continue;
-    const wanted = new Set((out.get(owner) || []).map(e => path.basename(e.f).replace(/\W+/, '_') + '.json'));
+    const wanted = new Set((out.get(owner) || []).map(e => patchJsonName(e.f)));
     for (const j of fs.readdirSync(dir).filter(x => x.endsWith('.json'))) {
         if (wanted.has(j)) continue;
         if (PRUNE) { fs.rmSync(path.join(dir, j)); console.log(`[${owner}] removed stale ${j}`); }
-        else console.log(`  ~ ${owner}/${j}: no hunks in this tree — rerun with --prune to delete`);
+        else console.log(`  ~ ${owner}/${REV}/${j}: no hunks in this tree — rerun with --prune to delete`);
     }
 }
 // hooks.json — machine-readable hook-site registry (B3): every mod, every file it
 // touches, every anchor line. Consumed by docs/HOOKS.md generators, agents, and
 // `doctor`; regenerate alongside the hunks so it can never lie separately.
-{
+//
+// Only the PRIMARY revision owns this file. It documents where the mods are AUTHORED,
+// and every other revision is described as a port of it — letting a 254 regen overwrite
+// the 289 hook map would quietly turn the reference doc into a description of a port.
+if (REV !== REVS.primary) {
+    console.log(`docs/hooks.json + HOOKS.md left alone: they describe the primary revision (${REVS.primary}), and this run is ${REV}`);
+} else {
     const hooks = {};
     for (const [owner, entries] of out) {
         for (const e of entries) {
@@ -338,13 +369,13 @@ for (const owner of new Set([...Object.keys(MODS), ...out.keys()])) {
     for (const f of Object.keys(hooks)) hooks[f].sort((a, b) => a.line - b.line);
     const heads = {};
     for (const [owner, entries] of out) for (const e of entries) heads[e.repo] = e.head;
-    fs.writeFileSync(path.join(LCLITE, 'docs', 'hooks.json'), JSON.stringify({ generated_by: 'regen.mjs', heads, hooks }, null, 1) + '\n');
+    fs.writeFileSync(path.join(LCLITE, 'docs', 'hooks.json'), JSON.stringify({ generated_by: 'regen.mjs', rev: REV, heads, hooks }, null, 1) + '\n');
     console.log('docs/hooks.json written:', Object.values(hooks).flat().length, 'hook sites in', Object.keys(hooks).length, 'files');
     // HOOKS.md — human view of the SAME data (never allowed to drift from hooks.json)
-    let md = '# Hook-site map\n\n> GENERATED by `LCLITE_ROOT=<install> node tools/regen.mjs` — do not hand-edit; edit sources and regen.\n> Every lclite hunk in source order. `pos` = 0-based line in the PRISTINE file where the hunk inserts/deletes.\n\n| file | pos | mod | first added line |\n|---|---|---|---|\n';
+    let md = `# Hook-site map\n\n> GENERATED by \`LCLITE_ROOT=<install> node tools/regen.mjs\` from revision **${REV}** — do not hand-edit; edit sources and regen.\n> Every lclite hunk in source order. \`pos\` = 0-based line in the PRISTINE file where the hunk inserts/deletes.\n\n| file | pos | mod | first added line |\n|---|---|---|---|\n`;
     for (const [f, list] of Object.entries(hooks)) {
         for (const h of list) {
-            const pj = path.join(LCLITE, 'mods', h.mod, 'patches', path.basename(f).replace(/\W+/, '_') + '.json');
+            const pj = path.join(LCLITE, 'mods', h.mod, 'patches', REV, patchJsonName(f));
             let first = '';
             try {
                 const hh = JSON.parse(fs.readFileSync(pj, 'utf-8')).hunks.find(x => x.note === h.note);

@@ -20,7 +20,7 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { LIB_DIR, meta, findMods, countOccurrences, toLF, restoreEOL, stripPatchFile, loadRootManifest } from './lib.mjs';
+import { LIB_DIR, meta, findMods, countOccurrences, toLF, restoreEOL, stripPatchFile, loadRootManifest, loadRevManifest, supportedRevs, hostRev } from './lib.mjs';
 
 const __dirname = LIB_DIR;                       // lclite/ root (overlay)
 const TOOLS_DIR = path.dirname(fileURLToPath(import.meta.url));   // <overlay>/tools/
@@ -39,6 +39,26 @@ function findBun() {
     ];
     for (const c of cands) { try { if (c && fs.existsSync(c)) return c; } catch {} }
     return 'bun';
+}
+
+// ---- the revision target ----------------------------------------------------
+// Everything below applies ONE revision's corpus to the tree at ROOT. Which
+// revision that is comes from --rev, or from the tree's own branch, and it must be
+// one revs.json declares — applying 289's hunks to a 254 tree "mostly working" is
+// exactly the silent breakage the declaration exists to prevent.
+const REVS = loadRevManifest(__dirname);
+const REV_NAMES = supportedRevs(REVS);
+
+function resolveRev(args) {
+    const explicit = args.includes('--rev') ? args[args.indexOf('--rev') + 1] : null;
+    const rev = explicit || hostRev(ROOT) || REVS.primary;
+    if (!REV_NAMES.includes(rev)) {
+        console.error(`!! revision "${rev}" is not one this overlay supports (${REV_NAMES.join(', ')})`);
+        console.error(`   revs.json lists the supported revisions; add it there (and port the hunks:`);
+        console.error(`   node tools/port.mjs ${rev}) before installing the overlay on it.`);
+        process.exit(4);
+    }
+    return rev;
 }
 
 // ---- reseat assist (B4) ------------------------------------------------------
@@ -259,10 +279,15 @@ function build() {
 }
 
 // ---- the converge engine: apply desired set, strip the rest ------------------
-function converge(mods, want, check) {
-    let fails = 0, changed = false;
+function converge(mods, want, check, rev) {
+    let fails = 0, changed = 0, skipped = [];
     for (const mod of mods) {
         const m = meta(mod.name);
+        // A mod with no corpus for this revision (and nothing to inherit) has no
+        // hunks to apply OR to strip. Say so once, in its own list — calling it
+        // "stripped" would be a lie, and calling it a failure would block a rev
+        // that is simply narrower than the primary one.
+        if (mod.missingCorpus) { skipped.push(mod.name); continue; }
         if (want[mod.name]) {
             let tA = 0, tL = 0, tF = 0;
             for (const patch of mod.patches) {
@@ -277,7 +302,8 @@ function converge(mods, want, check) {
             }
             const copied = check ? [] : copyModFiles(mod);
             if (!check && copied.length) changed = true;
-            console.log(`${check ? 'would apply' : 'applied'} [${mod.name}]  +${tA} ~${tL} ✗${tF}${copied.length ? `  files:${copied.length}` : ''}${m.required ? '  (required)' : ''}`);
+            const src = mod.inherited ? ` (corpus ${mod.corpusRev})` : '';
+            console.log(`${check ? 'would apply' : 'applied'} [${mod.name}]  +${tA} ~${tL} ✗${tF}${copied.length ? `  files:${copied.length}` : ''}${src}${m.required ? '  (required)' : ''}`);
         } else {
             let tR = 0, tC = 0, tS = 0;
             for (const patch of mod.patches) {
@@ -293,7 +319,10 @@ function converge(mods, want, check) {
             console.log(`${check ? 'would strip' : 'stripped'} [${mod.name}]  -${tR} ~${tC} ✗${tS}`);
         }
     }
-    return { fails, changed };
+    if (skipped.length) {
+        console.log(`  — no corpus for ${rev}: ${skipped.join(', ')} (see revs.json / tools/port.mjs)`);
+    }
+    return { fails, changed, skipped };
 }
 
 // ---- interactive picker -------------------------------------------------------
@@ -387,14 +416,16 @@ function wantFromSel(mods, sel) {
     return want;
 }
 
-function doApply(mods, want) {
-    const { fails } = converge(mods, want, false);
+function doApply(mods, want, rev) {
+    const { fails } = converge(mods, want, false, rev);
     const installed = buildManifest(mods);
     if (fails) {
-        console.log(`\n${fails} hunk(s) need reseating for this rev. The ↳ lines above say where the anchor's lines moved — open lclite/mods/<mod>/patches/*.json, update the find[] array to the new surrounding code, rerun.`);
+        console.log(`\n${fails} hunk(s) need reseating for ${rev}. \`node tools/port.mjs ${rev}\` re-anchors what it`);
+        console.log(`can against this tree and prints exactly what it could not place (the ↳ lines above say where`);
+        console.log(`each anchor's lines went) — then regen snapshots the result as ${rev}'s own corpus.`);
         process.exitCode = 2;
     } else {
-        console.log(`\nmods on the tree: ${installed.join(', ') || '(none)'}`);
+        console.log(`\nmods on the ${rev} tree: ${installed.join(', ') || '(none)'}`);
     }
     return fails;
 }
@@ -404,18 +435,28 @@ async function main() {
     const check = args.includes('--check');
     const noBuild = args.includes('--no-build');
 
-    const mods = findMods(__dirname);
-    if (!mods.length) { console.error(`no mods found under ${path.join(__dirname, 'mods')}`); process.exit(1); }
-
     // bare `node tools/lclite.mjs` at a real terminal = the friendly picker;
     // with piped stdin (CI/scripts) it keeps the old apply-all + build meaning
     if (!args.length && process.stdin.isTTY) args.push('pick');
 
+    if (args.includes('new')) {
+        const name = args[args.indexOf('new') + 1];
+        if (!name || !/^[a-z][a-z0-9-]*$/.test(name)) { console.error('usage: node tools/lclite.mjs new <mod-name>  (lowercase, hyphens)'); process.exitCode = 1; return; }
+        scaffold(name);
+        return;
+    }
+
+    const rev = resolveRev(args);
+    const mods = findMods(__dirname, rev);
+    if (!mods.length) { console.error(`no mods found under ${path.join(__dirname, 'mods')}`); process.exit(1); }
+
     if (args.includes('list')) {
+        console.log(`# revision ${rev}${REVS.primary !== rev ? ` (corpus inherited from ${REVS.primary})` : ''}`);
         for (const m of mods) {
             const info = meta(m.name);
             let inst = false; try { inst = modInstalled(m); } catch { }
-            console.log(`${m.name}|${inst ? 'installed' : 'off'}|${info.label}|${info.desc}${info.required ? ' [required]' : ''}`);
+            const src = m.missingCorpus ? 'no-corpus' : m.inherited ? `inherited:${m.corpusRev}` : `corpus:${m.corpusRev}`;
+            console.log(`${m.name}|${m.missingCorpus ? 'unavailable' : inst ? 'installed' : 'off'}|${info.label}|${info.desc}${info.required ? ' [required]' : ''}|${src}`);
         }
         return;
     }
@@ -423,9 +464,10 @@ async function main() {
     if (args.includes('pick')) {
         const problems = preflight();
         if (problems.length) { problems.forEach(p => console.log('!! ' + p)); process.exit(1); }
+        console.log(`  revision: ${rev}`);
         const sel = await pick(mods);
         if (!sel) { console.log('quit — nothing changed.'); process.exitCode = 3; return; }
-        if (doApply(mods, wantFromSel(mods, sel)) === 0 && !noBuild) build();
+        if (doApply(mods, wantFromSel(mods, sel), rev) === 0 && !noBuild) build();
         return;
     }
 
@@ -438,12 +480,6 @@ async function main() {
     if (args.includes('doctor')) {
         // forward ONLY the known-safe flag: never splice raw argv into a shell string
         try { execSync(`"${process.execPath}" "${path.join(TOOLS_DIR, 'doctor.mjs')}"${args.includes('--json') ? ' --json' : ''}`, { stdio: 'inherit' }); } catch { process.exitCode = 1; }
-        return;
-    }
-    if (args.includes('new')) {
-        const name = args[args.indexOf('new') + 1];
-        if (!name || !/^[a-z][a-z0-9-]*$/.test(name)) { console.error('usage: node tools/lclite.mjs new <mod-name>  (lowercase, hyphens)'); process.exitCode = 1; return; }
-        scaffold(name);
         return;
     }
 
@@ -466,12 +502,13 @@ async function main() {
     if (check) {
         // dry-run: full per-hunk report; still fails on drift (the CI canary
         // relies on exit code 2 == "a hunk's anchor moved upstream")
-        const { fails } = converge(mods, want, true);
+        console.log(`revision ${rev}  (corpus: ${mods.every(m => !m.missingCorpus) ? 'complete' : 'partial'})`);
+        const { fails } = converge(mods, want, true, rev);
         if (fails) process.exitCode = 2;
         return;
     }
 
-    const failed = doApply(mods, want);
+    const failed = doApply(mods, want, rev);
     // bare `apply` stays patch-only (build is a separate step); plain run converges+builds
     if (!failed && !noBuild && !args.includes('apply')) build();
 }

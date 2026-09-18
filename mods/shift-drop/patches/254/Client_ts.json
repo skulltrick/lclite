@@ -1,0 +1,146 @@
+{
+ "file": "webclient/src/client/Client.ts",
+ "mod": "shift-drop",
+ "rev": "254",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "d340fc258c8d3becb1b7680793415621b40064e2"
+ },
+ "hunks": [
+  {
+   "find": [
+    "    }",
+    "",
+    "    private mouseLoop(): void {",
+    "        if (this.objDragArea !== 0) {"
+   ],
+   "replace": [
+    "    }",
+    "",
+    "    // lclite:shift-drop",
+    "    /// custom (lclite \"shift-drop\" mod): Shift is captured from the mouse PRESS itself",
+    "    /// (the click is resolved cycles later in mouseLoop(), when the DOM event is long",
+    "    /// gone and no modifier state is available).",
+    "    private shiftDown: boolean = false;",
+    "",
+    "    /// custom (lclite \"shift-drop\" mod): menu index of the hovered item's \"Drop\"",
+    "    /// option, or -1 when there is nothing to drop. Deliberately matched on the LABEL",
+    "    /// the player can see (RuneLite's shift-click-drop does the same) and restricted to",
+    "    /// item-op actions, so an inventory whose options are Withdraw/Deposit/Remove-1",
+    "    /// never matches. Reads its OWN key at click time; entries above menuNumEntries are",
+    "    /// stale from the previous buildMinimenu() and are never read.",
+    "    private shiftDropIndex(): number {",
+    "        if (localStorage.getItem('shiftDrop') === 'false') {",
+    "            return -1;",
+    "        }",
+    "",
+    "        for (let i: number = this.menuNumEntries - 1; i >= 1; i--) {",
+    "            const option: string = this.menuOption[i];",
+    "",
+    "            if (!option || !option.startsWith('Drop ')) {",
+    "                continue;",
+    "            }",
+    "",
+    "            const action: number = this.menuAction[i];",
+    "",
+    "            if (",
+    "                action === MiniMenuAction.OP_HELD1 || action === MiniMenuAction.OP_HELD2 || action === MiniMenuAction.OP_HELD3 || action === MiniMenuAction.OP_HELD4 || action === MiniMenuAction.OP_HELD5 ||",
+    "                action === MiniMenuAction.INV_BUTTON1 || action === MiniMenuAction.INV_BUTTON2 || action === MiniMenuAction.INV_BUTTON3 || action === MiniMenuAction.INV_BUTTON4 || action === MiniMenuAction.INV_BUTTON5",
+    "            ) {",
+    "                return i;",
+    "            }",
+    "        }",
+    "",
+    "        return -1;",
+    "    }",
+    "    // lclite:shift-drop",
+    "",
+    "    private mouseLoop(): void {",
+    "        if (this.objDragArea !== 0) {"
+   ],
+   "note": "src/client/Client.ts @ old line 8487",
+   "occ": 1,
+   "pos": [
+    8487,
+    0,
+    8485,
+    8488
+   ]
+  },
+  {
+   "find": [
+    "        } else {",
+    "            if (button === 1 && this.menuNumEntries > 0) {",
+    "                const action: number = this.menuAction[this.menuNumEntries - 1];",
+    ""
+   ],
+   "replace": [
+    "        } else {",
+    "            if (button === 1 && this.menuNumEntries > 0) {",
+    "                // lclite:shift-drop",
+    "                /// custom (lclite \"shift-drop\" mod): Shift+left-click performs the item's",
+    "                /// \"Drop\" option. Consumed here, before the item-drag setup below, so a",
+    "                /// shift click can never start a drag or open the menu; it falls through",
+    "                /// untouched when the hovered thing has no Drop option (bank, shop, trade",
+    "                /// inventories) or when the mod is off.",
+    "                if (this.shiftDown) {",
+    "                    const dropIndex: number = this.shiftDropIndex();",
+    "",
+    "                    if (dropIndex !== -1) {",
+    "                        this.doAction(dropIndex);",
+    "                        this.mouseClickButton = 0;",
+    "                        return;",
+    "                    }",
+    "                }",
+    "                // lclite:shift-drop",
+    "",
+    "                const action: number = this.menuAction[this.menuNumEntries - 1];",
+    ""
+   ],
+   "note": "src/client/Client.ts @ old line 8569",
+   "occ": 1,
+   "pos": [
+    8569,
+    0,
+    8567,
+    8570
+   ]
+  },
+  {
+   "find": [
+    "            MobileKeyboard.captureMouseDown(x, y);",
+    "            return;",
+    "        }",
+    "",
+    "        if (e.pointerType !== 'mouse') {",
+    "            // custom: touchscreen support",
+    "            // we don't acknowledge the first press as a click, instead we interpret the user's gesture on release"
+   ],
+   "replace": [
+    "            MobileKeyboard.captureMouseDown(x, y);",
+    "            return;",
+    "        }",
+    "",
+    "        // lclite:shift-drop",
+    "        /// custom (lclite \"shift-drop\" mod): remember Shift for THIS click — it is",
+    "        /// resolved cycles later in mouseLoop(), when the DOM event is long gone and no",
+    "        /// modifier state is available. (mouseDown is the obvious site but it sits flush",
+    "        /// against the camera mod's insertions; one diff island cannot hold two mods.)",
+    "        this.shiftDown = e.shiftKey;",
+    "        // lclite:shift-drop",
+    "",
+    "        if (e.pointerType !== 'mouse') {",
+    "            // custom: touchscreen support",
+    "            // we don't acknowledge the first press as a click, instead we interpret the user's gesture on release"
+   ],
+   "note": "src/client/Client.ts @ old line 11849",
+   "occ": 1,
+   "pos": [
+    11849,
+    0,
+    11845,
+    11851
+   ]
+  }
+ ]
+}

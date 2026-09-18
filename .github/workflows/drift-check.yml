@@ -1,10 +1,14 @@
 name: drift-check
 
-# Two canaries:
-#  - apply-check (every PR + weekly): clone the PINNED revs and dry-run the installer.
-#    Guarantees the corpus is self-consistent, the pins agree, and the tooling runs.
-#    Upstream moving cannot make this one fail — it tests the revs the hunks were
-#    generated from.
+# Three canaries:
+#  - apply-check (every PR + weekly): clone the PRIMARY revision's pinned commits and
+#    dry-run the installer. Guarantees the corpus is self-consistent, the pins agree,
+#    and the tooling runs. Upstream moving cannot make this one fail — it tests the
+#    commits the hunks were generated from.
+#  - rev-matrix (every PR + weekly): replay EVERY revision revs.json declares over
+#    pristine shallow clones of that revision, so an `inherits` that quietly stopped
+#    being true — or a corpus that no longer fits its own branch — goes red here instead
+#    of on a player's machine.
 #  - tip-check (weekly + manual): clone the live 289 TIPS and dry-run the same way.
 #    This answers "has upstream moved under a hunk?" and is EXPECTED to go red when
 #    Lost City lands code a hunk no longer anchors to — that is the re-pin reminder
@@ -19,6 +23,7 @@ on:
       - 'mods/**'
       - 'tools/**'
       - 'root.json'
+      - 'revs.json'
 
 jobs:
   # Reads the branch the launcher would install by default (289 today). Shallow clones,
@@ -40,11 +45,26 @@ jobs:
           git clone --depth 1 --branch 289 https://github.com/LostCityRS/Engine-TS engine
 
       - name: Would a fresh install still apply?
-        run: node tools/lclite.mjs apply --check
+        run: node tools/lclite.mjs apply --check --rev 289
         # exit 2 == anchor drift on the current tip: time for a re-pin
 
       - name: Doctor against the tips
         run: node tools/doctor.mjs
+
+  # The revision system's own gate: every declared revision must still take the corpus
+  # it resolves to. Cheap (shallow clones, no node_modules, no build).
+  rev-matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Does every declared revision still apply?
+        run: node tools/matrix.mjs
+        # exit 2 == a revision's corpus (or an inheritance claim) has expired:
+        # node tools/port.mjs <rev> → regen → apply --check
 
   apply-check:
     runs-on: ubuntu-latest
@@ -60,18 +80,25 @@ jobs:
           node --check tools/lib.mjs
           node --check tools/regen.mjs
           node --check tools/doctor.mjs
+          node --check tools/matrix.mjs
+          node --check tools/port.mjs
           node --check mods/control-panel/files/engine/public/lclite/panel.js
-          for j in mods/*/patches/*.json; do node -e "JSON.parse(require('fs').readFileSync('$j','utf8'))" || exit 1; done
+          # every corpus is JSON, for every revision
+          for j in mods/*/patches/*/*.json; do node -e "JSON.parse(require('fs').readFileSync('$j','utf8'))" || exit 1; done
 
-      - name: Read pinned base revs
+      - name: Read the primary revision and its pinned base commits
         id: revs
         run: |
-          # every patch JSON carries generated_from.{repo,head}; require they agree
+          # revs.json says which revision the corpus is authored on; the corpus then has
+          # to agree with it — every patch JSON in that corpus carries
+          # generated_from.{repo,head}, and they must all match.
           node -e '
             const fs = require("fs"), path = require("path");
+            const primary = JSON.parse(fs.readFileSync("revs.json", "utf8")).primary;
+            console.log("primary=" + primary);
             const heads = {};
             for (const mod of fs.readdirSync("mods")) {
-              const pd = path.join("mods", mod, "patches");
+              const pd = path.join("mods", mod, "patches", primary);
               if (!fs.existsSync(pd)) continue;
               for (const f of fs.readdirSync(pd).filter(x => x.endsWith(".json"))) {
                 const j = JSON.parse(fs.readFileSync(path.join(pd, f), "utf8"));
@@ -102,16 +129,17 @@ jobs:
           git -C engine checkout ${{ steps.revs.outputs.engine }}
 
       - name: Dry-run installer (anchor drift test)
-        run: node tools/lclite.mjs apply --check
+        run: node tools/lclite.mjs apply --check --rev ${{ steps.revs.outputs.primary }}
         # exit 2 == some hunk's anchor drifted upstream; the log prints which
 
-      - name: "Doctor (structural canary: markers, overlap geometry, rev skew)"
+      - name: "Doctor (structural canary: markers, overlap geometry, rev skew, corpora)"
         run: node tools/doctor.mjs
-        # exit 2 drift (same signal as above) · exit 3 = overlap/marker gap/rev skew
+        # exit 2 drift (same signal as above) · exit 3 = overlap/marker gap/rev skew/
+        # a corpus that disagrees with revs.json
 
       - name: Apply for real + diff report
         run: |
-          node tools/lclite.mjs apply --no-build
+          node tools/lclite.mjs apply --no-build --rev ${{ steps.revs.outputs.primary }}
           git -C ../webclient diff --stat
           git -C ../engine diff --stat
           # the mod files must end up modified — a silent zero-diff means the
