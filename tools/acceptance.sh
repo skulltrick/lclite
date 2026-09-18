@@ -16,7 +16,7 @@ unset LCLITE_ROOT            # the harness must resolve the root as "one level a
 winpath() { (cd "$1" && pwd -W 2>/dev/null) || (cd "$1" && pwd); }
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-REPO="${LCLITE_ACCEPT_REPO:-$(winpath "$HERE/../../..")}"
+REPO="${LCLITE_ACCEPT_REPO:-$(winpath "$HERE/..")}"
 DATA="${LOCALAPPDATA:-$HOME/.local/share}"
 [ -d "$DATA/LCLite/installs/289" ] || DATA="$HOME/.local/share/lclite"
 INSTALL="${LCLITE_ACCEPT_INSTALL:-$(winpath "$DATA/LCLite/installs/289")}"

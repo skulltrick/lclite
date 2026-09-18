@@ -96,7 +96,7 @@ leave it testing old revisions; byte-compares against your live install and then
 proves the converge round-trip is byte-stable):
 
 ```
-bash mods/hotkeys/tools/acceptance.sh   # overrides: LCLITE_ACCEPT_REPO / _INSTALL / _TMP / _MOD
+bash tools/acceptance.sh   # overrides: LCLITE_ACCEPT_REPO / _INSTALL / _TMP / _MOD
 ```
 
 Also prove independence: `node tools/lclite.mjs apply --mods <yours>` applies
