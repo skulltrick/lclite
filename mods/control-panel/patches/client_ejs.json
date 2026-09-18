@@ -206,7 +206,7 @@
     "    <!-- data-rev feeds the panel's header chip (and a title self-heal) from the",
     "         same revision local — guarded like the title above, so an empty value just",
     "         hides the chip instead of breaking the page. -->",
-    "    <script src=\"/lclite/panel.js?v=11\" data-rev=\"<%= typeof revision === 'number' ? revision : '' %>\" defer></script>",
+    "    <script src=\"/lclite/panel.js?v=12\" data-rev=\"<%= typeof revision === 'number' ? revision : '' %>\" defer></script>",
     "",
     "    <script type=\"module\">",
     "        import { Client } from './client/client.js';"

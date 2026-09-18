@@ -27,7 +27,6 @@
 | webclient/src/client/Client.ts | 588 | camera | `// lclite:camera` |
 | webclient/src/client/Client.ts | 602 | low-detail | `// lclite:low-detail` |
 | webclient/src/client/Client.ts | 1015 | xp-drops | `// custom: skill icons for xp-drops (staticons = skills 0-17 in the SAME lclite:` |
-| webclient/src/client/Client.ts | 1261 | rendering | `// custom (lclite "rendering" mod): smooth shading refreshed from our OWN lclite` |
 | webclient/src/client/Client.ts | 1729 | tcg | `// lclite:tcg — tell the (window) core who just logged in; it loads that` |
 | webclient/src/client/Client.ts | 1820 | xp-drops | `// custom: fresh xp-drop feed per session (world hop / re-login). lclite:xp-drop` |
 | webclient/src/client/Client.ts | 2061 | anti-cheat | `// custom (lclite "anti-cheat"): read our OWN key once per cycle here (the lclit` |
@@ -109,6 +108,4 @@
 | engine/view/client.ejs | 331 | control-panel | `<!-- lclite:control-panel -->` |
 | engine/view/client.ejs | 392 | control-panel | `<!-- lclite:control-panel -->` |
 | engine/view/client.ejs | 401 | tcg | `<!-- lclite:tcg -->` |
-| webclient/src/config/ObjType.ts | 428 | rendering | `// custom: save/restore instead of hard-resetting, so the smooth-shading setting` |
-| webclient/src/config/ObjType.ts | 513 | rendering | `// lclite:rendering` |
 | engine/src/web.ts | 152 | control-panel | `// lclite:control-panel` |

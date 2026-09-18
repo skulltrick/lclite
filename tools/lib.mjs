@@ -20,7 +20,7 @@ export const LIB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 //
 // The wording is the in-game control panel's (mods/control-panel/…/panel.js,
 // MOD_REGISTRY — the F1 panel's Mods tab): that is the list players read, and a
-// mod that is called "Smooth shading" in-game must not be called "Smooth shading
+// mod that is called "Low detail" in-game must not be called "Low detail
 // option" in the launcher. Rename a mod there and rename it here in the same
 // commit; `node tools/doctor.mjs` warns when the two drift apart.
 export const MOD_META = {
@@ -35,7 +35,6 @@ export const MOD_META = {
     'camera': {
         label: 'Camera',
         desc: 'Wheel zoom, middle-drag rotate, chat scroll.',
-        required: true,
     },
     'xp-drops': {
         label: 'XP drops',
@@ -56,10 +55,6 @@ export const MOD_META = {
     'anti-cheat': {
         label: 'Disable anti-cheat',
         desc: 'Disables the client sending legacy mouse/camera/anticheat packets.',
-    },
-    'rendering': {
-        label: 'Smooth shading',
-        desc: 'Per-pixel Gouraud instead of 4px blocks. Costs FPS.',
     },
     'gpu': {
         label: 'GPU',

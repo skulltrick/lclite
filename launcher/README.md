@@ -131,10 +131,10 @@ one scroll for the page).
    rather than the way in.
 4. **Mods** — their own panel, under the install list (the right-hand column leads
    with the two things you press every day: **Server** and **Join server**). Tick
-   boxes, *Apply mods & build*. Required mods (the camera and the panel — LCLite
-   itself) show as locked gold ticks rather than disabled checkboxes, because a
+   boxes, *Apply mods & build*. The required mod (the panel — LCLite itself) shows
+   as a locked gold tick rather than a disabled checkbox, because a
    greyed-out box reads as "not included". The list **starts folded to two rows**
-   (*Show all 13 mods* opens it) and tracks pending edits: change a tick and the
+   (*Show all 12 mods* opens it) and tracks pending edits: change a tick and the
    button becomes *Apply mods & build \** with a "not applied yet" line, because the
    difference between "ticked" and "built in" is exactly the mistake worth designing
    out. What is ticked lives in the page's own state, not in the visible
@@ -143,7 +143,7 @@ one scroll for the page).
    pristine* — the blunt git-level repair — lives behind a "Something's broken?"
    disclosure so it stops competing with it. That's `node tools/lclite.mjs --mods
    <set>`: the listed mods are applied and everything else is stripped, so the tree
-   always converges to what the UI shows. Required mods are locked on.
+   always converges to what the UI shows. The required mod is locked on.
    **Mods are offered on revision 289 only** — the hunks are anchored there, and
    `docs/MODS.md` owns that rule. On other revisions the section explains itself
    and the buttons stay disabled.

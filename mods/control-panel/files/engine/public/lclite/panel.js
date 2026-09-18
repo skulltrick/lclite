@@ -103,7 +103,6 @@
         // inverted row: the switch is labelled DISABLE — checked means packets OFF,
         // so it mirrors the antiCheat engine key (checked ⇔ LS 'false').
         { id: 'anti-cheat', name: 'Disable anti-cheat', desc: 'Disables the client sending legacy mouse/camera/anticheat packets.', master: { key: 'antiCheat', def: 'true', invert: true } },
-        { id: 'rendering', name: 'Smooth shading', desc: 'Per-pixel Gouraud instead of 4px blocks. Costs FPS.', master: { key: 'smoothShading', def: 'false' } },
         { id: 'hide-roofs', name: 'Hide roofs', desc: 'Removes roofs everywhere, not only while you stand under them. Off: the game hides them itself as you walk in.', master: { key: 'hideRoofs', def: 'false' } },
         { id: 'low-detail', name: 'Low detail', desc: 'Untextured ground applies instantly; ground decorations and half-size textures need a client refresh (F5).', master: { key: 'lowDetail', def: 'false' } },
         { id: 'shift-drop', name: 'Shift-click drop', desc: 'Hold Shift and left-click an item to drop it straight away, skipping the menu.', master: { key: 'shiftDrop', def: 'true' } },
@@ -114,7 +113,7 @@
     // settings rows -----------------------------------------------------------
     // kind: 'toggle' writes 'true'/'false'; 'action' fires; 'slider' writes a float
     // desc is the hover tooltip text (and search fodder), not visible subtext
-    // NOTE: single-toggle mods (stat-orbs, xp-drops, anti-cheat, rendering, gpu)
+    // NOTE: single-toggle mods (stat-orbs, xp-drops, anti-cheat, gpu)
     // intentionally have NO row here — their master switch on their list row IS
     // their only setting (RuneLite: no config => nothing to open). true-tile
     // graduated: master trueTile on its row, plus the look rows below.
@@ -155,7 +154,7 @@
             if (typeof hideControls === 'function') hideControls(); else toast('No legacy bar present');
         } },
         { id: 'reset-all', mod: 'control-panel', name: 'Reset all lclite settings', desc: 'Clears every toggle/zoom/placement and reloads.', kind: 'action', run() {
-            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'smoothShading', 'antiCheat', 'gpu', 'statOrbs', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'lcliteLegacyBar', 'tcg', 'tcgHud', 'tcgHudCredits', 'tcgHudRate', 'tcgHudProgress', 'lclitePanelMod', 'lclitePanelPinned',
+            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'antiCheat', 'gpu', 'statOrbs', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'lcliteLegacyBar', 'tcg', 'tcgHud', 'tcgHudCredits', 'tcgHudRate', 'tcgHudProgress', 'lclitePanelMod', 'lclitePanelPinned',
                 'canvasSize', 'canvasScale', 'canvasAutoFit', 'filtering', 'hideRoofs', 'lowDetail', 'shiftDrop'].forEach(k => localStorage.removeItem(k));
             // hotkeys: wiped by prefix so every current AND future keybind resets too
             Object.keys(localStorage).filter(k => k.indexOf('hotkeys') === 0).forEach(k => localStorage.removeItem(k));
@@ -241,9 +240,12 @@
             list.push(synthesizeMod(id, rowsOf(id)));
             known.add(id);
         }
-        // mods referenced by rows but absent from both registry and manifest
-        // (manifest unreadable => installed===null: still show every row's mod)
-        for (const f of MODS) if (!known.has(f.mod || 'control-panel')) {
+        // mods referenced by rows but absent from both registry and manifest —
+        // ONLY when the manifest is unreadable (installed===null), where showing
+        // every row's mod is the safe fallback. With a READABLE manifest this net
+        // must not run: it re-adds a mod the installer deliberately left out, so a
+        // stripped mod kept a live-looking row whose switch did nothing.
+        if (!installed) for (const f of MODS) if (!known.has(f.mod || 'control-panel')) {
             const m = f.mod || 'control-panel';
             list.push(synthesizeMod(m, rowsOf(m)));
             known.add(m);

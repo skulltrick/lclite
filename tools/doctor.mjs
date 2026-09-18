@@ -122,8 +122,8 @@ for (const mod of mods) {
 // ---- 1c. one name per mod: MOD_META vs the in-game panel --------------------
 // The launcher and the CLI picker show label/desc from MOD_META; players read
 // the same mods in the F1 panel's Mods tab (control-panel's MOD_REGISTRY). Two
-// lists with two wordings is how a mod ends up called "Smooth shading option" in
-// one place and "Smooth shading" in the other, so say it out loud. Wording is
+// lists with two wordings is how a mod ends up called "Low detail option" in
+// one place and "Low detail" in the other, so say it out loud. Wording is
 // cosmetic: a note, never an exit code.
 {
     const panel = panelRegistry();

@@ -39,7 +39,6 @@ const MODS = {
         'webclient/src/dash3d/World.ts',
         'webclient/src/dash3d/Pix3D.ts',
         'webclient/src/dash3d/Model.ts',
-        'webclient/src/config/ObjType.ts',
         'webclient/bundle.ts'
     ],
     'xp-drops': [
@@ -47,12 +46,6 @@ const MODS = {
     ],
     'true-tile': [
         'webclient/src/client/Client.ts'
-    ],
-    'rendering': [
-        // the smoothShading localStorage read (mainloop, per-frame) — the
-        // ObjType.ts save/restore hunks belong to this mod too via markers below
-        'webclient/src/client/Client.ts',
-        'webclient/src/config/ObjType.ts'
     ],
     'gpu': [
         // ONLY the import line in Client.ts is a tracked upstream edit: the
@@ -106,12 +99,8 @@ const HUNK_OWNER = {
         ['stat-orbs', /orbsEnabled|orbsWereOn|drawStatOrbs|drawOrb\b|stat orbs|Stat orbs|statOrbs|backing ring|glass highlight|procedural orb/i],
         ['true-tile', /drawTrueTile|trueTileLine|trueTile\b|true tile|true-tile/i],
         ['anti-cheat', /antiCheatEnabled|antiCheat|ANTICHEAT_|telemetry|mouseTracking\.length|RuneScope/i],
-        ['rendering', /lowDetail|smoothShading|smooth-shading/i],
         ['camera', /cameraZoom|wheelZoom|middleRotate|wheelScrollChat|rotateLastScreen|middleMouseDown|scrollChatbox|onwheel|camFollow|orbitCamera|setVisZoom|viewRadius|visTile|clearPick|World\.click|lostcityClient|applyCameraSettings/],
         ['hotkeys', /hotkeys|Hotkeys|hotkeyKey|Press Enter to Chat/]
-    ],
-    'webclient/src/config/ObjType.ts': [
-        ['rendering', /lowDetail|smoothShading|smooth-shading/i]
     ],
     'webclient/bundle.ts': [
         // terser property reserves exist FOR the panel contract (client.ejs/

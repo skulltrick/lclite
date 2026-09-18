@@ -141,12 +141,6 @@
     "marker": true
    },
    {
-    "mod": "rendering",
-    "note": "src/client/Client.ts @ old line 1261",
-    "line": 1261,
-    "marker": true
-   },
-   {
     "mod": "tcg",
     "note": "src/client/Client.ts @ old line 1729",
     "line": 1729,
@@ -640,20 +634,6 @@
     "mod": "tcg",
     "note": "view/client.ejs @ old line 401",
     "line": 401,
-    "marker": true
-   }
-  ],
-  "webclient/src/config/ObjType.ts": [
-   {
-    "mod": "rendering",
-    "note": "src/config/ObjType.ts @ old line 428",
-    "line": 428,
-    "marker": true
-   },
-   {
-    "mod": "rendering",
-    "note": "src/config/ObjType.ts @ old line 514",
-    "line": 513,
     "marker": true
    }
   ],
