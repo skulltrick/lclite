@@ -26,7 +26,10 @@ export const LIB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 export const MOD_META = {
     'control-panel': {
         label: 'LCLite',
-        desc: 'This panel and the page around it: the launcher theme, the tab title and icon, canvas size, scaling, legacy bar, fullscreen, screenshots.',
+        // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this): the
+        // row lists what a player can DO here. The theme/tab-title work is not a
+        // control, so it is documented in mods/control-panel/README.md instead.
+        desc: 'This panel and the page around it: canvas size, scaling, legacy bar, fullscreen, screenshots.',
         required: true,
     },
     'camera': {
