@@ -84,7 +84,7 @@ export const MOD_META = {
     'wiki-lookup': {
         label: 'Wiki lookup',
         // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this)
-        desc: 'Right-click an NPC, object or item for a Wiki option that opens the OSRS wiki page for it.',
+        desc: 'A wiki button on the minimap: click it, then click any NPC, object or item to open its OSRS wiki page. Optionally also a Wiki row in every right-click menu.',
     },
 };
 

@@ -215,6 +215,12 @@
    },
    {
     "mod": "wiki-lookup",
+    "note": "src/client/Client.ts @ old line 2335",
+    "line": 2335,
+    "marker": true
+   },
+   {
+    "mod": "wiki-lookup",
     "note": "src/client/Client.ts @ old line 2513",
     "line": 2513,
     "marker": true
@@ -223,6 +229,12 @@
     "mod": "wiki-lookup",
     "note": "src/client/Client.ts @ old line 2568",
     "line": 2568,
+    "marker": true
+   },
+   {
+    "mod": "wiki-lookup",
+    "note": "src/client/Client.ts @ old line 2598",
+    "line": 2598,
     "marker": true
    },
    {
@@ -247,6 +259,12 @@
     "mod": "stat-orbs",
     "note": "src/client/Client.ts @ old line 3888",
     "line": 3888,
+    "marker": true
+   },
+   {
+    "mod": "wiki-lookup",
+    "note": "src/client/Client.ts @ old line 4000",
+    "line": 4000,
     "marker": true
    },
    {
