@@ -45,7 +45,7 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
   The panel's own mark (FAB + header, `MARK()` in panel.js) is the SAME art at the same
   48-unit viewBox, inlined with per-instance mask/gradient ids — three copies of one
   logo, so change all three together or none.
-- `patches/client_ejs.json` — the two tags (currently `?v=9`/`?v=10` — see below), the
+- `patches/client_ejs.json` — the two tags (currently `?v=9`/`?v=11` — see below), the
   favicon `<link>` pair in the head, the `<title>` (and the `data-rev` attribute the
   panel's header chip reads — see the next bullet), and the
   canvas-sizing logic itself: `setSize()` now takes ANY decimal (clamped 0.25x..8x),

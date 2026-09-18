@@ -204,7 +204,7 @@ launcher is built and smoke-tested on every release tag. Issues and PRs welcome 
 We have not been endorsed by, authorized by, or officially communicated with
 the Lost City team / 2004Scape project. "Lost City" and "2004Scape" are the
 work of their contributors under their own licenses. "RuneLite" is a
-trademark of the RuneLite project — the name "LCLite" and this plugin-layer
+trademark of the RuneLite project — the name "LCLite" and this mod-overlay
 concept are homages only. No game files, assets, or cache data are
 distributed with this repository; you supply your own installation.
 
