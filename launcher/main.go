@@ -314,6 +314,7 @@ func (l *Launcher) handleState(w http.ResponseWriter, r *http.Request) {
 		"recommended_pinned":  cfg.RecommendedRev != "",
 		"overlay_rev":         overlayRev,
 		"skip_wizard":         cfg.SkipWizard,
+		"collapsed":           cfg.Collapsed,
 		"tools":               l.detectTools(),
 		"engine":              l.engine.Status(),
 		"proxy":               l.proxy.Status(),
@@ -361,12 +362,14 @@ func (l *Launcher) handleRevs(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleConfig flips first-run/advanced mode and can pin the recommended
-// revision (empty string = back to automatic).
+// handleConfig flips first-run/advanced mode, remembers which sections are
+// collapsed, and can pin the recommended revision (empty string = back to
+// automatic).
 func (l *Launcher) handleConfig(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		SkipWizard     *bool   `json:"skip_wizard"`
-		RecommendedRev *string `json:"recommended_rev"`
+		SkipWizard     *bool     `json:"skip_wizard"`
+		RecommendedRev *string   `json:"recommended_rev"`
+		Collapsed      *[]string `json:"collapsed"`
 	}
 	if err := decode(r, &req); err != nil {
 		fail(w, err)
@@ -374,6 +377,9 @@ func (l *Launcher) handleConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.SkipWizard != nil {
 		l.store.setSkipWizard(*req.SkipWizard)
+	}
+	if req.Collapsed != nil {
+		l.store.setCollapsed(*req.Collapsed)
 	}
 	if req.RecommendedRev != nil {
 		rev := strings.TrimSpace(*req.RecommendedRev)

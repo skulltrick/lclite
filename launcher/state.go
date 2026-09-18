@@ -80,6 +80,10 @@ type Config struct {
 	RecommendedUpdated time.Time `json:"recommended_updated,omitempty"`
 	// SkipWizard keeps the full view even with nothing installed.
 	SkipWizard bool `json:"skip_wizard,omitempty"`
+	// Collapsed lists the dashboard sections the user folded away. It lives here
+	// (not in localStorage) because the UI port is random per run, so a
+	// browser-side preference would reset on every launch.
+	Collapsed []string `json:"collapsed"`
 }
 
 type Store struct {
@@ -132,6 +136,9 @@ func openStore(dataDir string) (*Store, error) {
 	}
 	if s.cfg.Revs == nil {
 		s.cfg.Revs = []Rev{}
+	}
+	if s.cfg.Collapsed == nil {
+		s.cfg.Collapsed = []string{}
 	}
 	return s, nil
 }
@@ -233,6 +240,30 @@ func (s *Store) setSkipWizard(skip bool) {
 	s.cfg.SkipWizard = skip
 	s.mu.Unlock()
 	_ = s.save()
+}
+
+// setCollapsed stores which dashboard sections are folded away. Only the keys
+// the UI knows are kept (deduped), so a stale or buggy client can't grow the
+// list or repeat an entry.
+func (s *Store) setCollapsed(keys []string) {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(keys))
+	for _, k := range keys {
+		if sectionKeys[k] && !seen[k] {
+			seen[k] = true
+			out = append(out, k)
+		}
+	}
+	sort.Strings(out)
+	s.mu.Lock()
+	s.cfg.Collapsed = out
+	s.mu.Unlock()
+	_ = s.save()
+}
+
+// sectionKeys are the dashboard panels the UI can collapse.
+var sectionKeys = map[string]bool{
+	"revs": true, "installs": true, "mods": true, "server": true, "join": true,
 }
 
 func (s *Store) setLastRev(rev string) {

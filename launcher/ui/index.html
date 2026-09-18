@@ -74,8 +74,17 @@
   @media (max-width:1000px){main.grid{grid-template-columns:1fr}}
   section.panel{background:linear-gradient(180deg,#1c1815,#181512);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
   section.panel + section.panel{margin-top:16px}
+  /* Collapsed sections keep their header and hide everything else. The header is
+     the first child, so one rule covers every panel whatever it holds. */
+  section.panel.collapsed > *:not(h2){display:none!important}
+  section.panel.collapsed{padding-bottom:11px}
   .panel h2{margin:0 0 3px;font-size:12px;letter-spacing:1.3px;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:8px}
   .panel h2 .grow{flex:1}
+  button.secToggle{background:none;border:none;color:var(--dim2);padding:2px 4px;font-size:11px;line-height:1;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;letter-spacing:.6px;text-transform:uppercase}
+  button.secToggle:hover:not(:disabled){background:#ffffff0d;color:var(--accent)}
+  button.secToggle .chev{font-size:9px;transition:transform .15s}
+  section.panel.collapsed button.secToggle .chev{transform:rotate(-90deg)}
   .panel .sub{color:var(--dim2);font-size:12px;margin-bottom:10px}
   .empty{color:var(--dim2);font-size:13px;padding:10px 2px}
 
@@ -94,8 +103,8 @@
   .revlist.single{scrollbar-width:none}
   .revlist.single::-webkit-scrollbar{width:0;height:0}
   .rev{display:flex;gap:10px;align-items:center;border:1px solid var(--line-soft);border-radius:10px;padding:9px 11px;
-    background:linear-gradient(180deg,#1f1b17,#1a1714);transition:border-color .15s,transform .1s;cursor:pointer}
-  .rev:hover{border-color:#4a4034;transform:translateX(1px)}
+    background:linear-gradient(180deg,#1f1b17,#1a1714);transition:border-color .15s;cursor:default}
+  .rev:hover{border-color:#4a4034}
   .rev.rec{border-color:#6d5a24;background:linear-gradient(180deg,#26200f,#1c1810)}
   .rev.installed{border-color:#3d4a2e}
   .rev.plain{cursor:default}
@@ -162,7 +171,7 @@
   @keyframes glow{50%{box-shadow:0 0 0 1px #e6bb6366,0 0 16px #e6bb6333}}
   .modrow .mname{font-size:13px}
   .modrow .mdesc{color:var(--dim2);font-size:11.5px}
-  .modlist{max-height:320px;overflow:auto;padding-right:6px;scrollbar-width:thin}
+  .modlist{overflow:visible;padding-right:6px}
   .modlist .more{color:var(--dim2);font-size:11.5px;padding-top:6px;text-align:center}
 
   /* ---------- console ---------- */
@@ -263,9 +272,13 @@ let folder = "";
 // typed ports, a selected checkbox), so each block re-renders only when the
 // data behind it actually changed.
 let sig = { revs: "", installs: "", mods: "" };
-// How many mod rows the panel shows before it scrolls (fitModList measures the
-// real rows, so this is a count, not a pixel height).
-const MOD_ROWS = 6;
+// How many mod rows show while the mod list is folded (the list is a fold of its
+// own, inside the LCLite mods section).
+const MOD_PREVIEW = 2;
+let modsOpen = false;
+// Sections folded away, adopted from /api/state on the first render. The local
+// set is what renders — the 2.5s poll must never flip a panel back under you.
+let collapsed = null;
 
 /* ---------------------------------------------------------------- plumbing */
 async function api(path, body) {
@@ -345,6 +358,8 @@ function decideView(){
 function render(){
   if (!S) return;
   decideView();
+  // Sections the user folded away live in launcher.json; adopt them once.
+  if (collapsed === null) collapsed = new Set(S.collapsed || []);
   const showWizard = view === "wizard";
   const want = showWizard ? "wizard" : "main";
   if ($("root").dataset.view !== want) {
@@ -352,10 +367,48 @@ function render(){
     sig = { revs: "", installs: "", mods: "" };
     sigWiz = "";
     $("root").innerHTML = showWizard ? wizardHTML() : mainHTML();
-    if (showWizard) renderWizard(); else { renderMain(true); wireRevScroll(); fitModList(); }
+    if (showWizard) renderWizard(); else { renderMain(true); wireRevScroll(); }
+    applySections();
     return;
   }
   if (showWizard) renderWizard(); else renderMain(false);
+}
+
+/* ---- collapsible sections -------------------------------------------------- */
+// Folded-away sections are remembered in launcher.json, not localStorage: the UI
+// port is random per run, so a browser-side preference would reset every launch.
+function secToggle(key){
+  return `<button class="secToggle" data-sec-toggle="${key}" onclick="toggleSection('${key}')" aria-expanded="true"
+    title="fold this section away"><span class="lab">Hide</span><span class="chev">▼</span></button>`;
+}
+
+function applySections(){
+  if (!collapsed) return;
+  document.querySelectorAll("section.panel[data-sec]").forEach(sec => {
+    const off = collapsed.has(sec.dataset.sec);
+    sec.classList.toggle("collapsed", off);
+    const btn = sec.querySelector(".secToggle");
+    if (!btn) return;
+    btn.setAttribute("aria-expanded", off ? "false" : "true");
+    btn.title = off ? "show this section" : "fold this section away";
+    const lab = btn.querySelector(".lab");
+    if (lab) lab.textContent = off ? "Show" : "Hide";
+  });
+}
+
+function toggleSection(key){
+  if (!collapsed) collapsed = new Set();
+  if (collapsed.has(key)) collapsed.delete(key); else collapsed.add(key);
+  applySections();
+  api("config", { collapsed: [...collapsed] }).catch(e => toast("Could not remember that: " + e.message, "bad"));
+}
+
+// Folding the mod list is a view change only: what is ticked lives in modPick, so
+// uncommitted ticks survive it (and stay counted).
+function toggleModList(){
+  modsOpen = !modsOpen;
+  const el = $("mods");
+  if (el) { el.innerHTML = modsHTML(); refreshModsDirty(); }
 }
 
 /* ================================ THE WIZARD ============================= */
@@ -660,20 +713,20 @@ function mainHTML(){
 
     <main class="grid">
       <div>
-        <section class="panel">
+        <section class="panel" data-sec="revs">
           <h2>Lost City revisions<span class="grow"></span>
             <span class="stepper">
               <button id="revup" aria-label="previous revision" title="previous revision (or ↑)" onclick="stepRev(-1)">▲</button>
               <span class="count" id="revcount">1 / ${(S.revs || []).length}</span>
               <button id="revdown" aria-label="next revision" title="next revision (or ↓)" onclick="stepRev(1)">▼</button>
-            </span></h2>
-          <div class="sub">${S.revs_at ? "last checked " + ago(S.revs_at) : "from the Lost City repos"} · the revision Lost City develops sits first, client-only branches last</div>
+            </span>${secToggle("revs")}</h2>
+          <div class="sub">${S.revs_at ? "last checked " + ago(S.revs_at) : "from the Lost City repos"} · install a revision here; ones you already have are marked, and live in the list below</div>
           <div class="revlist single" id="revlist">${revRows()}</div>
         </section>
 
-        <section class="panel">
+        <section class="panel" data-sec="installs">
           <h2>Installs<span class="grow"></span>
-            ${(S.installs || []).length ? `<span class="chip ok">${(S.installs || []).length} installed</span>` : ""}</h2>
+            ${(S.installs || []).length ? `<span class="chip ok">${(S.installs || []).length} installed</span>` : ""}${secToggle("installs")}</h2>
           <div class="sub">your installed revisions — pick one and its mods appear below</div>
           <div id="installs">${installRows()}</div>
           <div id="installcard">${installCardHTML()}</div>
@@ -690,20 +743,20 @@ function mainHTML(){
           </details>
         </section>
 
-        <section class="panel">
-          <h2>LCLite mods<span class="grow"></span></h2>
+        <section class="panel" data-sec="mods">
+          <h2>LCLite mods<span class="grow"></span>${secToggle("mods")}</h2>
           <div id="mods">${modsHTML()}</div>
         </section>
       </div>
 
       <div>
-        <section class="panel">
-          <h2>Server<span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">this machine</span></h2>
+        <section class="panel" data-sec="server">
+          <h2>Server<span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">this machine</span>${secToggle("server")}</h2>
           ${serverHTML()}
         </section>
 
-        <section class="panel">
-          <h2>Join server<span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">somewhere else</span></h2>
+        <section class="panel" data-sec="join">
+          <h2>Join server<span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">somewhere else</span>${secToggle("join")}</h2>
           ${joinHTML()}
         </section>
       </div>
@@ -739,14 +792,15 @@ function revRows(){
     // tooltip carries the full story.
     const tags = [];
     if (r.recommended) tags.push('<span class="tag rec">recommended</span>');
-    if (have) tags.push('<span class="tag ok">installed</span>');
     if (r.name === S.overlay_rev) tags.push('<span class="tag mods">mods available</span>');
     if (!playable) tags.push('<span class="tag off">client only</span>');
     // One accent per list: the row you should press is the recommended revision.
-    const cls = r.recommended && !have ? "primary" : "ghost";
+    const cls = r.recommended ? "primary" : "ghost";
+    // Installed revisions are a state, not an action — this list installs and
+    // reports, it never selects (that lives in the installs list).
     const btn = have
-      ? `<button class="ghost" title="work with this install in the launcher" onclick="event.stopPropagation();selectInstall('${esc(have.id)}')">Select</button>`
-      : `<button class="${cls}" ${playable ? "" : "disabled"} onclick="event.stopPropagation();install('${esc(r.name)}')">Install</button>`;
+      ? `<span class="chip ok" title="already installed at ${esc(have.path)} — manage it in the installs list">✓ installed</span>`
+      : `<button class="${cls}" ${playable ? "" : "disabled"} onclick="install('${esc(r.name)}')">Install</button>`;
     const tip = `${r.name}: ${[r.client ? "client" : null, r.engine ? "engine" : null, r.content ? "content" : null].filter(Boolean).join(" + ")}`
       + (playable ? "" : " — no server content on this branch, so it can't be installed")
       + (have ? ` — installed at ${have.path}` : "");
@@ -795,12 +849,29 @@ function currentInstall(){ return (S.installs || []).find(i => i.id === sel) || 
 
 // What the tree currently has applied, so a tick can tell you it's not committed yet.
 let modsBase = [];
+// The picked mods live in JS, not in the DOM: the list folds to MOD_PREVIEW rows,
+// and a hidden checkbox must still count — reading the DOM would make Apply strip
+// every mod you can't see.
+let modPick = null;
+
+// initModPick seeds the selection from the install's applied mods (or the full
+// available set when nothing has been applied yet). Required mods are always in.
+function initModPick(i){
+  if (!i) { modPick = new Set(); return; }
+  const avail = (i.mods_available || []).map(m => m.name);
+  const required = (i.mods_available || []).filter(m => m.required).map(m => m.name);
+  const on = (i.mods && i.mods.length) ? i.mods : avail;
+  modPick = new Set(avail.filter(n => on.includes(n) || required.includes(n)));
+}
 
 function modSelection(){
-  return [...document.querySelectorAll("#mods [data-mod]")]
-    .filter(el => el.dataset.required === "1" || el.checked)
-    .map(el => el.dataset.mod)
-    .sort();
+  return [...(modPick || [])].sort();
+}
+
+function onModTick(el){
+  if (!modPick) modPick = new Set();
+  if (el.checked) modPick.add(el.dataset.mod); else modPick.delete(el.dataset.mod);
+  refreshModsDirty();
 }
 
 function refreshModsDirty(){
@@ -870,6 +941,8 @@ function installCardHTML(){
 
 // Mods for the selected install. Own panel, under the install list: the right
 // column leads with the things you press every day (Start, Join server).
+// The list itself starts folded to MOD_PREVIEW rows — the panel then reads as
+// "here are your mods" at a glance, and the full list is one click away.
 function modsHTML(){
   const i = currentInstall();
   if (!i) {
@@ -883,27 +956,34 @@ function modsHTML(){
       ? `LCLite's mods are anchored to revision ${esc(S.overlay_rev || "289")} — this install is ${esc(i.rev_label || "?")}, so they stay off.`
       : `No LCLite overlay in this install, so there are no mods to switch on — LCLite's mods live in the ${esc(S.overlay_rev || "289")} install.`}</div>`;
   }
-  const chosen = new Set((i.mods && i.mods.length) ? i.mods : (i.mods_available || []).map(m => m.name));
-  const mods = (i.mods_available || []).map(m => `
+  // modPick is the source of truth for what is ticked (see initModPick): the list
+  // can be folded, so the DOM is not.
+  const chosen = modPick || new Set((i.mods && i.mods.length) ? i.mods : (i.mods_available || []).map(m => m.name));
+  const rows = (i.mods_available || []).map(m => `
     <div class="modrow ${m.required ? "req" : ""}">
       ${m.required
         ? `<span class="modcheck" data-mod="${esc(m.name)}" data-required="1" title="always included">✓</span>`
-        : `<input type="checkbox" data-mod="${esc(m.name)}" ${chosen.has(m.name) ? "checked" : ""}>`}
+        : `<input type="checkbox" data-mod="${esc(m.name)}" ${chosen.has(m.name) ? "checked" : ""} onchange="onModTick(this)">`}
       <div><div class="mname">${esc(m.label)}</div><div class="mdesc">${esc(m.desc)}</div></div>
-    </div>`).join("");
-  const n = (i.mods_available || []).length;
+    </div>`);
+  const n = rows.length;
+  const shown = modsOpen ? rows : rows.slice(0, MOD_PREVIEW);
+  const more = n > MOD_PREVIEW
+    ? `<div class="more"><button class="linky" onclick="toggleModList()">${modsOpen ? "Show fewer ▴" : `Show all ${n} mods ▾`}</button>${modsOpen ? "" : ` · ${MOD_PREVIEW} of ${n} shown`}</div>`
+    : "";
   return `
-    <div class="sub" style="margin:0 0 8px">For <b>${esc(i.rev_label || i.id)}</b> — tick what you want, then apply. Unticked mods are
-      stripped back to upstream.${i.overlay_source === "checkout" ? ` These come from <span class="path">${esc(i.overlay_path || "")}</span>, so edits there apply straight away.` : ""}</div>
+    <div class="sub" style="margin:0 0 8px">For <b>${esc(i.rev_label || i.id)}</b> — ${modsOpen
+      ? "tick what you want, then apply. Unticked mods are stripped back to upstream."
+      : `the first ${Math.min(MOD_PREVIEW, n)} are shown; open the list to tick the rest. <b>Applying removes every mod you haven't ticked.</b>`}${i.overlay_source === "checkout" ? ` These come from <span class="path" title="${esc(i.overlay_path || "")}">${esc(tailPath(i.overlay_path, 38))}</span>, so edits there apply straight away.` : ""}</div>
     <div class="row wrap">
       <button class="primary" id="applymods" onclick="applyMods()">Apply mods &amp; build</button>
-      <button onclick="stripMods()" title="take every mod off and leave the upstream client">Strip all mods</button>
+      <button onclick="stripMods()" title="take every mod off and leave the upstream client">Remove mods</button>
       <span class="note" id="modsdirty" style="display:none;margin:0 0 0 4px">Not applied yet — the client still has the old set.</span>
     </div>
-    <div class="modlist" onchange="refreshModsDirty()" style="margin-top:9px">${mods || '<div class="empty">no mods found in lclite/mods</div>'}</div>
-    ${n > MOD_ROWS ? `<div class="more">showing ${MOD_ROWS} of ${n} — scroll the list for the rest</div>` : ""}
+    <div class="modlist" style="margin-top:9px">${shown.join("") || '<div class="empty">no mods found in lclite/mods</div>'}</div>
+    ${more}
     <details class="block"><summary>Something's broken? Reset to pristine</summary>
-      <div class="inner hint">Throws away every local change in webclient/ and engine/ with git — the blunt repair for a tree that drifted. Use <b>Strip all mods</b> for ordinary mod removal.</div>
+      <div class="inner hint">Throws away every local change in webclient/ and engine/ with git — the blunt repair for a tree that drifted. Use <b>Remove mods</b> for ordinary mod removal.</div>
       <button class="danger" style="margin-top:9px" onclick="revertMods()">Reset to pristine</button>
     </details>`;
 }
@@ -1008,15 +1088,6 @@ function wireRevScroll(){
   list.scrollTop = revStep * revRowStep(list);
 }
 
-// Six mods at a time: measure the real rows instead of guessing at a height.
-function fitModList(){
-  const list = document.querySelector("#mods .modlist");
-  if (!list) return;
-  const rows = [...list.children].filter(c => c.classList.contains("modrow"));
-  if (rows.length <= MOD_ROWS) { list.style.maxHeight = "none"; return; }
-  list.style.maxHeight = (rows[MOD_ROWS - 1].offsetTop + rows[MOD_ROWS - 1].offsetHeight - rows[0].offsetTop) + "px";
-}
-
 function renderMain(force){
   const sRevs = JSON.stringify((S.revs || []).map(r => [r.name, r.recommended, r.engine, r.content]))
     + "|" + S.overlay_rev + "|" + JSON.stringify((S.installs || []).map(i => [i.id, i.rev_label, i.engine_deps, i.mods_allowed]));
@@ -1041,8 +1112,8 @@ function renderMain(force){
     if (el) {
       const i = currentInstall();
       modsBase = i ? ((i.mods && i.mods.length) ? i.mods.slice() : (i.mods_available || []).map(m => m.name)) : [];
+      initModPick(i);
       el.innerHTML = modsHTML();
-      fitModList();
       refreshModsDirty();
     }
   }

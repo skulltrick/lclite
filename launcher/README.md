@@ -79,6 +79,14 @@ bridge port, the three-socket port story, the tree's internals — sits behind a
 disclosure with a plain-language label, so the everyday path stays two buttons
 and a tick list.
 
+**Every section folds.** Each panel header carries a *Hide* / *Show* toggle, and
+what you folded away is remembered in `launcher.json` (`collapsed: ["mods"]`) —
+not in `localStorage`, because the UI port is random per run, so a browser-side
+preference would reset on every launch. Inside *LCLite mods* the mod list is a
+fold of its own, starting at two rows: the panel then answers "which mods do I
+have?" at a glance, and *Show all N mods* opens the rest (no inner scrollbar —
+one scroll for the page).
+
 1. **Revisions** — the branch list is read live from GitHub (`Client-TS`,
    `Engine-TS`, `Content`) and merged by name. A revision with engine + content
    is playable; client-only branches (e.g. `500`, `jaged`) show as "Client only".
@@ -86,8 +94,9 @@ and a tick list.
    recommended first, then playable newest-first, then client-only.
    The panel shows **one revision at a time** (a 10-branch list was noise in a
    sidebar): step with `▲`/`▼` or the arrow keys, `n / total` tells you where you
-   are, and the row itself carries the action (`Install`, or `Select` to work with
-   an install you already have).
+   are. This list only **installs** and **reports**: a row either offers *Install*
+   or shows a green `✓ installed`, and nothing here selects an install — that
+   happens in the installs list, where you also get its mods, update and delete.
 2. **Install** — clones the revision into `<data>/installs/<rev>/`. Each install
    row in the sidebar owns its own lifecycle: **Remove** (take it out of the list,
    files untouched, no confirm) and **Delete files** (wipe the cloned revision from
@@ -124,15 +133,17 @@ and a tick list.
    with the two things you press every day: **Server** and **Join server**). Tick
    boxes, *Apply mods & build*. Required mods (the camera and the panel — LCLite
    itself) show as locked gold ticks rather than disabled checkboxes, because a
-   greyed-out box reads as "not included". The list shows **six mods at a time**
-   (with a "showing 6 of 13" cue) and tracks pending edits: change a tick and the
+   greyed-out box reads as "not included". The list **starts folded to two rows**
+   (*Show all 13 mods* opens it) and tracks pending edits: change a tick and the
    button becomes *Apply mods & build \** with a "not applied yet" line, because the
    difference between "ticked" and "built in" is exactly the mistake worth designing
-   out. *Reset to pristine* — the blunt git-level repair — lives behind a
-   "Something's broken?" disclosure so it stops competing with the everyday
-   *Strip all mods*. That's `node tools/lclite.mjs --mods <set>`: the listed mods
-   are applied and everything else is stripped, so the tree always converges to what
-   the UI shows. Required mods are locked on.
+   out. What is ticked lives in the page's own state, not in the visible
+   checkboxes, so folding the list can never silently drop a hidden mod from the
+   set you are about to apply. *Remove mods* takes every mod back off; *Reset to
+   pristine* — the blunt git-level repair — lives behind a "Something's broken?"
+   disclosure so it stops competing with it. That's `node tools/lclite.mjs --mods
+   <set>`: the listed mods are applied and everything else is stripped, so the tree
+   always converges to what the UI shows. Required mods are locked on.
    **Mods are offered on revision 289 only** — the hunks are anchored there, and
    `docs/MODS.md` owns that rule. On other revisions the section explains itself
    and the buttons stay disabled.
@@ -226,7 +237,7 @@ lclite/                        ← the overlay repo: mods, tools, docs AND this 
 
 %LOCALAPPDATA%\LCLite\          ← the launcher's data folder
   installs/<rev>/              ← webclient/ engine/ content/ (+ lclite/ copy)
-  launcher.json                ← installs, saved servers, cached branch list
+  launcher.json                ← installs, saved servers, cached branch list, folded sections
   tools/bun/bun.exe            ← bun fetched on demand
 ```
 
@@ -249,7 +260,7 @@ installation.
 
 | Path | What |
 | --- | --- |
-| `%LOCALAPPDATA%\LCLite\launcher.json` | installs, saved servers, cached branch list |
+| `%LOCALAPPDATA%\LCLite\launcher.json` | installs, saved servers, cached branch list, folded sections |
 | `%LOCALAPPDATA%\LCLite\installs\<rev>\` | managed revision checkouts |
 | `%LOCALAPPDATA%\LCLite\tools\bun\bun.exe` | bun fetched on demand |
 
@@ -271,7 +282,8 @@ respect that, or move to a signature of its own.
 ## API (for scripting)
 
 All under `/api`, all requiring header `X-LCLite-Token: <token>` (the token is in
-the served page). `state`, `revs`, `config`, `install`, `import`, `apply`, `build`,
+the served page). `state`, `revs`, `config` (`{"skip_wizard":true}`,
+`{"recommended_rev":"300"}`, `{"collapsed":["mods","revs"]}`), `install`, `import`, `apply`, `build`,
 `update`, `reset`, `strip` (take every mod off), `remove` (`{id, wipe}` — `wipe`
 deletes the folder and is refused for a hand-added install or one outside
 `<data>/installs/`), `run`, `stop`, `open`,
