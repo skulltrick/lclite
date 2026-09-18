@@ -4,209 +4,190 @@
 
 **A RuneLite-style mod layer for the [Lost City](https://lostcity.rs) / 2004Scape webclient.**
 
-OSRS-style camera · XP tracker · stat orbs · true tile · WebGPU renderer ·
-TCG card packs — press **F1** in your game. No fork. No hand-merges.
-Survives the next build.
+[![drift check](https://github.com/skulltrick/lclite/actions/workflows/drift-check.yml/badge.svg)](https://github.com/skulltrick/lclite/actions/workflows/drift-check.yml)
+[![launcher release](https://github.com/skulltrick/lclite/actions/workflows/launcher-release.yml/badge.svg)](https://github.com/skulltrick/lclite/actions/workflows/launcher-release.yml)
+![license](https://img.shields.io/badge/license-MIT-8a7454)
 
-![LCLite panel over the Lost City webclient](docs/lclite-panel.png)
+![LCLite running on the Lost City webclient](docs/screens/ingame.png)
 
-*One 8 MB launcher, no runtime · or the Node CLI on any OS — `node tools/lclite.mjs`*
+<sub>OSRS camera · XP tracker · stat orbs · true tile · WebGPU renderer · TCG packs — press <b>F1</b> in your game.</sub><br>
+<sub>No fork. No hand-merges. Survives the next build.</sub>
 
 </div>
 
 ---
 
-## What is this?
+## Why
 
-Lost City ships a beautiful, fast-moving webclient — and every update means
-re-merging your favorite tweaks into it by hand. **LCLite ends that.** You pick
-your mods once; LCLite layers them onto *whatever rev you're running*, verifies
-the result, and rebuilds. A Lost City update that touches a mod's code? The
-installer tells you in one line exactly where the change went — you reseat it
-in minutes, and every other mod applies untouched.
+Lost City's webclient moves fast, and every update turns your hand-picked tweaks
+into a merge conflict. **LCLite ends that.** Mods live *out-of-tree* as
+identity-anchored patch hunks; you pick them once and LCLite layers them onto
+whatever revision you're running, verifies the result, and rebuilds. When Lost
+City lands code under a mod's anchor, the installer says exactly where it moved
+— you reseat it in minutes and every other mod applies untouched.
 
-No game files are distributed. You bring your own Lost City installation
-(and any other 2004Scape-lineage client — LCLite is host-agnostic by design,
-see [custom servers](#running-a-custom-2004-server)).
+> No game files are distributed. You bring your own Lost City installation — or
+> any 2004Scape-lineage client ([LCLite is host-agnostic](#custom-2004-server)).
 
-## Get started (Windows)
+## Quick start
 
-1. Get the [launcher](#the-launcher-one-file-no-runtime): build it
-   (`cd launcher && go run build.go`) or grab `LCLite.exe` from the releases page,
-   and drop it in this folder next to `LCLite.bat`.
-2. Double-click **`LCLite.bat`** → a setup wizard asks *which Lost City revision
-   you'd like to use*, with the branch Lost City is developing right now already
-   picked. It downloads, builds and starts that revision for you; the wizard hands
-   you the launcher as soon as your world is up.
-3. Press **F1** in-game. Every mod is a toggle, live, no reload.
+1. **Get the launcher** — grab `LCLite-portable-windows-amd64.zip` from
+   [Releases](https://github.com/skulltrick/lclite/releases), or
+   [build it](#the-launcher). It's one ~8 MB static binary, no runtime.
+2. **Double-click `LCLite.bat`** — the wizard asks which revision you want (the
+   branch Lost City is developing right now is pre-picked), then clones, builds
+   and starts it for you. A first boot repacks the cache, so give it a minute.
+3. **Press F1 in-game** — every mod is a toggle, live, no reload.
 
-From then on the launcher is a dashboard: mods, extra revisions side by side,
+After that the launcher is your dashboard: mods, extra revisions side by side,
 running a world, joining someone else's.
 
-**Nothing is cloned into this folder.** Each revision the launcher installs gets
-its own checkout under its data folder
-(`%LOCALAPPDATA%\LCLite\installs\<rev>\{webclient,engine,content,lclite}`), and
-the launcher drives *this* repo's overlay against it — so edits you make here take
-effect immediately.
-
 <details>
-<summary>Any OS / terminal (the Node CLI)</summary>
+<summary><b>Any OS / terminal — the Node CLI</b></summary>
 
-The overlay is plain scripts and works anywhere. Run them from this folder; point
-them at an install with `LCLITE_ROOT` whenever this repo isn't sitting inside a
-checkout (which is the normal case now):
+The overlay is plain scripts and runs anywhere. Nothing is cloned into this
+repo: the launcher installs each revision into its own data folder
+(`%LOCALAPPDATA%\LCLite\installs\<rev>\{webclient,engine,content,lclite}`, or
+`~/.local/share/lclite` elsewhere) and drives *this* overlay against it.
 
 ```
-node tools/lclite.mjs                     # picker (needs a host checkout at $LCLITE_ROOT)
-node tools/lclite.mjs list                # machine-readable mod state
-LCLITE_ROOT=/path/to/install node tools/lclite.mjs apply     # apply ALL mods
-LCLITE_ROOT=/path/to/install node tools/lclite.mjs doctor    # health report
-LCLITE_ROOT=/path/to/install node tools/lclite.mjs build     # bun bundle + deploy client.js
-LCLITE_ROOT=/path/to/install node tools/lclite.mjs uninstall # back toward pristine upstreams
+node tools/lclite.mjs list                                    # machine-readable mod state
+LCLITE_ROOT=/path/to/install node tools/lclite.mjs apply      # apply every mod
+LCLITE_ROOT=/path/to/install node tools/lclite.mjs apply --check
+LCLITE_ROOT=/path/to/install node tools/lclite.mjs build      # bundle + deploy client.js
+LCLITE_ROOT=/path/to/install node tools/lclite.mjs doctor     # health report
 ```
 
-An "install" is any folder holding `webclient/` + `engine/` — the launcher's, or a
-Lost City checkout you made yourself. Copy `lclite/` inside it and everything works
-without `LCLITE_ROOT` at all (the layout LCLite grew up in, still supported).
+An "install" is any folder holding `webclient/` + `engine/`. Copy this repo
+inside one as `lclite/` and the tools find it without `LCLITE_ROOT`.
 </details>
-
-## The launcher (one file, no runtime)
-
-```
-LCLite.exe        single Go binary · ~8 MB · static · Windows/Linux/macOS
-```
-
-Releases carry a prebuilt `LCLite-portable-windows-amd64.zip` (exe + batch file +
-`READ-ME-FIRST.txt`) plus the bare binaries and their SHA256s — see
-[RELEASING.md](RELEASING.md) for how they are produced and how to rehearse one.
-
-It is a front door, not a reimplementation: every mod operation still runs
-`tools/lclite.mjs`, so the overlay stays the one source of truth. What it adds is
-everything the picker can't do:
-
-- **Revision picker** — reads the Lost City branch lists live (`Client-TS`,
-  `Engine-TS`, `Content`) and installs a revision as a self-contained folder:
-  `webclient/` + `engine/` + `content/` at that branch, `npm install`, client
-  built and deployed. Play 289's modded client and 244's vanilla one side by side.
-- **Existing folder** — point it at any checkout (yours, someone else's) and drive
-  mods/apply/build/play from there.
-- **Mods, still convergent** — tick what you want, *Apply mods & build* passes
-  `--mods a,b` through, so unticked mods are stripped. Offered on 289 only,
-  because that's where the hunks are anchored.
-- **Custom servers** — bridge localhost to any Lost City address, optionally
-  serving **your** built client while the remote supplies the world. That's how
-  your LCLite mods end up in someone else's server.
-
-Design notes, the API, build steps and the known limits:
-[`launcher/README.md`](launcher/README.md). Built it yourself:
-
-```sh
-cd launcher && go run build.go      # → dist/LCLite-<os>-<arch>
-```
 
 ## The mods
 
-| Mod | What you notice |
-|---|---|
-| ☾ **Camera** *(required)* | Wheel zoom (0.4–2.6×, eased), middle-drag rotate, one-shot walk pick, chatbox scroll — the OSRS feel |
-| 📈 **XP drops** | Floating `+N` rows with skill icons + a tan level-progress tracker, top-right, auto-hides |
-| 🔮 **Stat orbs** | HP/Prayer/Energy orbs down the minimap's lower-left, numbers always visible |
-| 🟩 **True tile** | Green outline on the tile the *server* has you on — with color/border/fill controls |
-| 🎨 **Smooth shading** | Per-pixel Gouraud instead of 4px blocks (when your CPU says yes) |
-| 🛡 **Disable anti-cheat** | Switch ON = client stops sending the legacy mouse/camera/anticheat telemetry packets (default OFF = keeps sending). Right for a private server; leave it OFF on public worlds |
-| 🚀 **GPU** (beta) | WebGPU render of the 3D world at software-exact parity; auto-falls back on any driver error, reason in the panel |
-| 🃏 **TCG** (beta) | Earn credits from non-combat xp, level-ups and monster kills (combat level), open 5-card booster packs (7 rarity tiers, foils, rare apex packs), browse a 6,376-card collection album — the OSRS TCG plugin's economy, for 2004 |
-| ⚙ **Control panel** *(required)* | The F1 popover itself: Mods/Settings tabs, favorite-star pinning (favorites sort to the top), per-mod gear shortcut to its settings, search, pin, fullscreen, screenshots — and the Alt+drag placement layer that lets you move the FAB, panel, XP tracker and any mod HUD to 9 snap anchors (RuneLite-style; Alt+right-click resets) |
+Twelve mods, one folder each. Names are the ones you'll read in the panel.
 
-## How it works (the honest version)
+| | Mod | What you notice |
+|---|---|---|
+| ☾ | **Camera** | Wheel zoom (0.4–2.6×, eased), middle-drag rotate, one-shot walk pick, chatbox scroll — the OSRS feel |
+| 🟩 | **True tile** | Outline on the tile the *server* has you on, with color/border/fill controls |
+| 🔮 | **Stat orbs** | HP / Prayer / Energy orbs down the minimap's lower-left, numbers always visible |
+| 📈 | **XP drops** | Floating `+N` rows with skill icons plus a tan level-progress tracker, auto-hiding |
+| 🏠 | **Hide roofs** | Roofs everywhere, not only while you stand under them |
+| 🧱 | **Low detail** | RuneLite's Low Detail switch: untextured ground, no decorations, half-size textures |
+| ⇧ | **Shift-click drop** | Hold Shift and left-click an item to drop it, skipping the menu |
+| ⌨ | **Hotkeys** | F-key sidebar tabs, Esc closes interfaces, WASD camera with press-enter-to-chat |
+| 🛡 | **Disable anti-cheat** | ON = the client stops sending legacy mouse/camera/anticheat telemetry (default OFF — leave it OFF on public worlds) |
+| 🚀 | **GPU** *(beta)* | WebGPU render of the 3D world at software-exact parity; falls back on any driver error, reason shown in the panel |
+| 🃏 | **TCG** *(beta)* | Credits from xp, level-ups and kills → 5-card packs (7 tiers, foils, rare apex packs) → a 6,376-card album |
+| ⚙ | **LCLite** | The panel itself: search, favorites, per-mod settings, Alt+drag placement, fullscreen, screenshots |
+
+![The LCLite panel](docs/screens/panel.png)
+
+<sub>The panel in game: one mod's settings at a time, favorites on top, every row a live switch.</sub>
+
+## How it works
 
 RuneLite injects plugins into a running client. A compiled, minified TypeScript
 bundle can't be hot-swapped like that — so LCLite adapts the *idea* instead of
-the mechanism: mods live **out-of-tree** as identity-anchored patch hunks.
+the mechanism.
 
 ```
-upstream clone (pristine)  +  this overlay   →   launcher   →   your modded client
-   ↑ cloned per revision into the launcher's data folder; LCLITE_ROOT points the
-     tools at it, so the overlay stays where you edit it
+pristine upstream clone  +  this overlay  →  apply  →  bun build  →  your client
 ```
 
-- **Hunks are the durable artifact.** Each mod owns a folder under `mods/`:
-  minimal `{find, replace}` anchors + plain code files. On a new rev a hunk
-  either applies clean or names the exact line where its anchor moved.
+- **Hunks are the durable artifact.** A mod is a folder: minimal `{find, replace}`
+  anchors plus plain code files. On a new rev a hunk either applies clean or names
+  the line its anchor moved to.
 - **Ownership is declared, never guessed.** Every added block carries a
-  `lclite:<mod>` marker; the tools route by it with 100% precision.
-- **The contract is boring on purpose.** Settings are `localStorage` keys read
-  at each mod's own hook; the panel discovers mods from a manifest — a new mod
+  `lclite:<mod>` marker, so the tools route by identity with 100% precision.
+- **The contract is boring on purpose.** Settings are `localStorage` keys read at
+  each mod's own hook; the panel discovers mods from a manifest, so a new mod
   folder appears in-game with zero panel edits.
-- **Mods fail alone.** One hunk that can't reseat goes quiet; the panel, the
-  client, and every other mod keep working.
+- **Mods fail alone.** A hunk that can't reseat goes quiet; the client and every
+  other mod keep working.
 
-It is built for players and *designed* for the AI agents who help keep it
-alive: every invariant is machine-checked (`tools/lclite.mjs doctor`), every rule
-lives in a file a bot can read first ([`FOR_AGENTS_README.md`](FOR_AGENTS_README.md)).
+## When Lost City moves on
 
-## Running a custom 2004 server?
-
-Tell LCLite what your project looks like — edit [`root.json`](root.json), the
-one file that declares your repo directories and remotes. Hunks reseat against
-your client's code like any Lost City rev, and your players install mods the
-same double-click way. Authoring guide: [docs/MODS.md](docs/MODS.md).
-
-## Updating when Lost City moves on
-
-In the launcher: select the install, **Update from GitHub** (fast-forwards
-client + engine + content, then re-applies your mods and rebuilds). By hand, from
-an install folder or your own checkout:
+In the launcher: select the install → **Update from GitHub** (fast-forwards
+client, engine and content, re-applies mods, rebuilds). By hand:
 
 ```
-git -C <install>/engine   pull
-git -C <install>/webclient pull
-LCLITE_ROOT=<install> node tools/lclite.mjs     # picker → apply → build
+git -C <install>/webclient pull && git -C <install>/engine pull
+LCLITE_ROOT=<install> node tools/lclite.mjs apply --check   # ✗0 on every mod
+LCLITE_ROOT=<install> node tools/lclite.mjs                 # picker → apply → build
 ```
 
-Clean apply? Play. Failing hunks print `↳ where the anchor moved` — fix the
-`find[]` in that patch JSON, rerun, and
-`LCLITE_ROOT=<install> node tools/regen.mjs` snapshots your reseat so the overlay
-tracks the new rev. Full walkthrough: [CONTRIBUTING.md](CONTRIBUTING.md).
+A failing hunk prints `↳ where the anchor moved`; fix that `find[]`, rerun, then
+`node tools/regen.mjs` snapshots the reseat so the overlay tracks the new rev.
+Full walkthrough: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Custom 2004 server
+
+Tell LCLite what your project looks like by editing [`root.json`](root.json) —
+the one file that declares your repo directories and remotes. Hunks reseat
+against your client's code like any Lost City rev, and your players install mods
+the same double-click way.
+
+## The launcher
+
+```
+LCLite.exe     single Go binary · ~8 MB · static · Windows / Linux / macOS
+```
+
+A front door, not a reimplementation: every mod operation still runs
+`tools/lclite.mjs`, so the overlay stays the single source of truth. It adds the
+revision picker (installs a branch as a self-contained folder, `npm install`
+included), "use an existing folder", the convergent mod list, local-world
+running, and a localhost bridge for joining a Lost City server with **your**
+client.
+
+```sh
+cd launcher && go run build.go     # → dist/LCLite-<os>-<arch>
+```
+
+Design notes, the HTTP API and the known limits: [`launcher/README.md`](launcher/README.md).
+
+## For mod authors & AI agents
+
+- [`docs/MODS.md`](docs/MODS.md) — how to author a mod (TYPE A UI / TYPE B engine
+  / TYPE C entities), the panel↔engine contract, the ideas register.
+- [`FOR_AGENTS_README.md`](FOR_AGENTS_README.md) — the hard rules, and the loop to
+  follow when you're an AI session working on this repo.
+- `node tools/doctor.mjs` — one command that machine-checks the whole overlay
+  (hunk coverage, markers, rev pins, wording drift).
+- `bash tools/acceptance.sh` — the strong gate: pristine clones at the pinned
+  revs + apply must reproduce a live install byte-for-byte, then a
+  strip/re-apply converge round-trip must land on the same bytes.
 
 ## Layout
 
 ```
-lclite/                 ← this repo: the overlay AND the launcher, on its own
-  LCLite.bat            ← players double-click this (→ LCLite.exe)
-  LCLite.exe            ← the launcher (built; see launcher/)
-  launcher/             ← its Go source (stdlib only, one 8 MB binary)
-  tools/lclite.mjs      ← the engine behind it (apply/pick/build/doctor/new)
-  tools/regen.mjs       ← snapshot your source edits into hunks
-  root.json             ← host project layout (edit for custom servers)
-  mods/<name>/          ← one folder per mod: patches/*.json + files/ payload
-  docs/                 ← MODS.md guide, HOOKS map, architecture dossier
-  FOR_AGENTS_README.md  ← hard rules for AI sessions (read this first)
-
-%LOCALAPPDATA%\LCLite\      ← the launcher's data folder (nothing lives here in git)
-  launcher.json         ← installs, saved servers, cached branch list
-  installs/<rev>/       ← webclient/ engine/ content/ (+ lclite/ copy) per revision
-  tools/bun/            ← bun fetched on demand
+LCLite.bat / LCLite.exe   ← what players double-click
+launcher/                 ← its Go source (stdlib only)
+tools/                    ← lclite.mjs (apply/build/doctor) · regen.mjs (hunks) · acceptance.sh
+mods/<name>/              ← patches/*.json + files/ payload + README.md
+docs/                     ← MODS.md guide, HOOKS map, architecture dossier, archive/
+root.json                 ← host project layout (edit for custom servers)
+FOR_AGENTS_README.md      ← read this first if you're an agent
 ```
 
-`tree = f(upstream@rev, overlay)` still holds — the overlay is just no longer
-required to live *inside* the tree it patches.
+Revisions live outside git, in the launcher's data folder
+(`installs/<rev>/{webclient,engine,content}`). `tree = f(upstream@rev, overlay)`
+still holds — the overlay just no longer has to live *inside* the tree it patches.
 
-## Community & status
+## Status
 
-CI runs two canaries weekly and on every PR (pinned upstream revs + `apply --check` +
-structural `doctor`), so mod-breakage is found by robots, not by you on patch day. The
-launcher is built and smoke-tested on every release tag. Issues and PRs welcome — see
-[CONTRIBUTING.md](CONTRIBUTING.md) and [RELEASING.md](RELEASING.md).
+CI runs two canaries weekly and on every PR — pinned revs + `apply --check` +
+structural `doctor` — and the launcher is built and smoke-tested on every release
+tag. Issues and PRs welcome: [CONTRIBUTING.md](CONTRIBUTING.md) ·
+[RELEASING.md](RELEASING.md).
 
 ## Disclaimer
 
-We have not been endorsed by, authorized by, or officially communicated with
-the Lost City team / 2004Scape project. "Lost City" and "2004Scape" are the
-work of their contributors under their own licenses. "RuneLite" is a
-trademark of the RuneLite project — the name "LCLite" and this mod-overlay
-concept are homages only. No game files, assets, or cache data are
-distributed with this repository; you supply your own installation.
+Not endorsed by, authorized by, or affiliated with the Lost City / 2004Scape
+project. "Lost City" and "2004Scape" are the work of their contributors under
+their own licenses; "RuneLite" is a trademark of the RuneLite project — the name
+"LCLite" and this mod-overlay concept are homages only. No game files, assets or
+cache data are distributed with this repository; you supply your own installation.
 
-*☾ — "lite": a crescent moon cradling a lightning bolt over your old favorite
-client.*
+<div align="center"><sub>☾ — “lite”: a crescent moon cradling a lightning bolt over your old favorite client.</sub></div>
