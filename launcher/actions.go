@@ -47,7 +47,7 @@ func (l *Launcher) handleInstall(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		j.logf("")
-		j.logf("%s is ready — press Play to start the server", in.ID)
+		j.logf("%s is ready — press Start to launch the world", in.ID)
 		return nil
 	})
 	ok(w, map[string]any{"job": j.ID})
@@ -223,14 +223,28 @@ func (l *Launcher) handleRemove(w http.ResponseWriter, r *http.Request) {
 		fail(w, fmt.Errorf("stop the server before removing this install"))
 		return
 	}
-	l.store.removeInstall(in.ID)
-	if req.Wipe && !in.Custom {
+	if req.Wipe {
+		// Only a folder this launcher created is ever deleted: a hand-added
+		// folder, or a record pointing somewhere else, must never turn "delete
+		// files" into an os.RemoveAll on somebody's tree.
+		if in.Custom {
+			fail(w, fmt.Errorf("%s is a folder you added by hand — the launcher won't delete it. Take it out of the list, then delete the folder yourself if you want it gone", in.ID))
+			return
+		}
+		if !l.ownsFolder(in.Path) {
+			fail(w, fmt.Errorf("refusing to delete %s — it is outside %s", in.Path, l.installsDir()))
+			return
+		}
+		// Wipe BEFORE forgetting it: a delete that fails (a file still open,
+		// permissions) leaves the row in place to retry, instead of the record
+		// vanishing while the files stay behind.
 		if err := os.RemoveAll(in.Path); err != nil {
-			fail(w, fmt.Errorf("removed from the list, but deleting %s failed: %v", in.Path, err))
+			fail(w, fmt.Errorf("could not delete %s: %v", in.Path, err))
 			return
 		}
 	}
-	ok(w, map[string]any{"removed": in.ID, "wiped": req.Wipe && !in.Custom})
+	l.store.removeInstall(in.ID)
+	ok(w, map[string]any{"removed": in.ID, "wiped": req.Wipe})
 }
 
 // ---- running ----------------------------------------------------------------
@@ -372,6 +386,28 @@ func (l *Launcher) handleQuit(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---- helpers ----------------------------------------------------------------
+
+// installsDir is where the launcher's own installs live. Nothing outside it is
+// ever deleted by the launcher.
+func (l *Launcher) installsDir() string { return filepath.Join(l.dataDir, "installs") }
+
+// ownsFolder reports whether path sits inside the managed installs folder, so
+// "delete files" can never be aimed at a folder the launcher didn't create.
+func (l *Launcher) ownsFolder(path string) bool {
+	root, err := filepath.Abs(l.installsDir())
+	if err != nil {
+		return false
+	}
+	p, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(root, p)
+	if err != nil {
+		return false
+	}
+	return rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
 
 func (l *Launcher) requireInstall(w http.ResponseWriter, id string) *Install {
 	in := l.store.install(id)

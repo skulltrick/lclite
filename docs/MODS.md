@@ -322,6 +322,12 @@ A third-party lclite mod IS just a folder — no new framework:
    engine call; fall back when a cache pack lacks icons/sprites.
 6. target a host with `root.json` (repo dirs/remotes) — patch JSONs reseat per host;
    hunks against Lost City apply as-is to revs near the pinned `generated_from.head`.
+7. one name, one description: add your `MOD_META` entry in `tools/lib.mjs` (the
+   launcher and the CLI picker read `label`/`desc` from there) and make it read
+   exactly like your F1 panel row (`MOD_REGISTRY` in control-panel's panel.js).
+   Two lists with two wordings is how a mod ends up "Smooth shading option" in one
+   place and "Smooth shading" in the other; `node tools/doctor.mjs` prints a note
+   when they drift.
 
 Distributing = publishing a repo with this layout; users point `LCLITE_ROOT` at it or
 drop it beside their repos like any other overlay. A mods *registry* is deliberately

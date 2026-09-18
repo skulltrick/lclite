@@ -33,6 +33,28 @@ const git = (repo, cmd) => {   // probe helper: quiet on failure, null = unknown
     catch { return null; }
 };
 
+// panelRegistry reads the in-game control panel's mod list (name + desc per mod
+// id) straight out of the shipped panel.js, so the wording check below compares
+// against what players actually see. Null when the file isn't there.
+function panelRegistry() {
+    const file = path.join(LIB_DIR, 'mods', 'control-panel', 'files', 'engine', 'public', 'lclite', 'panel.js');
+    let text;
+    try { text = fs.readFileSync(file, 'utf-8'); } catch { return null; }
+    const start = text.indexOf('const MOD_REGISTRY = [');
+    if (start < 0) return null;
+    const end = text.indexOf('\n    ];', start);
+    const block = text.slice(start, end < 0 ? text.length : end);
+    const out = {};
+    // every entry starts at a line beginning `{ id: '`; name/desc are the first
+    // two keys of each, so the first match inside a chunk is the right one
+    for (const chunk of block.split(/\n\s*\{ id: '/).slice(1)) {
+        const id = chunk.slice(0, chunk.indexOf("'"));
+        const q = re => { const m = re.exec(chunk); return m ? (m[1] !== undefined ? m[1] : m[2]) : ''; };
+        out[id] = { name: q(/name: '([^']*)'|name: "([^"]*)"/), desc: q(/desc: '([^']*)'|desc: "([^"]*)"/) };
+    }
+    return out;
+}
+
 // ---- 1. per-mod install state + corpus stats --------------------------------
 const MARKER = /lclite:([a-z][a-z0-9-]*)/;
 const regions = new Map();      // file -> [{mod, note, start, len}] in PRISTINE line space
@@ -97,6 +119,28 @@ for (const mod of mods) {
     }
 }
 
+// ---- 1c. one name per mod: MOD_META vs the in-game panel --------------------
+// The launcher and the CLI picker show label/desc from MOD_META; players read
+// the same mods in the F1 panel's Mods tab (control-panel's MOD_REGISTRY). Two
+// lists with two wordings is how a mod ends up called "Smooth shading option" in
+// one place and "Smooth shading" in the other, so say it out loud. Wording is
+// cosmetic: a note, never an exit code.
+{
+    const panel = panelRegistry();
+    if (panel) {
+        for (const mod of mods) {
+            const p = panel[mod.name];
+            if (!p) continue;
+            const m = meta(mod.name);
+            if (p.name && p.name !== m.label) {
+                notes.push(`wording: mods/${mod.name} is "${p.name}" in the F1 panel but "${m.label}" in tools/lib.mjs MOD_META (the launcher + picker show MOD_META) — make them identical`);
+            } else if (p.desc && p.desc !== m.desc) {
+                notes.push(`wording: mods/${mod.name}'s description differs between the F1 panel and MOD_META ("${p.desc}" vs "${m.desc}") — make them identical`);
+            }
+        }
+    }
+}
+
 // ---- 2. A3: hunk apply-safety geometry (pristine line space) ----------------
 // Regen guarantees disjoint find windows EXCEPT shared edge context, and anchors
 // match by TEXT (indexOf), so what actually breaks a sibling is a hunk whose
@@ -132,11 +176,13 @@ for (const [file, list] of regions) {
                     `(the launcher keeps them under its data folder, e.g. .../LCLite/installs/289), ` +
                     `or open LCLite.exe and use the dashboard.`;
         if (asJson) {
-            console.log(JSON.stringify({ ok: false, exit: 3, root: ROOT, error: 'no host tree', hint: msg }, null, 1));
+            console.log(JSON.stringify({ ok: false, exit: 3, root: ROOT, error: 'no host tree', notes, hint: msg }, null, 1));
         } else {
             console.log(`lclite doctor — ${ROOT}`);
             console.log('');
             console.log('  ' + msg);
+            // overlay-level notes (wording drift) don't need a host tree to be useful
+            for (const n of notes) console.log(`\n  [note] ${n}`);
         }
         process.exit(3);
     }
@@ -202,7 +248,7 @@ const exitDrift = (anyDrift || anyMissing || issues.some(i => i.sev === 'drift')
 const code = exitStruct || exitDrift;   // structural outranks drift: fix order matters
 
 if (asJson) {
-    console.log(JSON.stringify({ ok: code === 0, exit: code, corpus: report.corpus, mods: report.mods, revs: report.revs, overlaps: report.overlaps, issues }, null, 1));
+    console.log(JSON.stringify({ ok: code === 0, exit: code, corpus: report.corpus, mods: report.mods, revs: report.revs, overlaps: report.overlaps, notes, issues }, null, 1));
 } else {
     console.log(`lclite doctor — ${ROOT}`);
     const c = report.corpus;

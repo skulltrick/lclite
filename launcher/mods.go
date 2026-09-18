@@ -18,10 +18,27 @@ type ModInfo struct {
 
 var (
 	reModEntry = regexp.MustCompile(`(?m)^\s{4}'([^']+)':\s*\{([^}]*)\}`)
-	reModLabel = regexp.MustCompile(`label:\s*'([^']*)'`)
-	reModDesc  = regexp.MustCompile(`desc:\s*'([^']*)'`)
+	// label/desc may be written with either quote style — the F1 panel's own
+	// wording is mirrored here, and an apostrophe in a description ("player's
+	// true server tile") forces double quotes.
+	reModLabel = regexp.MustCompile(`label:\s*(?:'([^']*)'|"([^"]*)")`)
+	reModDesc  = regexp.MustCompile(`desc:\s*(?:'([^']*)'|"([^"]*)")`)
 	reModReq   = regexp.MustCompile(`required:\s*true`)
 )
+
+// quoted returns whichever capture group the alternation matched.
+func quoted(m []string) string {
+	if m == nil {
+		return ""
+	}
+	if m[1] != "" {
+		return m[1]
+	}
+	if len(m) > 2 {
+		return m[2]
+	}
+	return ""
+}
 
 // overlayPresent reports whether a HOST root has an overlay in it
 // (<root>/lclite/tools/lclite.mjs), i.e. the old "lclite/ inside the checkout" shape.
@@ -84,7 +101,11 @@ func listModsFromOverlay(overlay string) []ModInfo {
 		}
 		out = append(out, info)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	// Sorted by the name players read, like the F1 panel's Mods tab does — the
+	// folder name is an implementation detail ('control-panel' is "LCLite").
+	sort.Slice(out, func(i, j int) bool {
+		return strings.ToLower(out[i].Label) < strings.ToLower(out[j].Label)
+	})
 	return out
 }
 
@@ -126,12 +147,10 @@ func parseModMeta(libPath string) map[string]ModInfo {
 	block := text[start : start+end]
 	for _, m := range reModEntry.FindAllStringSubmatch(block, -1) {
 		info := ModInfo{Name: m[1], Label: m[1]}
-		if lm := reModLabel.FindStringSubmatch(m[2]); lm != nil {
-			info.Label = lm[1]
+		if l := quoted(reModLabel.FindStringSubmatch(m[2])); l != "" {
+			info.Label = l
 		}
-		if dm := reModDesc.FindStringSubmatch(m[2]); dm != nil {
-			info.Desc = dm[1]
-		}
+		info.Desc = quoted(reModDesc.FindStringSubmatch(m[2]))
 		info.Required = reModReq.MatchString(m[2])
 		out[m[1]] = info
 	}

@@ -67,7 +67,10 @@
   .chip.bad{color:var(--bad);border-color:#4a2f2c;background:#211413}
   .chip.bad{cursor:pointer}
 
-  main.grid{display:grid;grid-template-columns:minmax(320px,.92fr) minmax(430px,1.28fr);gap:16px;padding:16px;align-items:start}
+  /* Left column = set up (revisions, installs, mods) and now carries the most
+     content, so it gets the wider track; the right column is two compact cards
+     (Server, Join server) that want to stay narrow and tall. */
+  main.grid{display:grid;grid-template-columns:minmax(420px,1.12fr) minmax(360px,.88fr);gap:16px;padding:16px;align-items:start}
   @media (max-width:1000px){main.grid{grid-template-columns:1fr}}
   section.panel{background:linear-gradient(180deg,#1c1815,#181512);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
   section.panel + section.panel{margin-top:16px}
@@ -116,7 +119,7 @@
   .install:hover{background:#221e1a}
   .install.on{border-color:#7a6526;background:linear-gradient(180deg,#26200f,#1d1913)}
   .install .name{font-family:var(--mono);font-size:13.5px}
-  .install .path{font-family:var(--mono);font-size:11px;color:var(--dim2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}
+  .install .path{font-family:var(--mono);font-size:11px;color:var(--dim2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .pill{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
   .pill.good{color:var(--good);border-color:#36462c}
   .pill.mods{color:var(--accent);border-color:#5b4a20}
@@ -124,6 +127,8 @@
   /* ---------- cards in detail ---------- */
   .card{border:1px solid var(--line-soft);border-radius:11px;padding:12px;background:var(--panel2);margin-bottom:10px}
   .card:last-child{margin-bottom:0}
+  .card.selcard{border-left:3px solid var(--accent-dim)}
+  .card .cap{font-size:10.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--dim2);margin-bottom:5px}
   .card h3{margin:0 0 6px;font-size:14px;display:flex;align-items:center;gap:8px}
   .card h3 .grow{flex:1}
   .path{font-family:var(--mono);font-size:11.5px;color:var(--dim2);word-break:break-all}
@@ -152,12 +157,11 @@
   .modcheck{width:15px;height:15px;margin-top:3px;border-radius:4px;flex:0 0 auto;display:grid;place-items:center;
     background:linear-gradient(180deg,#d3ab55,#a98531);color:#241d0e;font-size:11px;font-weight:700;
     box-shadow:0 0 0 1px #6b5a2488}
-  .modrow.req .mname::after{content:" · always on";color:var(--accent);font-size:11.5px}
+  .modrow.req .mname::after{content:" · required";color:var(--accent)}
   button.primary.dirty{animation:glow 1.6s ease-in-out infinite}
   @keyframes glow{50%{box-shadow:0 0 0 1px #e6bb6366,0 0 16px #e6bb6333}}
   .modrow .mname{font-size:13px}
   .modrow .mdesc{color:var(--dim2);font-size:11.5px}
-  .modrow.req .mname::after{content:" · required";color:var(--accent)}
   .modlist{max-height:320px;overflow:auto;padding-right:6px;scrollbar-width:thin}
   .modlist .more{color:var(--dim2);font-size:11.5px;padding-top:6px;text-align:center}
 
@@ -258,7 +262,10 @@ let folder = "";
 // Section signatures: a poll must never stomp on what you're doing (tick boxes,
 // typed ports, a selected checkbox), so each block re-renders only when the
 // data behind it actually changed.
-let sig = { revs: "", installs: "", detail: "" };
+let sig = { revs: "", installs: "", mods: "" };
+// How many mod rows the panel shows before it scrolls (fitModList measures the
+// real rows, so this is a count, not a pixel height).
+const MOD_ROWS = 6;
 
 /* ---------------------------------------------------------------- plumbing */
 async function api(path, body) {
@@ -342,7 +349,7 @@ function render(){
   const want = showWizard ? "wizard" : "main";
   if ($("root").dataset.view !== want) {
     $("root").dataset.view = want;
-    sig = { revs: "", installs: "", detail: "" };
+    sig = { revs: "", installs: "", mods: "" };
     sigWiz = "";
     $("root").innerHTML = showWizard ? wizardHTML() : mainHTML();
     if (showWizard) renderWizard(); else { renderMain(true); wireRevScroll(); fitModList(); }
@@ -366,7 +373,7 @@ let sigWiz = "";
 function renderWizard(){
   const b = $("wbody");
   if (!b) return;
-  // Pressing Play at the end of setup is the last step, not a dead end: once the
+  // Pressing Start at the end of setup is the last step, not a dead end: once the
   // world answers, move the user on to the launcher itself (after a beat, so the
   // "your world is up" state is visible).
   if (wiz.step === DONE && wiz.autoFinish && !wiz.leaving && S.engine && S.engine.state === "running") {
@@ -525,7 +532,7 @@ function renderWizard(){
           <div style="width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#1f2a17;border:1px solid #3d4a2e;color:var(--good);font-size:24px">✓</div>
           <div>
             <h1 class="wtitle">You're ready.</h1>
-            <p class="wlede" style="margin:0">${esc(wiz.rev || "")} is installed and built. Press play to start the world and open the client —
+            <p class="wlede" style="margin:0">${esc(wiz.rev || "")} is installed and built. Press Start to launch the world and open the client —
             and the launcher itself opens once your world is up.</p>
           </div>
         </div>
@@ -536,7 +543,7 @@ function renderWizard(){
           <div class="row wrap" style="margin-top:12px;align-items:flex-end">
             ${eng.state === "running"
               ? `<button class="primary big" onclick="openClient()">Open the client →</button><button onclick="stopServer()">Stop the world</button>`
-              : `<button class="primary big" onclick="playFromWizard()">Play ${esc(wiz.rev || "")} →</button>
+              : `<button class="primary big" onclick="playFromWizard()">Start ${esc(wiz.rev || "")} →</button>
                  <div style="max-width:120px"><label class="f" style="margin-top:0">Web port</label>
                    <input type="number" id="wizport" min="1" max="65535" value="${eng.port || 80}"></div>`}
           </div>
@@ -666,9 +673,10 @@ function mainHTML(){
 
         <section class="panel">
           <h2>Installs<span class="grow"></span>
-            ${(S.installs || []).length ? `<span class="chip ok">${(S.installs || []).length} ready</span>` : ""}</h2>
-          <div class="sub">everything you've set up, ready to launch</div>
+            ${(S.installs || []).length ? `<span class="chip ok">${(S.installs || []).length} installed</span>` : ""}</h2>
+          <div class="sub">your installed revisions — pick one and its mods appear below</div>
           <div id="installs">${installRows()}</div>
+          <div id="installcard">${installCardHTML()}</div>
           <details class="block">
             <summary>Use an existing folder instead</summary>
             <div class="inner">
@@ -681,14 +689,14 @@ function mainHTML(){
             </div>
           </details>
         </section>
+
+        <section class="panel">
+          <h2>LCLite mods<span class="grow"></span></h2>
+          <div id="mods">${modsHTML()}</div>
+        </section>
       </div>
 
       <div>
-        <section class="panel">
-          <h2 id="detailtitle">Install</h2>
-          <div id="detail">${detailHTML()}</div>
-        </section>
-
         <section class="panel">
           <h2>Server<span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">this machine</span></h2>
           ${serverHTML()}
@@ -749,6 +757,15 @@ function revRows(){
   }).join("");
 }
 
+// Rows show the TAIL of the path: the folder name is the informative part, and
+// truncating the head makes every install look identical (the row's tooltip
+// carries the whole path).
+function tailPath(p, max){
+  const s = String(p == null ? "" : p);
+  const n = max || 46;
+  return s.length <= n ? s : "…" + s.slice(s.length - n + 1);
+}
+
 function installRows(){
   const list = S.installs || [];
   if (!list.length) return `<div class="empty">Nothing here yet — pick a revision above and we'll do the rest.</div>`;
@@ -759,8 +776,10 @@ function installRows(){
         <span class="name">${esc(i.id)}</span>
         ${i.missing ? '<span class="tag off" title="this folder is gone — remove it from the list">missing</span>' : ""}
         ${i.custom ? '<span class="tag off">existing folder</span>' : ""}
-        ${i.missing ? "" : (i.mods_allowed ? `<span class="pill mods">${(i.mods || []).length || 0} mods</span>` : "")}
-        ${i.missing ? "" : (i.engine_deps ? `<span class="pill good">ready</span>` : `<span class="pill">needs setup</span>`)}
+        ${i.missing ? "" : (i.mods_allowed ? `<span class="pill mods" title="${(i.mods || []).length || 0} of the available mods are built into this install">${(i.mods || []).length ? `${(i.mods || []).length} mods` : "no mods yet"}</span>` : "")}
+        ${i.missing ? "" : (i.engine_deps
+          ? '<span class="pill good" title="the engine\'s dependencies are installed — this install can start">ready</span>'
+          : '<span class="pill" title="the engine\'s dependencies are not installed yet — install this revision again to finish setup">setup incomplete</span>')}
         <span class="grow"></span>
         <span class="acts">
           <button class="ghost" title="take it out of this list — nothing is deleted from disk" onclick="event.stopPropagation();removeInstall('${esc(i.id)}', false)">Remove</button>
@@ -768,7 +787,7 @@ function installRows(){
             ${i.custom ? "disabled" : ""} onclick="event.stopPropagation();removeInstall('${esc(i.id)}', true)">Delete files</button>
         </span>
       </div>
-      <div class="path">${esc(i.path)}</div>
+      <div class="path" title="${esc(i.path)}">${esc(tailPath(i.path))}</div>
     </div>`).join("");
 }
 
@@ -778,7 +797,7 @@ function currentInstall(){ return (S.installs || []).find(i => i.id === sel) || 
 let modsBase = [];
 
 function modSelection(){
-  return [...document.querySelectorAll("#detail [data-mod]")]
+  return [...document.querySelectorAll("#mods [data-mod]")]
     .filter(el => el.dataset.required === "1" || el.checked)
     .map(el => el.dataset.mod)
     .sort();
@@ -797,9 +816,15 @@ function refreshModsDirty(){
   }
 }
 
-function detailHTML(){
+// The selected install: what it is, how it's doing, and the two git-level jobs
+// (update / rebuild). It sits under the install list because it describes the
+// row you picked — the everyday things (Start, mods) have panels of their own.
+function installCardHTML(){
   const i = currentInstall();
-  if (i && i.missing) {
+  if (!i) {
+    return `<div class="empty">${(S.installs || []).length ? "Pick an install above." : "Install a revision and it shows up here — mods, server, housekeeping."}</div>`;
+  }
+  if (i.missing) {
     return `
       <div class="card" style="border-color:#5a3630;background:linear-gradient(180deg,#241816,#1d1413)">
         <h3 style="color:var(--bad)">This folder is gone</h3>
@@ -809,20 +834,6 @@ function detailHTML(){
         <button style="margin-top:10px" onclick="removeInstall('${esc(i.id)}', false)">Remove from the list</button>
       </div>`;
   }
-  if (!i) {
-    const hasAny = (S.installs || []).length;
-    return `<div class="empty">${hasAny ? "Pick an install on the left." : "Install a revision and it shows up here — mods, server, housekeeping."}</div>`;
-  }
-  const chosen = new Set((i.mods && i.mods.length) ? i.mods : (i.mods_available || []).map(m => m.name));
-  // lib.mjs descriptions end in "— required"; the row already says "always on".
-  const blurb = d => String(d || "").replace(/\s*[—–-]\s*required\b.*$/i, "").trim();
-  const mods = (i.mods_available || []).map(m => `
-    <div class="modrow ${m.required ? "req" : ""}">
-      ${m.required
-        ? `<span class="modcheck" data-mod="${esc(m.name)}" data-required="1" title="always included">✓</span>`
-        : `<input type="checkbox" data-mod="${esc(m.name)}" ${chosen.has(m.name) ? "checked" : ""}>`}
-      <div><div class="mname">${esc(m.label)}</div><div class="mdesc">${esc(blurb(m.desc))}</div></div>
-    </div>`).join("");
   const facts = [
     i.has_client ? "client ✓" : "client ✗",
     i.has_engine ? "engine ✓" : "engine ✗",
@@ -831,47 +842,74 @@ function detailHTML(){
     i.client_bundle ? "bundle ✓" : "bundle ✗"
   ].join(" · ");
   return `
-    <div class="card">
+    <div class="card selcard">
+      <div class="cap">Selected install</div>
       <h3>${esc(i.rev_label || i.id)} ${i.custom ? '<span class="tag off">existing folder</span>' : ""}
-        <span class="grow"></span>${i.mods_allowed ? '<span class="pill good">mods ready</span>' : ""}</h3>
-      <div class="path">${esc(i.path)}</div>
-      <div class="hint">${facts}${i.built_at && !i.built_at.startsWith("0001") ? " · built " + ago(i.built_at) : ""}</div>
-      <div class="row wrap" style="margin-top:11px">
-        <button onclick="updateInstall()" ${i.custom ? "disabled" : ""}>Update from GitHub</button>
-        <button onclick="buildOnly()">Rebuild client</button>
+        <span class="grow"></span>${i.engine_deps
+          ? '<span class="pill good" title="the engine\'s dependencies are installed — this install can start">ready</span>'
+          : '<span class="pill" title="the engine\'s dependencies are not installed yet">setup incomplete</span>'}</h3>
+      ${i.engine_deps ? "" : `<div class="hint" style="margin-top:2px">The engine's dependencies aren't installed here yet, so
+        <b>Start</b> would fail — ${i.custom
+          ? `run <span class="path">npm install</span> in its <span class="path">engine/</span> folder to finish it.`
+          : `<b>Update from GitHub</b> below installs them.`}</div>`}
+      <div class="row wrap" style="margin-top:9px">
+        <button onclick="updateInstall()" ${i.custom ? "disabled" : ""}
+          title="pull the newest upstream code into this install, then re-apply your mods">Update from GitHub</button>
+        <button onclick="buildOnly()" title="re-apply the mods and rebuild the client bundle">Rebuild client</button>
       </div>
+      <details class="block"><summary>What's in this install</summary>
+        <div class="inner">
+          <div class="path">${esc(i.path)}</div>
+          <div class="hint" style="margin-top:6px">${facts}${i.built_at && !i.built_at.startsWith("0001") ? " · built " + ago(i.built_at) : ""}</div>
+          <div class="hint"><b>webclient/</b> the browser client · <b>engine/</b> the world · <b>content/</b> game data${i.has_overlay ? " · <b>lclite/</b> the mod overlay" : ""}.
+          <b>Update from GitHub</b> is the safe way to move this install forward; it refuses if you have local changes.</div>
+        </div>
+      </details>
+    </div>`;
+}
+
+// Mods for the selected install. Own panel, under the install list: the right
+// column leads with the things you press every day (Start, Join server).
+function modsHTML(){
+  const i = currentInstall();
+  if (!i) {
+    return `<div class="empty">${(S.installs || []).length ? "Pick an install above — its mods show up here." : "Install a revision and its mods show up here."}</div>`;
+  }
+  if (i.missing) {
+    return `<div class="note" style="margin-top:0">This install's folder is gone, so there is nothing to mod — take it out of the list above.</div>`;
+  }
+  if (!i.mods_allowed) {
+    return `<div class="note" style="margin-top:0">${i.has_overlay
+      ? `LCLite's mods are anchored to revision ${esc(S.overlay_rev || "289")} — this install is ${esc(i.rev_label || "?")}, so they stay off.`
+      : `No LCLite overlay in this install, so there are no mods to switch on — LCLite's mods live in the ${esc(S.overlay_rev || "289")} install.`}</div>`;
+  }
+  const chosen = new Set((i.mods && i.mods.length) ? i.mods : (i.mods_available || []).map(m => m.name));
+  const mods = (i.mods_available || []).map(m => `
+    <div class="modrow ${m.required ? "req" : ""}">
+      ${m.required
+        ? `<span class="modcheck" data-mod="${esc(m.name)}" data-required="1" title="always included">✓</span>`
+        : `<input type="checkbox" data-mod="${esc(m.name)}" ${chosen.has(m.name) ? "checked" : ""}>`}
+      <div><div class="mname">${esc(m.label)}</div><div class="mdesc">${esc(m.desc)}</div></div>
+    </div>`).join("");
+  const n = (i.mods_available || []).length;
+  return `
+    <div class="sub" style="margin:0 0 8px">For <b>${esc(i.rev_label || i.id)}</b> — tick what you want, then apply. Unticked mods are
+      stripped back to upstream.${i.overlay_source === "checkout" ? ` These come from <span class="path">${esc(i.overlay_path || "")}</span>, so edits there apply straight away.` : ""}</div>
+    <div class="row wrap">
+      <button class="primary" id="applymods" onclick="applyMods()">Apply mods &amp; build</button>
+      <button onclick="stripMods()" title="take every mod off and leave the upstream client">Strip all mods</button>
+      <span class="note" id="modsdirty" style="display:none;margin:0 0 0 4px">Not applied yet — the client still has the old set.</span>
     </div>
-    <div class="card">
-      <h3>LCLite mods <span class="grow"></span>
-        ${i.overlay_source === "checkout" ? `<span class="chip" style="text-transform:none;letter-spacing:0" title="${esc(i.overlay_path || "")}">from your checkout</span>` : ""}
-        ${i.overlay_source === "install" ? '<span class="chip" style="text-transform:none;letter-spacing:0" title="the copy cloned into this install">from install copy</span>' : ""}
-        <span class="chip" style="text-transform:none;letter-spacing:0">${(i.mods_available || []).length} available</span></h3>
-      ${i.mods_allowed
-        ? `<div class="sub" style="margin:0 0 6px">Tick what you want, then apply — unticked mods are stripped back to upstream. Nothing ticked = the full default set.
-             ${i.overlay_source === "checkout" ? `Mods come from <span class="path">${esc(i.overlay_path || "")}</span>, so edits there apply straight away.` : ""}</div>
-           <div class="modlist" onchange="refreshModsDirty()">${mods || '<div class="empty">no mods found in lclite/mods</div>'}</div>
-           ${(i.mods_available || []).length > 3 ? `<div class="more">showing 3 of ${(i.mods_available || []).length} — scroll the list for the rest</div>` : ""}
-           <div class="row wrap" style="margin-top:10px">
-             <button class="primary" id="applymods" onclick="applyMods()">Apply mods &amp; build</button>
-             <button onclick="stripMods()">Strip all mods</button>
-           </div>
-           <div class="note" id="modsdirty" style="display:none">Not applied yet — the client still has the old set.</div>
-           <details class="block"><summary>Something's broken? Reset to pristine</summary>
-             <div class="inner hint">Throws away every local change in webclient/ and engine/ with git — the blunt repair for a tree that drifted. Use <b>Strip all mods</b> for ordinary mod removal.</div>
-             <button class="danger" style="margin-top:9px" onclick="revertMods()">Reset to pristine</button>
-           </details>`
-        : `<div class="note">${i.has_overlay
-            ? `LCLite's hunks are anchored to revision ${esc(S.overlay_rev || "289")} — this install is ${esc(i.rev_label || "?")}, so mods stay off.`
-            : "No lclite/ folder in this install. Copy your lclite/ folder next to webclient/ and engine/ to enable mods."}</div>`}
-    </div>
-  `;
+    <div class="modlist" onchange="refreshModsDirty()" style="margin-top:9px">${mods || '<div class="empty">no mods found in lclite/mods</div>'}</div>
+    ${n > MOD_ROWS ? `<div class="more">showing ${MOD_ROWS} of ${n} — scroll the list for the rest</div>` : ""}
+    <details class="block"><summary>Something's broken? Reset to pristine</summary>
+      <div class="inner hint">Throws away every local change in webclient/ and engine/ with git — the blunt repair for a tree that drifted. Use <b>Strip all mods</b> for ordinary mod removal.</div>
+      <button class="danger" style="margin-top:9px" onclick="revertMods()">Reset to pristine</button>
+    </details>`;
 }
 
 function serverHTML(){
   const e = S.engine || {};
-  const state = e.state || "stopped";
-  const port = parseInt($("port") ? $("port").value : "0", 10) || (e.port || 80);
-  const liveURL = `http://localhost${e.port == 80 ? "" : ":" + (e.port || 0)}/rs2.cgi`;
   return `
     <div class="card">
       <div class="status"><span class="dot" id="sdot"></span><span id="serverstatus"></span></div>
@@ -881,39 +919,51 @@ function serverHTML(){
             style="max-width:104px;font-family:var(--mono);text-align:center" oninput="this.dataset.touched=1"></div>
         <div><label class="f">&nbsp;</label>
           <div class="row">
-            <button class="primary" style="flex:1" id="playbtn" onclick="play()">Play${sel ? " " + esc(sel) : ""}</button>
+            <button class="primary" style="flex:1" id="playbtn" onclick="play()">Start</button>
             <button id="stopbtn" onclick="stopServer()">Stop</button>
           </div>
         </div>
       </div>
-      <div class="hint">Starts <span class="path">npm run quickstart</span> inside the selected install's engine folder. Two revisions can run at once — the launcher moves the game and management ports out of the way.</div>
+      <div class="hint">Starts the install you picked on the left, then opens the client once the world is up.</div>
+      <details class="block"><summary>Ports &amp; running two worlds</summary>
+        <div class="inner hint">Runs <span class="path">npm run quickstart</span> inside that install's engine folder. The engine takes three
+        ports — the web port above, the game port (43594) and the setup page (8898) — and the launcher moves the last two out of the way if
+        they're taken, which is how two revisions can run side by side. The first boot repacks the game cache and can take a minute.</div>
+      </details>
     </div>`;
 }
 
 // Joining someone else's world is a different job from running your own, so it
 // gets its own panel instead of being a footnote under the local server.
+// The everyday path is one field and one button; the bridge port and whose
+// client to serve are real choices but not first-run ones, so they fold away.
 function joinHTML(){
-  const p = S.proxy || {};
   return `
     <div class="card">
-      <h3>Play on another Lost City server <span class="grow"></span>${p.running ? '<span class="pill good">bridging</span>' : '<span class="pill">bridge</span>'}</h3>
       <label class="f">Server address</label>
       <input type="text" id="remoteurl" placeholder="play.example.com:443">
       <div class="hint" style="margin-top:5px">Hostname, IP or full URL — <span class="path">192.168.1.20:8888</span> and <span class="path">https://play.example.com</span> both work.</div>
-      <div class="grid2">
-        <div><label class="f">Bridge port</label><input type="number" id="proxyport" min="1" max="65535" value="${S.proxy_port || 8890}"></div>
-        <div><label class="f">Serve my build</label>
-          <select id="proxylocal">
-            <option value="0">no — use their client</option>
-            <option value="1">yes — my client, their world</option>
-          </select></div>
-      </div>
       <div class="row wrap" style="margin-top:11px">
         <button class="primary" id="bridgebtn" onclick="startProxy()">Bridge &amp; play</button>
         <button onclick="openDirect()">Open directly</button>
         <button id="stopbridgebtn" onclick="stopProxy()">Stop bridge</button>
       </div>
-      <div class="hint">The client dials whatever host served it, so the bridge tunnels both the page and the game socket to that address. <b>Serve my build</b> swaps in your own built client, which is how your mods follow you onto someone else's world. A server that pins <b>allowedOrigin</b> can refuse a bridged socket — open it directly instead.</div>
+      <div class="hint" id="bridgehint"></div>
+      <details class="block"><summary>Advanced — bridge port and whose client to serve</summary>
+        <div class="inner">
+          <div class="grid2">
+            <div><label class="f">Bridge port</label><input type="number" id="proxyport" min="1" max="65535" value="${S.proxy_port || 8890}"></div>
+            <div><label class="f">Serve my build</label>
+              <select id="proxylocal">
+                <option value="0">no — use their client</option>
+                <option value="1">yes — my client, their world</option>
+              </select></div>
+          </div>
+          <div class="hint">The client dials whatever host served it, so the bridge tunnels both the page and the game socket to that address.
+          <b>Serve my build</b> swaps in your own built client, which is how your mods follow you onto someone else's world.
+          A server that pins <b>allowedOrigin</b> can refuse a bridged socket — open it directly instead.</div>
+        </div>
+      </details>
     </div>`;
 }
 
@@ -958,37 +1008,44 @@ function wireRevScroll(){
   list.scrollTop = revStep * revRowStep(list);
 }
 
-// Three mods at a time: measure the real rows instead of guessing at a height.
+// Six mods at a time: measure the real rows instead of guessing at a height.
 function fitModList(){
-  const list = document.querySelector("#detail .modlist");
+  const list = document.querySelector("#mods .modlist");
   if (!list) return;
   const rows = [...list.children].filter(c => c.classList.contains("modrow"));
-  if (rows.length <= 3) { list.style.maxHeight = "none"; return; }
-  list.style.maxHeight = (rows[2].offsetTop + rows[2].offsetHeight - rows[0].offsetTop) + "px";
+  if (rows.length <= MOD_ROWS) { list.style.maxHeight = "none"; return; }
+  list.style.maxHeight = (rows[MOD_ROWS - 1].offsetTop + rows[MOD_ROWS - 1].offsetHeight - rows[0].offsetTop) + "px";
 }
 
 function renderMain(force){
   const sRevs = JSON.stringify((S.revs || []).map(r => [r.name, r.recommended, r.engine, r.content]))
     + "|" + S.overlay_rev + "|" + JSON.stringify((S.installs || []).map(i => [i.id, i.rev_label, i.engine_deps, i.mods_allowed]));
-  const sInstalls = JSON.stringify((S.installs || []).map(i => [i.id, i.path, i.custom, i.engine_deps, i.mods_allowed, (i.mods || []).length])) + "|" + sel;
+  // The install list and the card under it describe the same rows, so they share
+  // one signature; the mods panel gets its own (it is the one block a poll must
+  // never rebuild while you are ticking boxes).
+  const sInstalls = JSON.stringify((S.installs || []).map(i => [i.id, i.path, i.custom, i.missing, i.rev_label,
+    i.engine_deps, i.mods_allowed, (i.mods || []).length, i.built_at, i.has_overlay, i.has_client, i.has_engine, i.client_bundle])) + "|" + sel;
   const cur = currentInstall();
-  const sDetail = JSON.stringify(cur ? [cur.id, cur.path, cur.rev_label, cur.custom, cur.mods_allowed, cur.has_overlay,
-    cur.built_at, cur.mods, cur.mods_available && cur.mods_available.length] : null);
+  const sMods = JSON.stringify(cur ? [cur.id, cur.rev_label, cur.missing, cur.mods_allowed, cur.has_overlay,
+    cur.overlay_source, cur.overlay_path, cur.mods, (cur.mods_available || []).length] : null) + "|" + S.overlay_rev;
 
   if (force || sRevs !== sig.revs) { sig.revs = sRevs; const el = $("revlist"); if (el) el.innerHTML = revRows(); wireRevScroll(); }
-  if (force || sInstalls !== sig.installs) { sig.installs = sInstalls; const el = $("installs"); if (el) el.innerHTML = installRows(); }
-  if (force || sDetail !== sig.detail) {
-    sig.detail = sDetail;
-    const el = $("detail");
+  if (force || sInstalls !== sig.installs) {
+    sig.installs = sInstalls;
+    const el = $("installs"); if (el) el.innerHTML = installRows();
+    const card = $("installcard"); if (card) card.innerHTML = installCardHTML();
+  }
+  if (force || sMods !== sig.mods) {
+    sig.mods = sMods;
+    const el = $("mods");
     if (el) {
       const i = currentInstall();
       modsBase = i ? ((i.mods && i.mods.length) ? i.mods.slice() : (i.mods_available || []).map(m => m.name)) : [];
-      el.innerHTML = detailHTML();
+      el.innerHTML = modsHTML();
       fitModList();
       refreshModsDirty();
     }
   }
-  const dt = $("detailtitle"); if (dt) dt.textContent = sel ? "Install · " + sel : "Install";
 
   renderServerLive();
   const js = $("jobstatus");
@@ -1015,6 +1072,12 @@ function renderServerLive(){
   const sb = $("stopbtn"); if (sb) sb.disabled = !(state === "running" || state === "starting");
   const bb = $("bridgebtn"); if (bb) bb.disabled = !!p.running;
   const sbb = $("stopbridgebtn"); if (sbb) sbb.disabled = !p.running;
+  // The bridge has no card title to carry its state any more, so say it here —
+  // and say it live, or the panel claims "not bridging" while it is.
+  const bh = $("bridgehint");
+  if (bh) bh.innerHTML = p.running
+    ? `<span class="pill good">bridging</span> ${esc(p.target || "")} — <a href="${p.url || "#"}" target="_blank">open your client</a>`
+    : "Not bridging. <b>Bridge &amp; play</b> gives a remote server a localhost address so your browser can reach it.";
   const port = $("port");
   if (port && !port.dataset.touched && (state === "running" || state === "starting") && e.port) port.value = e.port;
 }
@@ -1026,7 +1089,7 @@ async function install(rev){
   const r = await act(() => api("install", { rev, client: true, overlay: rev === S.overlay_rev }), "install");
   if (!r) return;
   const job = await waitForJob(r.job);
-  if (job.status === "ok") { sel = rev; toast(`${rev} is ready — press Play.`, "good"); }
+  if (job.status === "ok") { sel = rev; toast(`${rev} is ready — press Start.`, "good"); }
   else toast(job.err || "install failed", "bad");
   await refresh();
 }
@@ -1052,9 +1115,7 @@ async function openClient(){
 }
 async function applyMods(){
   const i = currentInstall(); if (!i) return;
-  const mods = [...document.querySelectorAll('#detail [data-mod]')]
-    .filter(el => el.dataset.required === "1" || el.checked)
-    .map(el => el.dataset.mod);
+  const mods = modSelection();
   toast(`Applying ${mods.length} mods and rebuilding…`);
   const r = await act(() => api("apply", { id: i.id, mods }), "apply");
   if (!r) return;
@@ -1066,12 +1127,21 @@ async function revertMods(){ const i = currentInstall(); if (!i) return; const r
 async function stripMods(){ const i = currentInstall(); if (!i) return; const r = await act(() => api("strip", { id: i.id }), "strip"); if (r) toast("Every mod is off — back to upstream."); await refresh(); }
 async function buildOnly(){ const i = currentInstall(); if (!i) return; const r = await act(() => api("build", { id: i.id }), "build"); if (r) await waitForJob(r.job); await refresh(); }
 async function updateInstall(){ const i = currentInstall(); if (!i) return; const r = await act(() => api("update", { id: i.id }), "update"); if (r) { await waitForJob(r.job); toast("Updated from GitHub."); } await refresh(); }
-async function removeInstall(wipe){
-  const i = currentInstall(); if (!i) return;
-  if (wipe && !confirm("Delete " + i.path + " from disk?")) return;
-  await act(() => api("remove", { id: i.id, wipe }), "remove");
+// id first, then wipe: the row's own buttons pass both, so clicking "Delete
+// files" on 254 can never act on whichever install happens to be selected.
+async function removeInstall(id, wipe){
+  const i = (S.installs || []).find(x => x.id === id) || currentInstall();
+  if (!i) { toast("That install is already gone.", "bad"); await refresh(); return; }
+  if (wipe && !confirm(`Delete ${i.path} from disk?\n\nEverything in that folder goes — you can install ${i.rev_label || i.id} again from the revision list above.`)) return;
+  try {
+    await api("remove", { id: i.id, wipe: !!wipe });
+  } catch (e) {
+    toast(e.message, "bad");
+    await refresh();
+    return;
+  }
   if (sel === i.id) sel = null;
-  toast(wipe ? "Deleted the folder." : "Forgotten (files left in place).");
+  toast(wipe ? `${i.id} deleted — the folder is gone.` : `${i.id} removed from the list — files left in place.`, "good");
   await refresh();
 }
 async function startProxy(){

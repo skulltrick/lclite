@@ -514,7 +514,7 @@ func explainExit(err error, tail []string) string {
 		}
 		return "a port was already taken - is another server running?"
 	case strings.Contains(joined, "'bun' is not recognized"), strings.Contains(joined, "bun: command not found"):
-		return "this revision's engine runs on bun and it is not installed - fetch it from the Tools chip, then press Play again"
+		return "this revision's engine runs on bun and it is not installed - fetch it from the Tools chip, then press Start again"
 	case strings.Contains(joined, "prisma"), strings.Contains(joined, "P1003"):
 		return "the database is not set up yet - run the engine's setup once (npm run setup)"
 	case err != nil:

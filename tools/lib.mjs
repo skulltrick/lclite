@@ -8,65 +8,75 @@ import { fileURLToPath } from 'node:url';
 // LIB_DIR = the lclite/ overlay root (this file lives in lclite/tools/).
 export const LIB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-// ---- mod metadata ----------------------------------------------------------
+// ---- presentation metadata --------------------------------------------------
 // One entry per folder in mods/. The installer discovers mod folders from
 // disk; this file only supplies presentation metadata (labels, order,
-// defaults) for the interactive selector. A mod folder missing here still
-// installs — it just shows under its folder name, default-on.
+// defaults) for the interactive selector and the launcher. A mod folder missing
+// here still installs — it just shows under its folder name, default-on.
+//
+// MOD_META is the machine-readable half of the mod list: the launcher (mods.go)
+// and the CLI picker read label/desc from here, so a mod's name and one-line
+// description are written ONCE and shown everywhere.
+//
+// The wording is the in-game control panel's (mods/control-panel/…/panel.js,
+// MOD_REGISTRY — the F1 panel's Mods tab): that is the list players read, and a
+// mod that is called "Smooth shading" in-game must not be called "Smooth shading
+// option" in the launcher. Rename a mod there and rename it here in the same
+// commit; `node tools/doctor.mjs` warns when the two drift apart.
 export const MOD_META = {
     'control-panel': {
-        label: 'LCLite control panel',
-        desc: 'F1 settings panel + terser reserves — required (this is LCLite)',
+        label: 'LCLite',
+        desc: 'This panel and the page around it: canvas size, scaling, legacy bar, fullscreen, screenshots.',
         required: true,
     },
     'camera': {
-        label: 'OSRS-style camera',
-        desc: 'wheel zoom, middle-drag rotate, chat scroll + the settings bus — required',
+        label: 'Camera',
+        desc: 'Wheel zoom, middle-drag rotate, chat scroll.',
         required: true,
     },
     'xp-drops': {
-        label: 'XP drops + tracker',
-        desc: 'floating xp rows + top-right level-progress tracker',
+        label: 'XP drops',
+        desc: 'Customizable XP drops.',
     },
     'stat-orbs': {
         label: 'Stat orbs',
-        desc: 'HP/Prayer/Energy orbs beside the minimap (off by default in-game)',
+        desc: 'HP/Prayer/Run/etc orbs by the minimap.',
     },
     'tcg': {
-        label: 'TCG card packs',
-        desc: 'earn credits from xp/level-ups, open booster packs, collect 6,376 OSRS cards',
+        label: 'TCG',
+        desc: 'Left click opens pack, right click opens album. 1k exp = 100 credits, level ups = 1k-25k credits, kills = 1 credit per cb lvl.',
     },
     'true-tile': {
         label: 'True tile',
-        desc: 'OSRS-style outline on the real server tile (on by default)',
+        desc: "Highlights player's true server tile. Customizable.",
     },
     'anti-cheat': {
-        label: 'Anti-cheat telemetry toggle',
-        desc: 'lets the panel mute legacy RuneScope packets (private-server friendly)',
+        label: 'Disable anti-cheat',
+        desc: 'Disables the client sending legacy mouse/camera/anticheat packets.',
     },
     'rendering': {
-        label: 'Smooth shading option',
-        desc: 'per-pixel Gouraud vs blocky 4px shading (off by default in-game)',
+        label: 'Smooth shading',
+        desc: 'Per-pixel Gouraud instead of 4px blocks. Costs FPS.',
     },
     'gpu': {
-        label: 'GPU renderer (WebGL2)',
-        desc: 'RuneLite-style hardware rendering of the 3D world; HUD/interfaces stay CPU-exact. Off by default.',
+        label: 'GPU',
+        desc: 'Uses your GPU; chat, interfaces, orbs and walk-clicks stay pixel-exact on the CPU.',
     },
     'hide-roofs': {
         label: 'Hide roofs',
-        desc: 'removes roofs everywhere instead of only while you stand under them',
+        desc: 'Removes roofs everywhere, not only while you stand under them. Off: the game hides them itself as you walk in.',
     },
     'low-detail': {
         label: 'Low detail',
-        desc: 'untextured ground + no ground decorations, live (RuneLite Low Detail style)',
+        desc: 'Untextured ground applies instantly; ground decorations and half-size textures need a client refresh (F5).',
     },
     'shift-drop': {
         label: 'Shift-click drop',
-        desc: 'hold Shift and left-click an item to drop it without the menu',
+        desc: 'Hold Shift and left-click an item to drop it straight away, skipping the menu.',
     },
     'hotkeys': {
         label: 'Hotkeys',
-        desc: 'F-key sidebar tabs (OSRS defaults, rebindable), Esc closes interfaces, WASD camera with press-enter-to-chat',
+        desc: 'F-key sidebar tabs, Esc closes interfaces, WASD camera with press-enter-to-chat.',
     },
 };
 

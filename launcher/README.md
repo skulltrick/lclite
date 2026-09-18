@@ -70,6 +70,15 @@ automatic.
 
 ## Using it
 
+The dashboard is two columns and one rule: **set up on the left, run it on the
+right.** Left: *Lost City revisions* → *Installs* (with the selected install's
+card — path, ready/needs-setup, *Update from GitHub*, *Rebuild client*) →
+*LCLite mods*. Right: *Server*, then *Join server*. Anything that is real but not
+first-run — an existing folder instead of a fresh install, reset-to-pristine, the
+bridge port, the three-socket port story, the tree's internals — sits behind a
+disclosure with a plain-language label, so the everyday path stays two buttons
+and a tick list.
+
 1. **Revisions** — the branch list is read live from GitHub (`Client-TS`,
    `Engine-TS`, `Content`) and merged by name. A revision with engine + content
    is playable; client-only branches (e.g. `500`, `jaged`) show as "Client only".
@@ -81,9 +90,14 @@ automatic.
    an install you already have).
 2. **Install** — clones the revision into `<data>/installs/<rev>/`. Each install
    row in the sidebar owns its own lifecycle: **Remove** (take it out of the list,
-   files untouched) and **Delete files** (wipe the cloned revision from disk,
-   with a confirm) live on the row itself, like the revision rows' actions do —
-   there is no separate housekeeping panel to hunt through.
+   files untouched, no confirm) and **Delete files** (wipe the cloned revision from
+   disk, with a confirm that names the folder it is about to delete) live on the
+   row itself, like the revision rows' actions do — there is no separate
+   housekeeping panel to hunt through. Both act on **the row you clicked**, never
+   on whichever install happens to be selected, and only a folder the launcher
+   created can be wiped: a hand-added folder (or a record pointing outside
+   `<data>/installs/`) is refused, and a delete that fails leaves the row in place
+   so you can retry instead of losing the record with the files still there.
 
    ```
    <data>/installs/289/
@@ -104,24 +118,37 @@ automatic.
 3. **Existing folder** — point it at any checkout holding `webclient/` and
    `engine/` (a hand-made one, another revision, someone else's tree). It reads
    the revision off the git branch. Nothing is written until you press a button.
-4. **Mods** — tick boxes, *Apply mods & build*. Required mods (the camera and the
-   panel — LCLite itself) show as locked gold ticks rather than disabled
-   checkboxes, because a greyed-out box reads as "not included". The list shows
-   **three mods at a time** (with a "showing 3 of 9" cue) and tracks pending
-   edits: change a tick and the button becomes *Apply mods & build \** with a
-   "not applied yet" line, because the difference between "ticked" and "built in"
-   is exactly the mistake worth designing out. *Reset to pristine* — the blunt
-   git-level repair — lives behind a "Something's broken?" disclosure so it stops
-   competing with the everyday *Strip all mods*. That's `node tools/lclite.mjs
-   --mods <set>`: the listed mods are applied and everything else is stripped, so
-   the tree always converges to what the UI shows. Required mods are locked on.
+   It lives behind *Use an existing folder instead*, because it is the exception
+   rather than the way in.
+4. **Mods** — their own panel, under the install list (the right-hand column leads
+   with the two things you press every day: **Server** and **Join server**). Tick
+   boxes, *Apply mods & build*. Required mods (the camera and the panel — LCLite
+   itself) show as locked gold ticks rather than disabled checkboxes, because a
+   greyed-out box reads as "not included". The list shows **six mods at a time**
+   (with a "showing 6 of 13" cue) and tracks pending edits: change a tick and the
+   button becomes *Apply mods & build \** with a "not applied yet" line, because the
+   difference between "ticked" and "built in" is exactly the mistake worth designing
+   out. *Reset to pristine* — the blunt git-level repair — lives behind a
+   "Something's broken?" disclosure so it stops competing with the everyday
+   *Strip all mods*. That's `node tools/lclite.mjs --mods <set>`: the listed mods
+   are applied and everything else is stripped, so the tree always converges to what
+   the UI shows. Required mods are locked on.
    **Mods are offered on revision 289 only** — the hunks are anchored there, and
    `docs/MODS.md` owns that rule. On other revisions the section explains itself
    and the buttons stay disabled.
-5. **Play** — runs `npm run quickstart` in the selected install's `engine/` and
-   opens the client. The port comes from `data/config/world.json` (default 80 on
-   Windows) or from the field in the UI, which writes that file. First boot packs
-   the cache and can take minutes; the server tab streams the boot log.
+
+   A mod's **name and one-line description are the in-game panel's** (the F1
+   panel's Mods tab): the launcher reads `MOD_META` from `tools/lib.mjs`, which
+   mirrors `MOD_REGISTRY` in the control-panel mod, and `node tools/doctor.mjs`
+   prints a note when the two wordings drift apart. Order is alphabetical by the
+   name you read, like the panel.
+5. **Start** — runs `npm run quickstart` in the selected install's `engine/` and
+   opens the client; the button says *Start* whatever is selected, and the status
+   line above it names the install that is actually serving. The port comes from
+   `data/config/world.json` (default 80 on Windows) or from the field in the UI,
+   which writes that file. First boot packs the cache and can take minutes; the
+   server tab streams the boot log. The port/three-sockets explanation folds away
+   under *Ports & running two worlds*.
 ### Ports and revision quirks
 
 The engine binds **three** ports and the launcher owns all three:
@@ -148,10 +175,12 @@ own bun on that process's PATH so a world doesn't die with
 
 6. **Join server** (the RSProx trick) — running your own world and connecting to
    someone else's are separate jobs, so they get separate panels: **Server**
-   (*this machine*) and **Join server** (*somewhere else*). The webclient dials
-   `window.location.host`, so *whatever* answers on the other end of the page is
-   "the server" — the launcher can listen on localhost and tunnel everything to a
-   remote address:
+   (*this machine*, first in the column) and **Join server** (*somewhere else*).
+   The everyday path is one field and one button — type the address, press
+   *Bridge & play* — with the bridge port and whose client to serve folded under
+   *Advanced*. The webclient dials `window.location.host`, so *whatever* answers
+   on the other end of the page is "the server" — the launcher can listen on
+   localhost and tunnel everything to a remote address:
 
    - *Bridge, use their client* — a friendly localhost name for any Lost City
      server (http and the game socket both pass through).
@@ -243,7 +272,9 @@ respect that, or move to a signature of its own.
 
 All under `/api`, all requiring header `X-LCLite-Token: <token>` (the token is in
 the served page). `state`, `revs`, `config`, `install`, `import`, `apply`, `build`,
-`update`, `reset`, `strip` (take every mod off), `remove`, `run`, `stop`, `open`,
+`update`, `reset`, `strip` (take every mod off), `remove` (`{id, wipe}` — `wipe`
+deletes the folder and is refused for a hand-added install or one outside
+`<data>/installs/`), `run`, `stop`, `open`,
 `browse`, `bun`, `proxy/start`, `proxy/stop`, `job`, `log`, `quit`. Long tasks return a job id; poll
 `job?id=&since=` for incremental log lines.
 
