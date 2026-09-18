@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -14,6 +15,10 @@ type ModInfo struct {
 	Label    string `json:"label"`
 	Desc     string `json:"desc"`
 	Required bool   `json:"required"`
+	// Available is false when the overlay has no hunks for this mod on the install's
+	// revision (nothing to inherit either). The mod still lists — a missing mod is
+	// information — but it must not read as a toggle that does something.
+	Available bool `json:"available"`
 }
 
 var (
@@ -61,34 +66,154 @@ func isOverlayDir(dir string) bool {
 	return err == nil && st.IsDir()
 }
 
-// overlayRev is the revision the patch hunks are anchored to. When Lost City
-// moves on and the hunks are reseated, this is the one line to bump (the UI
-// explains itself from /api/state's overlay_rev).
+// overlayRev is the revision the patch hunks are AUTHORED on — the fallback when an
+// overlay checkout has no revs.json (an older clone, or a hand-copied lclite/ folder).
+// The real answer comes from the overlay itself, below.
 const overlayRev = "289"
 
-// overlayModsAllowed mirrors the project rule: the overlay is only offered on
-// the revision its hunks were anchored to (see docs/MODS.md).
-func overlayModsAllowed(rev string) bool { return strings.TrimSpace(rev) == overlayRev }
+// overlayRevs reads the revisions an overlay checkout supports out of its revs.json —
+// the same declaration tools/doctor.mjs and tools/matrix.mjs read, so the launcher
+// cannot drift from what the corpus actually ships. A revision the overlay does not
+// declare gets a vanilla install (the mods would apply nothing, or worse, apply
+// half of themselves).
+func overlayRevs(overlay string) []string {
+	if overlay == "" {
+		return []string{overlayRev}
+	}
+	raw, err := os.ReadFile(filepath.Join(overlay, "revs.json"))
+	if err != nil {
+		return []string{overlayRev}
+	}
+	var manifest struct {
+		Primary   string                     `json:"primary"`
+		Supported map[string]json.RawMessage `json:"supported"`
+	}
+	if err := json.Unmarshal(raw, &manifest); err != nil || len(manifest.Supported) == 0 {
+		return []string{overlayRev}
+	}
+	out := make([]string, 0, len(manifest.Supported))
+	for name := range manifest.Supported {
+		out = append(out, name)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		// primary first, then the rest as strings: the picker reads this order
+		if out[i] == manifest.Primary {
+			return true
+		}
+		if out[j] == manifest.Primary {
+			return false
+		}
+		return out[i] < out[j]
+	})
+	return out
+}
+
+// revSupported reports whether the overlay can be installed onto a revision.
+func revSupported(overlay, rev string) bool {
+	rev = strings.TrimSpace(rev)
+	for _, r := range overlayRevs(overlay) {
+		if r == rev {
+			return true
+		}
+	}
+	return false
+}
+
+// overlayModsAllowed is the one gate: mods may be applied to an install when the
+// overlay driving it declares that revision. It replaces the old hardcoded
+// "289 only" rule, which is what kept every other revision vanilla.
+func (l *Launcher) overlayModsAllowed(in *Install) bool {
+	overlay := l.overlayFor(in)
+	return overlay != "" && revSupported(overlay, in.Rev)
+}
+
+// overlayRevsFor is overlayRevs for the launcher's own overlay checkout (what /api/state
+// reports, so the UI can mark which revisions come with mods).
+func (l *Launcher) overlayRevsFor() []string {
+	if l.localOverlay != "" {
+		return overlayRevs(l.localOverlay)
+	}
+	return []string{overlayRev}
+}
+
+// revManifest is the overlay's revs.json, as much of it as the launcher needs.
+type revManifest struct {
+	Primary   string                    `json:"primary"`
+	Supported map[string]revSupportInfo `json:"supported"`
+}
+type revSupportInfo struct {
+	Inherits string `json:"inherits"`
+}
+
+func readRevManifest(overlay string) revManifest {
+	m := revManifest{Primary: overlayRev, Supported: map[string]revSupportInfo{}}
+	raw, err := os.ReadFile(filepath.Join(overlay, "revs.json"))
+	if err != nil {
+		return m
+	}
+	var parsed revManifest
+	if err := json.Unmarshal(raw, &parsed); err != nil || len(parsed.Supported) == 0 {
+		return m
+	}
+	if parsed.Primary != "" {
+		m.Primary = parsed.Primary
+	}
+	m.Supported = parsed.Supported
+	return m
+}
+
+// hasCorpus reports whether mods/<mod>/patches/<rev>/ holds any hunks.
+func hasCorpus(overlay, mod, rev string) bool {
+	if rev == "" {
+		return false
+	}
+	entries, err := os.ReadDir(filepath.Join(overlay, "mods", mod, "patches", rev))
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+			return true
+		}
+	}
+	return false
+}
+
+// modCorpusRev mirrors lib.mjs corpusRevFor: the mod's own corpus for this revision if
+// it has one, else the revision it inherits, else "" (the mod is not available there).
+// Duplicating the rule in Go is deliberate — the launcher must be able to answer
+// "what does 254 actually get?" without shelling out to node for every page poll.
+func modCorpusRev(overlay, mod, rev string, m revManifest) string {
+	if hasCorpus(overlay, mod, rev) {
+		return rev
+	}
+	if info, ok := m.Supported[rev]; ok && info.Inherits != "" && hasCorpus(overlay, mod, info.Inherits) {
+		return info.Inherits
+	}
+	return ""
+}
 
 // listMods reads the mods of a HOST root (lclite/ inside it).
 func listMods(root string) []ModInfo {
-	return listModsFromOverlay(filepath.Join(root, "lclite"))
+	return listModsFromOverlay(filepath.Join(root, "lclite"), "")
 }
 
 // listModsFromOverlay reads mods/ inside an overlay checkout itself — which is
-// what the launcher drives, since your checkout is the source of truth.
-func listModsFromOverlay(overlay string) []ModInfo {
+// what the launcher drives, since your checkout is the source of truth. rev (optional)
+// marks each mod Available for that revision.
+func listModsFromOverlay(overlay, rev string) []ModInfo {
 	entries, err := os.ReadDir(filepath.Join(overlay, "mods"))
 	if err != nil {
 		return nil
 	}
 	meta := parseModMeta(filepath.Join(overlay, "tools", "lib.mjs"))
+	manifest := readRevManifest(overlay)
 	out := []ModInfo{}
 	for _, e := range entries {
 		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") || strings.HasPrefix(e.Name(), "_") {
 			continue
 		}
-		info := ModInfo{Name: e.Name(), Label: e.Name()}
+		info := ModInfo{Name: e.Name(), Label: e.Name(), Available: rev == "" || modCorpusRev(overlay, e.Name(), rev, manifest) != ""}
 		if m, ok := meta[e.Name()]; ok {
 			if m.Label != "" {
 				info.Label = m.Label
@@ -160,7 +285,7 @@ func parseModMeta(libPath string) map[string]ModInfo {
 // allModNames is the CLI's default set: every mod folder, which is what a bare
 // `node tools/lclite.mjs` applies. An empty selection means this, not "nothing".
 func allModNames(overlay string) []string {
-	mods := listModsFromOverlay(overlay)
+	mods := listModsFromOverlay(overlay, "")
 	out := make([]string, 0, len(mods))
 	for _, m := range mods {
 		out = append(out, m.Name)
@@ -172,7 +297,7 @@ func allModNames(overlay string) []string {
 // returns a stable, comma-free list for the CLI.
 func normalizeMods(overlay string, wanted []string) []string {
 	known := map[string]ModInfo{}
-	for _, m := range listModsFromOverlay(overlay) {
+	for _, m := range listModsFromOverlay(overlay, "") {
 		known[m.Name] = m
 	}
 	picked := map[string]bool{}

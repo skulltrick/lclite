@@ -161,8 +161,8 @@ func (l *Launcher) installRev(j *Job, rev string, opts installOpts) (*Install, e
 	}
 
 	if opts.Overlay {
-		if !overlayModsAllowed(rev) {
-			j.logf("!! LCLite mods are anchored to revision 289 only — installing %s without the overlay", rev)
+		if !revSupported(l.localOverlay, rev) {
+			j.logf("!! this overlay does not support revision %s (see revs.json) — installing it without the overlay", rev)
 		} else {
 			j.setStep("fetching the LCLite overlay")
 			if err := l.syncOrClone(j, in.overlayDir(), overlayRepoURL, "main", "lclite overlay"); err != nil {
@@ -179,7 +179,7 @@ func (l *Launcher) installRev(j *Job, rev string, opts installOpts) (*Install, e
 		return in, fmt.Errorf("npm install failed in engine/: %v", err)
 	}
 
-	if in.Overlay && overlayModsAllowed(rev) {
+	if in.Overlay && l.overlayModsAllowed(in) {
 		j.setStep("applying LCLite mods")
 		if err := l.applyMods(j, in, opts.Mods); err != nil {
 			return in, err
@@ -203,8 +203,8 @@ func (l *Launcher) applyMods(j *Job, in *Install, mods []string) error {
 		return fmt.Errorf("no LCLite overlay to apply — put this exe in your lclite checkout, or copy lclite/ into %s", in.Path)
 	}
 	j.logf("overlay: %s (%s)", overlay, l.overlaySource(in))
-	if !overlayModsAllowed(in.Rev) {
-		return fmt.Errorf("LCLite mods are anchored to revision 289; this install is %s", revLabel(in))
+	if !l.overlayModsAllowed(in) {
+		return fmt.Errorf("this overlay has no corpus for revision %s — the mods it ships are for %s (see revs.json)", revLabel(in), strings.Join(l.overlayRevsFor(), ", "))
 	}
 	if _, err := exec.LookPath("node"); err != nil {
 		return fmt.Errorf("node is not installed — the overlay engine needs it (https://nodejs.org)")
@@ -306,7 +306,7 @@ func (l *Launcher) updateInstall(j *Job, in *Install) error {
 	if err := j.proc(in.engineDir(), nil, npmExe(), npmArgs("install")...); err != nil {
 		return err
 	}
-	if in.Overlay && overlayModsAllowed(in.Rev) {
+	if in.Overlay && l.overlayModsAllowed(in) {
 		j.setStep("re-applying your mods")
 		if err := l.applyMods(j, in, in.Mods); err != nil {
 			return err

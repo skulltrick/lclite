@@ -31,7 +31,7 @@ func (l *Launcher) handleInstall(w http.ResponseWriter, r *http.Request) {
 		fail(w, fmt.Errorf("another task is still running — wait for it to finish"))
 		return
 	}
-	opts := installOpts{WithClient: true, Overlay: rev == "289"}
+	opts := installOpts{WithClient: true, Overlay: revSupported(l.localOverlay, rev)}
 	if req.Client != nil {
 		opts.WithClient = *req.Client
 	}
@@ -131,7 +131,7 @@ func (l *Launcher) handleBuild(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	j := goJob(l, "build", in.ID, func(j *Job) error {
-		if in.Overlay && overlayModsAllowed(in.Rev) {
+		if in.Overlay && l.overlayModsAllowed(in) {
 			return l.applyMods(j, in, in.Mods)
 		}
 		return l.buildClient(j, in)
@@ -438,7 +438,7 @@ func (l *Launcher) playRev(rev string, port int) error {
 	in := l.store.install(rev)
 	if in == nil {
 		j := l.jobs.run("install", rev, func(j *Job) error {
-			_, err := l.installRev(j, rev, installOpts{WithClient: true, Overlay: rev == "289"})
+			_, err := l.installRev(j, rev, installOpts{WithClient: true, Overlay: revSupported(l.localOverlay, rev)})
 			return err
 		})
 		if j.Status != "ok" {

@@ -167,6 +167,8 @@
     background:linear-gradient(180deg,#d3ab55,#a98531);color:#241d0e;font-size:11px;font-weight:700;
     box-shadow:0 0 0 1px #6b5a2488}
   .modrow.req .mname::after{content:" · required";color:var(--accent)}
+  .modrow.off{opacity:.5}
+  .modrow.off .modcheck{cursor:default}
   button.primary.dirty{animation:glow 1.6s ease-in-out infinite}
   @keyframes glow{50%{box-shadow:0 0 0 1px #e6bb6366,0 0 16px #e6bb6333}}
   .modrow .mname{font-size:13px}
@@ -444,13 +446,13 @@ function renderWizard(){
   // Don't rebuild the wizard on every poll: only when something it shows changed.
   // (Live phase ticks are done in place by renderPeek.)
   const s = [wiz.step, wiz.rev, wiz.error, (S.revs || []).length, (S.installs || []).length,
-             S.recommended, S.engine && S.engine.state].join("|");
+             S.recommended, S.engine && S.engine.state, (S.overlay_revs || []).join(",")].join("|");
   if (s === sigWiz) return;
   sigWiz = s;
   const rec = (S.revs || []).find(r => r.recommended) || (S.revs || [])[0];
   switch (wiz.step) {
     case WELCOME: {
-      const modsRev = S.overlay_rev || "289";
+      const modsRev = overlayRevs()[0];
       b.innerHTML = `
         <div class="wcols">
           <div>
@@ -480,11 +482,12 @@ function renderWizard(){
               <li><span class="i">☾</span>OSRS-style camera: zoom, rotate, chat scroll</li>
               <li><span class="i">📈</span>XP drops and a level tracker</li>
               <li><span class="i">🔮</span>HP / prayer / energy orbs</li>
-              <li><span class="i">🟩</span>True tile and smooth shading</li>
+              <li><span class="i">🟩</span>True tile, roofs off, low detail</li>
               <li><span class="i">🃏</span>TCG card packs, ${"6,376"} collectibles</li>
             </ul>
-            <div class="foot">Mods live in one overlay you can switch off any time. They're anchored to revision
-            <b>${esc(modsRev)}</b>, the branch Lost City develops now.</div>
+            <div class="foot">Mods live in one overlay you can switch off any time. They're written for revision
+            <b>${esc(modsRev)}</b> and ported to ${overlayRevs().length > 1 ? "the other revisions this build supports" : "it alone"} — pick any of
+            <b>${overlayRevs().map(esc).join(", ")}</b> and the same mods come with it.</div>
           </aside>
         </div>`;
       break;
@@ -499,12 +502,12 @@ function renderWizard(){
         <div class="revscroll">
           ${playable.map(r => {
             const on = r.name === wiz.rev;
-            const mods = r.name === S.overlay_rev;
+            const mods = hasMods(r.name);
             return `<div class="revecard ${on ? "on" : ""}" tabindex="0" role="radio" aria-checked="${on}" onclick="wizPick('${esc(r.name)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();wizPick('${esc(r.name)}')}">
               <div class="n">${esc(r.name)}</div>
               <div class="grow">
                 <div>${r.recommended ? "Recommended" : "Lost City revision"} ${r.client ? "" : "<span class='t'>(server + content only)</span>"}</div>
-                <div class="t">${mods ? "LCLite mods available — camera, XP drops, orbs, true tile, TCG" : "vanilla upstream client, no LCLite mods (they're anchored to " + esc(S.overlay_rev || "289") + ")"}</div>
+                <div class="t">${mods ? "LCLite mods available — camera, XP drops, orbs, true tile, TCG" : "vanilla upstream client, no LCLite mods yet (the overlay supports " + overlayRevs().map(esc).join(", ") + ")"}</div>
               </div>
               <div class="tick">✓</div>
             </div>`;
@@ -521,7 +524,7 @@ function renderWizard(){
       break;
     }
     case READY2GO: {
-      const mods = wiz.rev === S.overlay_rev;
+      const mods = hasMods(wiz.rev);
       b.innerHTML = `
         <h1 class="wtitle">What you're getting</h1>
         <p class="wlede">Revision <b>${esc(wiz.rev || "")}</b>, built on your machine.</p>
@@ -540,7 +543,7 @@ function renderWizard(){
             <span>🃏 TCG packs</span><span>🚀 GPU (beta)</span><span>⚙ F1 panel</span>
           </div>
           <div class="hint">Everything is a toggle afterwards — the F1 panel in-game, or this launcher's mod list.</div>
-        </div>` : `<div class="note">Heads up: LCLite's mods are anchored to revision ${esc(S.overlay_rev || "289")}, so this revision installs vanilla. You can install ${esc(S.overlay_rev || "289")} later from the launcher.</div>`}
+        </div>` : `<div class="note">Heads up: the overlay has no corpus for revision ${esc(wiz.rev || "")} yet, so this revision installs vanilla. Mods are available on ${overlayRevs().map(esc).join(", ")} — you can install one of those later from the launcher.</div>`}
         <div class="hint">Around ${mods ? "1–3" : "1–2"} minutes on a normal connection. Everything stays in <span class="path">${esc(S.data_dir)}</span>.</div>
         <div class="wfoot">
           <button class="ghost" onclick="wizGo(${PICK})">Back</button>
@@ -550,7 +553,7 @@ function renderWizard(){
       break;
     }
     case INSTALLING: {
-      const phases = ["Fetching Lost City", "Installing what the server needs", wiz.rev === S.overlay_rev ? "Applying LCLite mods & building" : "Building the client", "Ready to play"];
+      const phases = ["Fetching Lost City", "Installing what the server needs", hasMods(wiz.rev) ? "Applying LCLite mods & building" : "Building the client", "Ready to play"];
       b.innerHTML = `
         <h1 class="wtitle">Setting up ${esc(wiz.rev || "")}…</h1>
         <p class="wlede">Sit back — this part is just downloading and compiling. It only happens once per revision.</p>
@@ -627,7 +630,7 @@ async function finishWizard(quiet){
 async function wizInstall(){
   wiz.step = INSTALLING; wiz.phase = 0; wiz.error = ""; render();
   try {
-    const r = await api("install", { rev: wiz.rev, client: true, overlay: wiz.rev === S.overlay_rev });
+    const r = await api("install", { rev: wiz.rev, client: true, overlay: hasMods(wiz.rev) });
     busyJob = r.job; cursors.job = 0;
     const job = await waitForJob(r.job);
     if (job.status !== "ok") { wiz.error = job.err || "install failed"; render(); return; }
@@ -738,7 +741,7 @@ function mainHTML(){
                 <button onclick="pickFolder()">Browse…</button>
                 <button class="primary" ${folder ? "" : "disabled"} onclick="importFolder()">Add it</button>
               </div>
-              <div class="hint">Any folder holding <b>webclient/</b> and <b>engine/</b> works. With <b>lclite/</b> inside it on revision ${esc(S.overlay_rev || "289")}, mods are offered too.</div>
+              <div class="hint">Any folder holding <b>webclient/</b> and <b>engine/</b> works. With <b>lclite/</b> inside it on revision ${esc(overlayRevs().join(" / "))}, mods are offered too.</div>
             </div>
           </details>
         </section>
@@ -779,6 +782,16 @@ function mainHTML(){
   </div>`;
 }
 
+// Which revisions the overlay in this launcher has a corpus for. The server reads it
+// from the overlay's revs.json (overlay_revs); a mods chip and the wizard's install
+// request both come from here, so there is exactly one answer to "does this rev come
+// with mods?".
+function overlayRevs(){
+  const list = (S.overlay_revs || []).filter(Boolean);
+  return list.length ? list : [S.overlay_rev || "289"];
+}
+function hasMods(rev){ return overlayRevs().includes(String(rev)); }
+
 function revRows(){
   const installed = new Map((S.installs || []).map(i => [i.rev_label || i.id, i]));
   const rank = r => r.recommended ? 0 : ((r.engine && r.content) ? 1 : 2);
@@ -792,7 +805,7 @@ function revRows(){
     // tooltip carries the full story.
     const tags = [];
     if (r.recommended) tags.push('<span class="tag rec">recommended</span>');
-    if (r.name === S.overlay_rev) tags.push('<span class="tag mods">mods available</span>');
+    if (hasMods(r.name)) tags.push('<span class="tag mods">mods available</span>');
     if (!playable) tags.push('<span class="tag off">client only</span>');
     // One accent per list: the row you should press is the recommended revision.
     const cls = r.recommended ? "primary" : "ghost";
@@ -856,10 +869,13 @@ let modPick = null;
 
 // initModPick seeds the selection from the install's applied mods (or the full
 // available set when nothing has been applied yet). Required mods are always in.
+// Mods with no hunks for this revision are never seeded: they cannot be applied here,
+// so ticking them would make the dirty flag lie and the apply report a phantom change.
 function initModPick(i){
   if (!i) { modPick = new Set(); return; }
-  const avail = (i.mods_available || []).map(m => m.name);
-  const required = (i.mods_available || []).filter(m => m.required).map(m => m.name);
+  const here = (i.mods_available || []).filter(m => m.available !== false);
+  const avail = here.map(m => m.name);
+  const required = here.filter(m => m.required).map(m => m.name);
   const on = (i.mods && i.mods.length) ? i.mods : avail;
   modPick = new Set(avail.filter(n => on.includes(n) || required.includes(n)));
 }
@@ -953,20 +969,23 @@ function modsHTML(){
   }
   if (!i.mods_allowed) {
     return `<div class="note" style="margin-top:0">${i.has_overlay
-      ? `LCLite's mods are anchored to revision ${esc(S.overlay_rev || "289")} — this install is ${esc(i.rev_label || "?")}, so they stay off.`
-      : `No LCLite overlay in this install, so there are no mods to switch on — LCLite's mods live in the ${esc(S.overlay_rev || "289")} install.`}</div>`;
+      ? `This overlay has no corpus for revision ${esc(i.rev_label || "?")} — the mods it ships are for ${esc(overlayRevs().join(", "))}, so they stay off here.`
+      : `No LCLite overlay in this install, so there are no mods to switch on — LCLite's mods live in the ${esc(overlayRevs()[0])} install.`}</div>`;
   }
   // modPick is the source of truth for what is ticked (see initModPick): the list
   // can be folded, so the DOM is not.
-  const chosen = modPick || new Set((i.mods && i.mods.length) ? i.mods : (i.mods_available || []).map(m => m.name));
+  const chosen = modPick || new Set((i.mods && i.mods.length) ? i.mods : (i.mods_available || []).filter(m => m.available !== false).map(m => m.name));
   const rows = (i.mods_available || []).map(m => `
-    <div class="modrow ${m.required ? "req" : ""}">
-      ${m.required
-        ? `<span class="modcheck" data-mod="${esc(m.name)}" data-required="1" title="always included">✓</span>`
-        : `<input type="checkbox" data-mod="${esc(m.name)}" ${chosen.has(m.name) ? "checked" : ""} onchange="onModTick(this)">`}
-      <div><div class="mname">${esc(m.label)}</div><div class="mdesc">${esc(m.desc)}</div></div>
+    <div class="modrow ${m.required ? "req" : ""}${m.available === false ? " off" : ""}">
+      ${m.available === false
+        ? `<span class="modcheck" data-mod="${esc(m.name)}" data-unavailable="1" title="no hunks for ${esc(i.rev_label || "this revision")} — the overlay supports this mod on ${esc(overlayRevs().join(", "))}">—</span>`
+        : m.required
+          ? `<span class="modcheck" data-mod="${esc(m.name)}" data-required="1" title="always included">✓</span>`
+          : `<input type="checkbox" data-mod="${esc(m.name)}" ${chosen.has(m.name) ? "checked" : ""} onchange="onModTick(this)">`}
+      <div><div class="mname">${esc(m.label)}${m.available === false ? ' <span class="tag off">not on this revision</span>' : ""}</div><div class="mdesc">${esc(m.desc)}</div></div>
     </div>`);
   const n = rows.length;
+  const unavailable = (i.mods_available || []).filter(m => m.available === false).length;
   const shown = modsOpen ? rows : rows.slice(0, MOD_PREVIEW);
   const more = n > MOD_PREVIEW
     ? `<div class="more"><button class="linky" onclick="toggleModList()">${modsOpen ? "Show fewer ▴" : `Show all ${n} mods ▾`}</button>${modsOpen ? "" : ` · ${MOD_PREVIEW} of ${n} shown`}</div>`
@@ -975,6 +994,7 @@ function modsHTML(){
     <div class="sub" style="margin:0 0 8px">For <b>${esc(i.rev_label || i.id)}</b> — ${modsOpen
       ? "tick what you want, then apply. Unticked mods are stripped back to upstream."
       : `the first ${Math.min(MOD_PREVIEW, n)} are shown; open the list to tick the rest. <b>Applying removes every mod you haven't ticked.</b>`}${i.overlay_source === "checkout" ? ` These come from <span class="path" title="${esc(i.overlay_path || "")}">${esc(tailPath(i.overlay_path, 38))}</span>, so edits there apply straight away.` : ""}</div>
+    ${unavailable ? `<div class="hint" style="margin:0 0 8px">${unavailable} mod${unavailable === 1 ? " has" : "s have"} no hunks for ${esc(i.rev_label || "this revision")} yet and stay off — a mod is all-or-nothing per revision, because half a mod is a broken mod. Porting one is <span class="path">node tools/port.mjs ${esc(i.rev_label || "")}</span>.</div>` : ""}
     <div class="row wrap">
       <button class="primary" id="applymods" onclick="applyMods()">Apply mods &amp; build</button>
       <button onclick="stripMods()" title="take every mod off and leave the upstream client">Remove mods</button>
@@ -1090,7 +1110,7 @@ function wireRevScroll(){
 
 function renderMain(force){
   const sRevs = JSON.stringify((S.revs || []).map(r => [r.name, r.recommended, r.engine, r.content]))
-    + "|" + S.overlay_rev + "|" + JSON.stringify((S.installs || []).map(i => [i.id, i.rev_label, i.engine_deps, i.mods_allowed]));
+    + "|" + overlayRevs().join(",") + "|" + JSON.stringify((S.installs || []).map(i => [i.id, i.rev_label, i.engine_deps, i.mods_allowed]));
   // The install list and the card under it describe the same rows, so they share
   // one signature; the mods panel gets its own (it is the one block a poll must
   // never rebuild while you are ticking boxes).
@@ -1098,7 +1118,7 @@ function renderMain(force){
     i.engine_deps, i.mods_allowed, (i.mods || []).length, i.built_at, i.has_overlay, i.has_client, i.has_engine, i.client_bundle])) + "|" + sel;
   const cur = currentInstall();
   const sMods = JSON.stringify(cur ? [cur.id, cur.rev_label, cur.missing, cur.mods_allowed, cur.has_overlay,
-    cur.overlay_source, cur.overlay_path, cur.mods, (cur.mods_available || []).length] : null) + "|" + S.overlay_rev;
+    cur.overlay_source, cur.overlay_path, cur.mods, (cur.mods_available || []).length] : null) + "|" + overlayRevs().join(",");
 
   if (force || sRevs !== sig.revs) { sig.revs = sRevs; const el = $("revlist"); if (el) el.innerHTML = revRows(); wireRevScroll(); }
   if (force || sInstalls !== sig.installs) {
@@ -1111,7 +1131,8 @@ function renderMain(force){
     const el = $("mods");
     if (el) {
       const i = currentInstall();
-      modsBase = i ? ((i.mods && i.mods.length) ? i.mods.slice() : (i.mods_available || []).map(m => m.name)) : [];
+      // the baseline for "did you change the selection" is what CAN be applied here
+      modsBase = i ? ((i.mods && i.mods.length) ? i.mods.slice() : (i.mods_available || []).filter(m => m.available !== false).map(m => m.name)) : [];
       initModPick(i);
       el.innerHTML = modsHTML();
       refreshModsDirty();
@@ -1157,7 +1178,7 @@ function renderServerLive(){
 function selectInstall(id){ sel = id; render(); }
 async function install(rev){
   toast(`Installing ${rev} — this takes a minute…`);
-  const r = await act(() => api("install", { rev, client: true, overlay: rev === S.overlay_rev }), "install");
+  const r = await act(() => api("install", { rev, client: true, overlay: hasMods(rev) }), "install");
   if (!r) return;
   const job = await waitForJob(r.job);
   if (job.status === "ok") { sel = rev; toast(`${rev} is ready — press Start.`, "good"); }
@@ -1186,7 +1207,9 @@ async function openClient(){
 }
 async function applyMods(){
   const i = currentInstall(); if (!i) return;
-  const mods = modSelection();
+  // only mods that exist for this revision: the rest are reported, not requested
+  const here = new Set((i.mods_available || []).filter(m => m.available !== false).map(m => m.name));
+  const mods = modSelection().filter(n => here.has(n));
   toast(`Applying ${mods.length} mods and rebuilding…`);
   const r = await act(() => api("apply", { id: i.id, mods }), "apply");
   if (!r) return;

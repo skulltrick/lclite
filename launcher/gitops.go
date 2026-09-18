@@ -12,6 +12,43 @@ import (
 	"time"
 )
 
+// hiddenBranches are upstream branches the picker must never offer. They are
+// real branches on GitHub, but they are not Lost City revisions: either a
+// client-only experiment (no engine/content, so no world to run) or a leftover
+// side branch nobody plays. Kept as an explicit name list rather than a pattern
+// because "which branches are real revisions" is a judgement call that changes
+// as upstream adds branches — 500 stays listed: it is the next client the team
+// is writing, and players like watching it appear.
+var hiddenBranches = map[string]string{
+	"225-custom": "client-only experiment branch of 225 — not a Lost City revision",
+	"225-gpu":    "client-only experiment branch of 225 — not a Lost City revision",
+	"jaged":      "client-only side branch — not a Lost City revision",
+}
+
+// isHiddenRev reports whether a branch name is one upstream keeps but the
+// picker must not show. Internal work branches (-wip/-node) are hidden by
+// suffix; the named ones are hidden explicitly (see hiddenBranches).
+func isHiddenRev(name string) bool {
+	if _, ok := hiddenBranches[name]; ok {
+		return true
+	}
+	return strings.HasSuffix(name, "-wip") || strings.HasSuffix(name, "-node")
+}
+
+// visibleRevs drops hidden branches from a revision list. Applied on read as
+// well as on fetch: a cached list (or the built-in fallback) written before a
+// branch was hidden must not keep showing it.
+func visibleRevs(revs []Rev) []Rev {
+	out := make([]Rev, 0, len(revs))
+	for _, r := range revs {
+		if isHiddenRev(r.Name) {
+			continue
+		}
+		out = append(out, r)
+	}
+	return out
+}
+
 // fallbackRevs is used when GitHub is unreachable (rate limit / offline).
 var fallbackRevs = []Rev{
 	{Name: "225", Client: true, Engine: true, Content: true},
@@ -20,10 +57,7 @@ var fallbackRevs = []Rev{
 	{Name: "254", Client: true, Engine: true, Content: true},
 	{Name: "274", Client: true, Engine: true, Content: true},
 	{Name: "289", Client: true, Engine: true, Content: true},
-	{Name: "225-custom", Client: true},
-	{Name: "225-gpu", Client: true},
 	{Name: "500", Client: true},
-	{Name: "jaged", Client: true},
 }
 
 type ghBranch struct {
@@ -101,8 +135,7 @@ func (l *Launcher) listRevs() ([]Rev, string, error) {
 
 	revs := make([]Rev, 0, len(seen))
 	for _, r := range seen {
-		// internal work branches that are not meant to be played
-		if strings.HasSuffix(r.Name, "-wip") || strings.HasSuffix(r.Name, "-node") {
+		if isHiddenRev(r.Name) {
 			continue
 		}
 		revs = append(revs, *r)

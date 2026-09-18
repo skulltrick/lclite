@@ -254,7 +254,7 @@ func (l *Launcher) viewInstall(in *Install) installView {
 		HasClient:   hasClient,
 		HasEngine:   hasEngine,
 		HasOverlay:  hasOverlay,
-		ModsAllowed: overlayModsAllowed(in.Rev),
+		ModsAllowed: l.overlayModsAllowed(in),
 	}
 	// A folder that isn't there any more (moved, deleted, or an old layout we
 	// outgrew) must read as missing rather than as a broken install.
@@ -276,7 +276,7 @@ func (l *Launcher) viewInstall(in *Install) installView {
 	v.OverlaySource = l.overlaySource(in)
 	v.ModsAllowed = v.ModsAllowed && v.OverlayPath != ""
 	if v.OverlayPath != "" {
-		v.Mods = listModsFromOverlay(v.OverlayPath)
+		v.Mods = listModsFromOverlay(v.OverlayPath, in.Rev)
 	}
 	if v.Mods == nil {
 		v.Mods = []ModInfo{}
@@ -286,9 +286,9 @@ func (l *Launcher) viewInstall(in *Install) installView {
 
 func (l *Launcher) handleState(w http.ResponseWriter, r *http.Request) {
 	cfg := l.store.snapshot()
-	revs := append([]Rev(nil), cfg.Revs...)
+	revs := visibleRevs(cfg.Revs)
 	if len(revs) == 0 {
-		revs = append([]Rev(nil), fallbackRevs...)
+		revs = visibleRevs(fallbackRevs)
 	}
 	recommended := pickRecommended(revs, cfg.RecommendedRev)
 	for i := range revs {
@@ -313,6 +313,7 @@ func (l *Launcher) handleState(w http.ResponseWriter, r *http.Request) {
 		"recommended_updated": cfg.RecommendedUpdated,
 		"recommended_pinned":  cfg.RecommendedRev != "",
 		"overlay_rev":         overlayRev,
+		"overlay_revs":        l.overlayRevsFor(),
 		"skip_wizard":         cfg.SkipWizard,
 		"collapsed":           cfg.Collapsed,
 		"tools":               l.detectTools(),

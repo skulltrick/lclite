@@ -75,7 +75,7 @@ func TestModListSortsByLabel(t *testing.T) {
 	if err := os.WriteFile(lib, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	mods := listModsFromOverlay(overlay)
+	mods := listModsFromOverlay(overlay, "")
 	var labels []string
 	for _, m := range mods {
 		labels = append(labels, m.Label)

@@ -109,15 +109,16 @@ one scroll for the page).
    so you can retry instead of losing the record with the files still there.
 
    ```
-   <data>/installs/289/
-     webclient/   Client-TS @ 289      (browser client source)
-     engine/      Engine-TS @ 289      (the world)
-     content/     Content   @ 289      (game data)
-     lclite/      the overlay, 289 only
+   <data>/installs/274/
+     webclient/   Client-TS @ 274      (browser client source)
+     engine/      Engine-TS @ 274      (the world)
+     content/     Content   @ 274      (game data)
+     lclite/      the overlay copy (the checkout you launched from wins)
    ```
 
-   then `npm install` in `engine/`, then either the LCLite build (289) or a plain
-   `bun run bundle.ts` deploy of `client.js` into `engine/public/client/`.
+   then `npm install` in `engine/`, then either the LCLite build (the mods for that
+   revision, applied + bundled) or a plain `bun run bundle.ts` deploy of `client.js`
+   into `engine/public/client/`.
 
    Install is **idempotent and non-destructive**: a revision that is already
    there keeps its tree exactly as it is (a modded tree is left alone, never
@@ -144,9 +145,17 @@ one scroll for the page).
    disclosure so it stops competing with it. That's `node tools/lclite.mjs --mods
    <set>`: the listed mods are applied and everything else is stripped, so the tree
    always converges to what the UI shows. The required mod is locked on.
-   **Mods are offered on revision 289 only** — the hunks are anchored there, and
-   `docs/MODS.md` owns that rule. On other revisions the section explains itself
-   and the buttons stay disabled.
+   **Which revisions come with mods is the overlay's call, not the launcher's.**
+   The launcher reads `revs.json` out of the overlay checkout (`overlay_revs` in
+   `/api/state`) and offers mods on exactly the revisions it declares — the same
+   declaration `tools/doctor.mjs` and `tools/matrix.mjs` check, so the UI can never
+   drift from what the corpus actually ships. Today that is **289** (where mods are
+   authored), **274** (same hunks, byte-identical anchors) and **254** (its own
+   ported corpus). A mod the overlay has no hunks for on the selected revision is
+   listed with a *not on this revision* tag and a dash instead of a tick — it cannot
+   be applied there, and a mod is all-or-nothing per revision because half a mod is
+   a broken mod. The section says how many that is and points at
+   `node tools/port.mjs <rev>`. [docs/REVS.md](../docs/REVS.md) owns the rule.
 
    A mod's **name and one-line description are the in-game panel's** (the F1
    panel's mod list): the launcher reads `MOD_META` from `tools/lib.mjs`, which
@@ -293,20 +302,26 @@ deletes the folder and is refused for a hand-added install or one outside
 ## Verified
 
 `go test ./...` covers the two config styles (JSON + dotenv, including "don't
-clobber unrelated keys" and "don't duplicate keys on a second write"). End to
-end, on Windows: a fresh **289** install (client + engine + content + overlay,
-`npm install`, 9 mods applied with 0 drift, bundle built and deployed) boots and
-serves a working client socket; a fresh **274** install boots and runs *next to*
-that 289 world; the bridge serves a local build over a remote one and tunnels the
-socket both ways.
+clobber unrelated keys" and "don't duplicate keys on a second write"), the revision
+gate (`overlayRevs` / `revSupported` / `modCorpusRev`, including the no-`revs.json`
+fallback and the inherit-vs-own-corpus resolution) and the hidden-branch filter for
+the revision picker. End to end, on Windows: a fresh **289** install (client + engine
++ content + overlay, `npm install`, 12 mods applied with 0 drift, bundle built and
+deployed) boots and serves a working client socket; a fresh **274** install gets all
+12 mods from the *inherited* corpus, boots and serves a modded page (`LCLite - 274`);
+a fresh **254** install gets the 7 mods it has a corpus for and serves them; the
+bridge serves a local build over a remote one and tunnels the socket both ways.
 
 ## Known limits
 
-- **225 does not boot**: its content branch trips RuneScript type errors
-  (`@multi4` in quest_waterfall) under a current toolchain. That is an upstream
-  branch condition, not the launcher — install/build/patch all succeed, and the
-  boot failure is reported with the compiler's own error line. 274 and 289 are
-  verified working; 244/245.2/254 are untested.
+- **225 and 254 do not boot as cloned**: their content branches trip RuneScript
+  errors under a current toolchain (`@multi4` in quest_waterfall at 225; `[logout,_]
+  ()(boolean)` in `logout.rs2` at 254 — upstream even left a `// TODO: Change compiler
+  to remove return value` above it). That is an upstream branch condition, not the
+  launcher or the overlay: install/build/patch all succeed and the boot failure is
+  reported with the compiler's own error line. Both are one-line content fixes away
+  (`git -C <install>/content checkout -- .` undoes one). **274 and 289 boot clean**;
+  244/245.2 are untested.
 - Windows is the first-class platform (folder picker via PowerShell, bun
   auto-fetch). Linux/macOS build and run; the picker needs `zenity`/`kdialog` and
   bun has to be on `PATH`.
