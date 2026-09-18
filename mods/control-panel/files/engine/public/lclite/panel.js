@@ -89,6 +89,7 @@
         { id: 'xp-drops', name: 'XP drops', desc: 'Customizable XP drops.', master: { key: 'xpDrops', def: 'true' } },
         { id: 'stat-orbs', name: 'Stat orbs', desc: 'HP/Prayer/Run data orbs on the minimap panel. Alt+drag to move them.', master: { key: 'statOrbs', def: 'false' } },
         { id: 'true-tile', name: 'True tile', desc: "Highlights player's true server tile. Customizable.", master: { key: 'trueTile', def: 'true' } },
+        { id: 'hover-tile', name: 'Hover tile', desc: 'Highlights the tile your mouse is over. Customizable.', master: { key: 'hoverTile', def: 'true' } },
         { id: 'tcg', name: 'TCG', desc: 'Left click opens pack, right click opens album. 1k exp = 100 credits, level ups = 1k-25k credits, kills = 1 credit per cb lvl.', master: { key: 'tcg', def: 'true' },
           status() {
               if (LS.get('tcg', 'true') !== 'true') return '';
@@ -129,6 +130,11 @@
         { id: 'true-tile-outline', mod: 'true-tile', name: 'Border thickness', desc: 'Width of the true-tile outline, in pixels.', key: 'trueTileOutline', kind: 'slider', min: 1, max: 8, step: 1, def: '1', unit: 'px' },
         { id: 'true-tile-fill', mod: 'true-tile', name: 'Fill opacity', desc: 'Translucent color wash inside the tile (OSRS fill style). 0 = outline only.', key: 'trueTileFill', kind: 'slider', min: 0, max: 100, step: 5, def: '0', unit: '%' },
         { id: 'true-tile-desync', mod: 'true-tile', name: 'Only when out of sync', desc: 'Hide the tile while your model stands on the server tile — pops up only when the tick is visibly delayed.', key: 'trueTileOnlyDesync', kind: 'toggle', def: 'false' },
+        // hover-tile: the same contract as true-tile's rows — the engine re-reads its
+        // own keys every frame at its own hook, so all three apply live.
+        { id: 'hover-tile-color', mod: 'hover-tile', name: 'Outline color', desc: 'Color of the hover-tile border.', kind: 'color', key: 'hoverTileColor', def: '#ffffff' },
+        { id: 'hover-tile-outline', mod: 'hover-tile', name: 'Border thickness', desc: 'Width of the hover-tile outline, in pixels.', key: 'hoverTileOutline', kind: 'slider', min: 1, max: 8, step: 1, def: '2', unit: 'px' },
+        { id: 'hover-tile-fill', mod: 'hover-tile', name: 'Fill opacity', desc: 'Translucent color wash inside the hovered tile (OSRS fill style). 0 = outline only.', key: 'hoverTileFill', kind: 'slider', min: 0, max: 100, step: 5, def: '20', unit: '%' },
         // stat-orbs: the orbs are canvas-drawn into the minimap widget buffer, so the
         // engine re-reads every one of these per frame at its own hook (rule 5) — all of
         // them apply live, size included. The placement keys (lcmStatOrbs*) belong to the
@@ -169,7 +175,7 @@
             if (typeof hideControls === 'function') hideControls(); else toast('No legacy bar present');
         } },
         { id: 'reset-all', mod: 'control-panel', name: 'Reset all lclite settings', desc: 'Clears every toggle/zoom/placement and reloads.', kind: 'action', run() {
-            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'antiCheat', 'gpu', 'statOrbs', 'statOrbsSize', 'statOrbsNumbers', 'statOrbsFill', 'statOrbsPulse', 'statOrbsHpColor', 'statOrbsPrayerColor', 'statOrbsRunColor', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'lcliteLegacyBar', 'tcg', 'tcgHud', 'tcgHudCredits', 'tcgHudRate', 'tcgHudProgress', 'lclitePanelMod', 'lclitePanelPinned',
+            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'antiCheat', 'gpu', 'statOrbs', 'statOrbsSize', 'statOrbsNumbers', 'statOrbsFill', 'statOrbsPulse', 'statOrbsHpColor', 'statOrbsPrayerColor', 'statOrbsRunColor', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'hoverTile', 'hoverTileColor', 'hoverTileOutline', 'hoverTileFill', 'lcliteLegacyBar', 'tcg', 'tcgHud', 'tcgHudCredits', 'tcgHudRate', 'tcgHudProgress', 'lclitePanelMod', 'lclitePanelPinned',
                 'canvasSize', 'canvasScale', 'canvasAutoFit', 'filtering', 'hideRoofs', 'lowDetail', 'shiftDrop'].forEach(k => localStorage.removeItem(k));
             // hotkeys: wiped by prefix so every current AND future keybind resets too
             Object.keys(localStorage).filter(k => k.indexOf('hotkeys') === 0).forEach(k => localStorage.removeItem(k));

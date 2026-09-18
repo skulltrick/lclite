@@ -70,6 +70,13 @@ const MODS = {
     'true-tile': [
         'webclient/src/client/Client.ts'
     ],
+    'hover-tile': [
+        // the hover pick is resolved by the engine's own ground rasterizer, so this
+        // mod is the second one to touch World.ts (camera is the other) — the pick
+        // sites are in the pristine renderQuickGround/renderGround bodies.
+        'webclient/src/client/Client.ts',
+        'webclient/src/dash3d/World.ts'
+    ],
     'gpu': [
         // ONLY the import line in Client.ts is a tracked upstream edit: the
         // renderer itself ships as a files/ copy (webclient/src/gpu/), and it

@@ -1,0 +1,198 @@
+{
+ "file": "webclient/src/client/Client.ts",
+ "mod": "hover-tile",
+ "rev": "289",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "a52b321a9f42530f3dd2f1a02cd335c955791a12"
+ },
+ "hunks": [
+  {
+   "find": [
+    "",
+    "import JagFX from '#/sound/JagFX.js';",
+    "",
+    "const CLIENT_VERSION = 289;"
+   ],
+   "replace": [
+    "",
+    "import JagFX from '#/sound/JagFX.js';",
+    "// lclite:hover-tile",
+    "import { hoverTileRaster, hoverTileRead, hoverTileSettings } from '#/client/HoverTile.js'; // custom (lclite \"hover-tile\" mod): settings parse + the tile-quad rasterizer",
+    "",
+    "const CLIENT_VERSION = 289;"
+   ],
+   "note": "src/client/Client.ts @ old line 73",
+   "occ": 1,
+   "pos": [
+    73,
+    0,
+    71,
+    74
+   ]
+  },
+  {
+   "find": [
+    "        Model.mouseX = this.mouseX - 4;",
+    "        Model.mouseY = this.mouseY - 4;",
+    "",
+    "        Pix2D.cls();"
+   ],
+   "replace": [
+    "        Model.mouseX = this.mouseX - 4;",
+    "        Model.mouseY = this.mouseY - 4;",
+    "        // lclite:hover-tile",
+    "        this.hoverTileArm(); // custom (lclite \"hover-tile\") — arm the ground pick with the mouse pixel",
+    "",
+    "        Pix2D.cls();"
+   ],
+   "note": "src/client/Client.ts @ old line 4242",
+   "occ": 1,
+   "pos": [
+    4242,
+    0,
+    4240,
+    4243
+   ]
+  },
+  {
+   "find": [
+    "        this.entityOverlays();",
+    "        this.coordArrow();",
+    "        this.textureRunAnims(cycle);",
+    "        this.otherOverlays();"
+   ],
+   "replace": [
+    "        this.entityOverlays();",
+    "        this.coordArrow();",
+    "        // lclite:hover-tile",
+    "        this.hoverTileDraw(); // custom (lclite \"hover-tile\") — the pick above, resolved by renderAll",
+    "        this.textureRunAnims(cycle);",
+    "        this.otherOverlays();"
+   ],
+   "note": "src/client/Client.ts @ old line 4248",
+   "occ": 1,
+   "pos": [
+    4248,
+    0,
+    4246,
+    4249
+   ]
+  },
+  {
+   "find": [
+    "    }",
+    "",
+    "    private checkMinimap(): void {",
+    "        if (Client.lowMem && this.sceneState === 2 && ClientBuild.minusedlevel !== this.minusedlevel) {"
+   ],
+   "replace": [
+    "    }",
+    "",
+    "    // lclite:hover-tile",
+    "    /// custom (lclite \"hover-tile\" mod): RuneLite \"Tile Indicators\" parity — an",
+    "    /// outline on the tile the mouse is over. The tile is resolved by the ENGINE'S",
+    "    /// OWN ground pick, not by a re-implementation: World's ground rasterizer already",
+    "    /// hit-tests the mouse pixel against every front-facing ground triangle it draws",
+    "    /// (the World.click/groundX machinery a left click uses), and because tiles are",
+    "    /// drawn back-to-front the LAST hit is the nearest one. So the highlight is",
+    "    /// exactly the tile a click at that pixel would walk you to — it can never",
+    "    /// disagree with the walk pick — and it inherits the engine's own notion of what",
+    "    /// is visible (behind-the-camera and out-of-area ground is simply never drawn).",
+    "    /// Settings and the raster live in the mod's files/ payload (HoverTile.ts, imported",
+    "    /// at the top of this file); this mod reads its OWN keys every frame at this hook",
+    "    /// (rule 5), so every setting applies live with no reload:",
+    "    ///   hoverTile         on/off master (default on)",
+    "    ///   hoverTileColor    '#rrggbb' (default ffffff)",
+    "    ///   hoverTileOutline  border thickness px 1..8 (default 2)",
+    "    ///   hoverTileFill     translucent inner fill, alpha percent 0..100 (default 20)",
+    "    private hoverTileArm(): void {",
+    "        World.hoverArmed = false;",
+    "",
+    "        if (!hoverTileSettings(hoverTileRead).enabled) {",
+    "            return;   // master off: no pick, and no per-triangle test in the rasterizer",
+    "        }",
+    "",
+    "        // the game viewport only, (4,4)-(516,338) — the same rect the engine's own",
+    "        // option picking tests. The sidebar, chatbox, minimap and letterbox have no",
+    "        // scene behind them, so there is no tile to point at there.",
+    "        if (!this.ingame || this.mouseX <= 4 || this.mouseY <= 4 || this.mouseX >= 516 || this.mouseY >= 338) {",
+    "            return;",
+    "        }",
+    "",
+    "        World.hoverMouseX = this.mouseX - 4;   // Pix2D buffer space, like Model.mouseX",
+    "        World.hoverMouseY = this.mouseY - 4;",
+    "        World.hoverX = -1;",
+    "        World.hoverZ = -1;",
+    "        World.hoverLevel = -1;",
+    "        World.hoverArmed = true;",
+    "    }",
+    "",
+    "    /// custom (lclite \"hover-tile\" mod): draw the hovered tile. Runs after",
+    "    /// World.renderAll (the pick is resolved by then) and before areaGame.draw(4, 4),",
+    "    /// so it rides the game buffer: interfaces composite over it, and the gpu mod's",
+    "    /// HUD upload picks it up like hitbars/chat (the true-tile ride).",
+    "    private hoverTileDraw(): void {",
+    "        if (!World.hoverArmed || World.hoverX < 0 || World.hoverZ < 0) {",
+    "            return;",
+    "        }",
+    "",
+    "        const settings = hoverTileSettings(hoverTileRead);   // inferred: the payload owns the shape",
+    "        if (!settings.enabled) {",
+    "            return;",
+    "        }",
+    "",
+    "        // the hovered tile square in scene coords. A tile can be picked on a level",
+    "        // other than the player's (the storey above/below, when the camera shows it),",
+    "        // so project onto the level the rasterizer actually drew; the legacy Ground",
+    "        // path carries no level, hence the -1 sentinel and the player's own level.",
+    "        const level: number = World.hoverLevel >= 0 ? World.hoverLevel : this.minusedlevel;",
+    "        const x0: number = World.hoverX << 7;",
+    "        const z0: number = World.hoverZ << 7;",
+    "        const x1: number = x0 + 128;",
+    "        const z1: number = z0 + 128;",
+    "",
+    "        const px: number[] = [0, 0, 0, 0];",
+    "        const py: number[] = [0, 0, 0, 0];",
+    "        const cornerX: number[] = [x0, x1, x1, x0];",
+    "        const cornerZ: number[] = [z0, z0, z1, z1];",
+    "",
+    "        for (let i: number = 0; i < 4; i++) {",
+    "            const cx: number = cornerX[i];",
+    "            const cz: number = cornerZ[i];",
+    "",
+    "            // getOverlayPos() measures the ground from the PLAYER's level; handing it",
+    "            // the per-corner height DIFFERENCE puts the quad on the hovered level's",
+    "            // surface instead. getAvH is exact at 128-multiple corners (tileLocalX/Z",
+    "            // are 0 there), so the square shears over slopes/stairs exactly like the",
+    "            // floor it covers.",
+    "            this.getOverlayPos(cx, cz, this.getAvH(cx, cz, this.minusedlevel) - this.getAvH(cx, cz, level));",
+    "",
+    "            if (this.projectX <= -1) {",
+    "                return;   // behind the camera / outside the build area — skip the frame",
+    "            }",
+    "",
+    "            px[i] = this.projectX;",
+    "            py[i] = this.projectY;",
+    "        }",
+    "",
+    "        hoverTileRaster(",
+    "            Pix2D.pixels, Pix2D.width,",
+    "            Pix2D.clipMinX, Pix2D.clipMaxX, Pix2D.clipMinY, Pix2D.clipMaxY,",
+    "            px, py, settings.rgb, settings.thick, settings.fillA",
+    "        );",
+    "    }",
+    "    private checkMinimap(): void {",
+    "        if (Client.lowMem && this.sceneState === 2 && ClientBuild.minusedlevel !== this.minusedlevel) {"
+   ],
+   "note": "src/client/Client.ts @ old line 5098",
+   "occ": 1,
+   "pos": [
+    5098,
+    0,
+    5096,
+    5099
+   ]
+  }
+ ]
+}

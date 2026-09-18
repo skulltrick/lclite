@@ -1,6 +1,7 @@
 {
  "file": "webclient/src/client/GameShell.ts",
  "mod": "hotkeys",
+ "rev": "289",
  "generated_from": {
   "repo": "webclient",
   "head": "a52b321a9f42530f3dd2f1a02cd335c955791a12"

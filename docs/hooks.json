@@ -1,5 +1,6 @@
 {
  "generated_by": "regen.mjs",
+ "rev": "289",
  "heads": {
   "webclient": "a52b321a9f42530f3dd2f1a02cd335c955791a12",
   "engine": "0c7cf6555d0cf92d2348999b2fd27c6ceff5ffbf"
@@ -84,6 +85,12 @@
     "mod": "hotkeys",
     "note": "src/client/Client.ts @ old line 11",
     "line": 11,
+    "marker": true
+   },
+   {
+    "mod": "hover-tile",
+    "note": "src/client/Client.ts @ old line 73",
+    "line": 73,
     "marker": true
    },
    {
@@ -237,6 +244,18 @@
     "marker": true
    },
    {
+    "mod": "hover-tile",
+    "note": "src/client/Client.ts @ old line 4242",
+    "line": 4242,
+    "marker": true
+   },
+   {
+    "mod": "hover-tile",
+    "note": "src/client/Client.ts @ old line 4248",
+    "line": 4248,
+    "marker": true
+   },
+   {
     "mod": "camera",
     "note": "src/client/Client.ts @ old line 4259",
     "line": 4259,
@@ -288,6 +307,12 @@
     "mod": "true-tile",
     "note": "src/client/Client.ts @ old line 5074",
     "line": 5074,
+    "marker": true
+   },
+   {
+    "mod": "hover-tile",
+    "note": "src/client/Client.ts @ old line 5098",
+    "line": 5098,
     "marker": true
    },
    {
@@ -455,6 +480,12 @@
   ],
   "webclient/src/dash3d/World.ts": [
    {
+    "mod": "hover-tile",
+    "note": "src/dash3d/World.ts @ old line 114",
+    "line": 114,
+    "marker": true
+   },
+   {
     "mod": "camera",
     "note": "src/dash3d/World.ts @ old line 117",
     "line": 117,
@@ -560,6 +591,24 @@
     "mod": "camera",
     "note": "src/dash3d/World.ts @ old line 1368",
     "line": 1367,
+    "marker": true
+   },
+   {
+    "mod": "hover-tile",
+    "note": "src/dash3d/World.ts @ old line 2003",
+    "line": 2003,
+    "marker": true
+   },
+   {
+    "mod": "hover-tile",
+    "note": "src/dash3d/World.ts @ old line 2055",
+    "line": 2055,
+    "marker": true
+   },
+   {
+    "mod": "hover-tile",
+    "note": "src/dash3d/World.ts @ old line 2141",
+    "line": 2141,
     "marker": true
    }
   ],

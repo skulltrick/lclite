@@ -53,6 +53,10 @@ export const MOD_META = {
         label: 'True tile',
         desc: "Highlights player's true server tile. Customizable.",
     },
+    'hover-tile': {
+        label: 'Hover tile',
+        desc: 'Highlights the tile your mouse is over. Customizable.',
+    },
     'anti-cheat': {
         label: 'Disable anti-cheat',
         desc: 'Disables the client sending legacy mouse/camera/anticheat packets.',
