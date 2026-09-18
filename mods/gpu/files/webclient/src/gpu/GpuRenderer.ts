@@ -1,6 +1,6 @@
 // lclite "gpu" mod v2 (WebGPU) — renderer orchestrator / capture / composite.
 //
-// Architecture (docs/gpu-v2-assessment.md + GpuFormat.ts — READ THOSE FIRST):
+// Architecture (docs/archive/gpu-v2-assessment.md + GpuFormat.ts — READ THOSE FIRST):
 // the CPU keeps doing EVERYTHING it's good at — scene construction, culling,
 // lighting, painter ordering, and ALL picking (Model.mouseCheck / World.groundX
 // resolve unchanged because capture happens after them, at the three Pix3D
@@ -18,19 +18,25 @@
 // wins a pixel", the software's own semantics, but resolved by the fixed-
 // function depth unit in one draw instead of v1's 30-60k drawArrays.
 //
-// P2 scope (this build):
+// What ships (P2 capture → P5 textures → P7 HUD/perf; this file grew with all
+// three, so read the phases as history, not as a scope limit):
 //  - gouraud + flat triangles -> GPU (terrain, walls, decor, models,
 //    near-plane-clipped fans from render3ZClip — all arrive as the same atoms).
-//  - textured faces (Pix3D.textureTriangle) -> GPU as FLAT average-colour
-//    faces (Pix3D.getTextureAverage — the same value the software's lowMem
-//    path uses). They keep exact seq ordering, so painter's order never
-//    splits; real texel sampling + hole discard is P5 (format slots 6-11
-//    are reserved for the texture plane for that reason).
+//  - textured faces (Pix3D.textureTriangle) -> GPU with REAL texel sampling
+//    (P5): captureTexTri ports the software rasterizer's affine plane (the same
+//    <<14/<<8/<<5 int32 coefficients walked from originX/originY), the texel
+//    pool uploads as a 50-layer r32uint texture_2d_array mirroring getTexels
+//    (4 lightness bands, 64px upsample, lowMem layout variant), and the WGSL
+//    fragment stage mirrors v1's GLSL verbatim (w>>14 / >>12, 16256/4032
+//    clamps, holes discard, opaque-black replace, no alpha mix) with texHoles
+//    authoritative. Textured faces keep exact seq ordering, so painter's order
+//    never splits.
 //  - HUD (chat bubbles, hitbars, headicons, walk arrow, xp tracker, orbs,
 //    in-viewport interface text — CPU Pix2D writes into the same Int32Array
-//    after world render) -> whole 512x334 r32uint upload + final quad pass,
-//    non-black replaces, black discards. v1 uploaded the same full buffer
-//    (R32UI); dirty-rect tracking is a later-phase optimization.
+//    after world render) -> sentinel-scanned DIRTY-RECT upload (P7: scan the
+//    non-sentinel bbox, writeTexture that sub-rect, skip empty frames) + final
+//    quad pass, non-black replaces, black discards. v1 uploaded the whole
+//    512x334 buffer every frame.
 //  - capture overflow (frame > MAX_TRIS): extra triangles fall through to
 //    the software raster and ride up via the overlay — v1's documented
 //    degradation, unchanged.

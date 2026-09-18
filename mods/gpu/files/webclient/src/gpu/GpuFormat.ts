@@ -14,9 +14,9 @@
 // 30-60k draws. Correctness instead comes from the fixed seq-depth ordering
 // below, so clip is not needed at capture time at all.
 //
-// Vertex slots (stride VS*4 = 64B; slots 6-11 reserved for P5 texture-plane
-// data exactly like the v2 WIP did, so no format migration when textures move
-// on-GPU):
+// Vertex slots (stride VS*4 = 64B; slots 6-11 carry the P5 texture plane —
+// u, v, w, texId, +2 spare — exactly as the v2 WIP reserved them, so the format
+// never had to migrate when texel sampling moved on-GPU):
 //   [0..1]  xy     screen px, 512x334, y-down (ALREADY projected by the CPU)
 //   [2]     shade  gouraud: Pix3D.colourTable index | flat/tex-avg: 0xRRGGBB
 //   [3]     mode   MODE_GOURAUD / MODE_FLAT
