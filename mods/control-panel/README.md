@@ -54,12 +54,18 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
   code ships here.
 - `patches/web_ts.json` — one added local in the engine's `/rs2.cgi` render:
   `revision: Environment.engine.revision`. The page `<title>` reads it as
-  `LCLite - <%= revision %>`, so a tab names the install it belongs to without the
+  `LCLite - <rev>`, so a tab names the install it belongs to without the
   overlay templating anything at apply time, and the ejs script tag passes the same
   value as `data-rev` for the panel's header chip (plus a title self-heal in case this
   hunk ever fails to apply on a new rev). `engine.revision` comes from world.json /
   `ENGINE_REVISION` — the engine's own number, which every Lost City branch sets to its
   own revision (274 → 274, 289 → 289), so other installs are right for free.
+  **Both reads are GUARDED** (`typeof revision === 'number' ? … : ''`), because the
+  ejs hunk and this one live in different files and fail independently: an unguarded
+  local 500s the entire page (verified — ejs throws ReferenceError) when only the
+  web.ts anchor moves, while the guard renders `LCLite` and an empty `data-rev` (chip
+  hidden) until someone reseats the anchor. Never "simplify" those back to a bare
+  `<%= revision %>`.
 - `tools/canvas_size_test.mjs` — harness for the above (legacy 1x/2x/3x unchanged,
   decimals, clamping, canonicalisation, dropdown sync). Mod-logic changes to sizing must
   keep it green:
@@ -98,7 +104,7 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
 
 ## Version-keying (stale-cache law, MODS.md "The contract")
 
-The ejs tags carry `?v=N` (`panel.css?v=7`, `panel.js?v=9` today). ANY revision of
+The ejs tags carry `?v=N` (`panel.css?v=8`, `panel.js?v=9` today). ANY revision of
 panel.js or panel.css shipped to a live server MUST bump N in the hunk (edit the
 live client.ejs, then `node tools/regen.mjs` BEFORE `apply` — regen-before-apply or
 the manifest thinks control-panel uninstalled). Brave re-serves stale plain paths
