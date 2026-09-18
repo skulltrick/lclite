@@ -64,10 +64,12 @@ counts, discovery silhouettes, rarity colors and per-tier collection progress.
 - `patches/client_ejs.json` — 1 hunk: `<script src="/lclite/tcg/ui.js">`.
 - `tools/tcg_test.ts` — bun functional harness (48 checks: chunking, non-combat
   rule, level curve, kill credits incl. timeout/re-grace/settle, login settle,
-  odds vs beta, foils, dup-sell, persistence, seed replay). Run it from the installed
-  revision's `webclient/`, pointing at the overlay you are editing:
-  `bun run <overlay>/mods/tcg/tools/tcg_test.ts` — never the install's own `lclite/`
-  copy, which is a snapshot from install time and can be stale.
+  odds vs beta, foils, dup-sell, persistence, seed replay). Run it from this
+  overlay: `bun run mods/tcg/tools/tcg_test.ts` — it prints the tree it picked
+  (this overlay's own `files/` payload by default, i.e. exactly what you are
+  editing; `LCLITE_ROOT=<install> bun run mods/tcg/tools/tcg_test.ts` tests the
+  applied tree in that install instead). The install's own `lclite/` copy is a
+  snapshot from install time — never point the harness at that.
 
 ## HUD visibility (the gate chain)
 

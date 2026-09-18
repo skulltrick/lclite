@@ -10,7 +10,16 @@
 // Reports: coverage mismatch (pixel written by one side only), and the
 // distribution of |software idx - GL idx| for pixels both wrote.
 //
-// Run: bun gpu_parity_test.ts
+// Run: COPY me into an applied webclient tree first — the ./src/* imports below
+// are webclient-root-relative BY DESIGN (they pull the engine's real software
+// rasters plus the mod's own applied GpuRenderer.ts), so this file cannot run
+// from its home in the overlay:
+//     cp <overlay>/mods/gpu/tools/gpu_parity_test.ts <install>/webclient/
+//     cd <install>/webclient && bun gpu_parity_test.ts
+//
+// Golden numbers to diff against (docs/archive/gpu-v2-assessment.md; the residual
+// mirror-vs-software deltas are the accepted 16.16 colour-step artifact, NOT a
+// regression): gouraud big 7729 / maxd 246 · flat 0/0 · tex d1 15 / maxd 246.
 (globalThis as Record<string, unknown>)['window'] = globalThis;
 (globalThis as Record<string, unknown>)['document'] = { getElementById: () => null };
 (globalThis as Record<string, unknown>)['localStorage'] = {

@@ -4,8 +4,10 @@
 // respawn grace/settle), pack roll distribution vs beta odds, foil/apex,
 // dup-sell price, collection persistence, deterministic seed replay, catalog
 // tier sanity.
-//   bun tools/tcg_test.ts   (from webclient/)
+//   bun run mods/tcg/tools/tcg_test.ts   (from anywhere — it resolves the tree
+//   itself; set LCLITE_ROOT=<install> to test an applied tree instead of the payload)
 const LS: Record<string, string> = {};
+import fs from 'node:fs';
 (globalThis as any).window = globalThis;
 (globalThis as any).localStorage = {
     getItem: (k: string) => (k in LS ? LS[k] : null),
@@ -16,13 +18,32 @@ const LS: Record<string, string> = {};
 (globalThis as any).crypto = { getRandomValues: (a: any) => { for (let i = 0; i < a.length; i++) a[i] = (Math.random() * 0xffffffff) >>> 0; return a; } };
 (globalThis as any).setInterval = () => 0;
 (globalThis as any).msCrypto = undefined;
-// stub the OSRS-wiki CDN fetch with the local catalog file
-// run from webclient/ (gpu_parity_test convention): cwd-relative assets
-const ROOT4 = new URL('../../../../', import.meta.url).pathname.slice(1); // lclite/mods/tcg/tools -> checkout root
-const catRaw = await Bun.file(ROOT4 + 'engine/public/lclite/tcg/cards.json').text();
+// stub the OSRS-wiki CDN fetch with the local catalog file. The tree under test
+// is resolved at runtime, first hit wins (and is printed, so a stale choice is
+// visible rather than silent):
+//   1. $LCLITE_ROOT          — an install / t- harness root with the overlay applied
+//   2. the legacy checkout layout (the overlay living INSIDE a checkout)
+//   3. this overlay's own files/ payload — always current, needs no install
+const HERE = new URL('../../../', import.meta.url).pathname.slice(1);   // mods/tcg/tools -> the overlay root
+const LEGACY = new URL('../../../../', import.meta.url).pathname.slice(1); // overlay inside a checkout
+const ROOTS: [string, string][] = [];
+if (process.env.LCLITE_ROOT) {
+    const r = process.env.LCLITE_ROOT.replace(/\\/g, '/').replace(/\/?$/, '/');
+    ROOTS.push([r + 'webclient/src/tcg/tcg_core.ts', r + 'engine/public/lclite/tcg/cards.json']);
+}
+ROOTS.push([LEGACY + 'webclient/src/tcg/tcg_core.ts', LEGACY + 'engine/public/lclite/tcg/cards.json']);
+ROOTS.push([HERE + 'mods/tcg/files/webclient/src/tcg/tcg_core.ts', HERE + 'mods/tcg/files/engine/public/lclite/tcg/cards.json']);
+const picked = ROOTS.find(([core, cat]) => fs.existsSync(core) && fs.existsSync(cat));
+if (!picked) {
+    console.error('FAIL: no tcg_core.ts + cards.json found. Tried:\n  ' + ROOTS.map(([c]) => c).join('\n  '));
+    console.error('  (set LCLITE_ROOT=<install> to test an applied tree instead of the payload)');
+    process.exit(1);
+}
+console.log('tree under test: ' + picked[0].replace(/webclient\/src\/tcg\/tcg_core\.ts$/, ''));
+const catRaw = await Bun.file(picked[1]).text();
 (globalThis as any).fetch = async () => ({ ok: true, status: 200, json: async () => JSON.parse(catRaw) });
 
-await import(ROOT4 + 'webclient/src/tcg/tcg_core.ts');
+await import(picked[0]);
 const W: any = globalThis;
 if (!W.tcgInfo) { console.error('FAIL: core did not install window.tcg* API'); process.exit(1); }
 

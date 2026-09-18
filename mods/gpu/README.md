@@ -44,10 +44,13 @@ page asset):
 - `tools/gpu_parity_test.ts` — the bun harness: random triangles go through the
   REAL software raster and through a JS mirror of the shader math, then the two
   are compared per pixel (the colour table is made a bijection so the report is
-  in shade-index units). Run it from the installed revision's `webclient/`,
-  pointing at the overlay you are editing:
-  `bun run <overlay>/mods/gpu/tools/gpu_parity_test.ts` — never the install's
-  own `lclite/` copy, which is a snapshot from install time.
+  in shade-index units). Its `./src/*` imports are webclient-root-relative by
+  design (they need the engine's rasters plus the applied `GpuRenderer.ts`), so
+  COPY it into an applied webclient tree first:
+  `cp mods/gpu/tools/gpu_parity_test.ts <install>/webclient/ && cd
+  <install>/webclient && bun gpu_parity_test.ts`. Diff the output against the
+  golden numbers in the harness header (gouraud big 7729 / maxd 246 · flat 0/0 ·
+  tex d1 15) — a change in them is a regression, not noise.
 
 ## Settings + status contract
 
