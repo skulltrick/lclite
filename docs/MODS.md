@@ -238,7 +238,12 @@ cp -r .. lclite && cd lclite && node tools/lclite.mjs        # t/ is the host ro
   sliders fall back to reading their localStorage key. The panel is a static asset:
   it keeps working (minus the dead control) even if its engine hunk fails to apply.
 - **Page-loaded assets must be VERSION-KEYED** (`ui.js?v=N`, data `?v=N`, bumped
-  on every revision you ship). express serves them with `max-age=0` + ETag, and
+  on every revision you ship). **That includes `panel.js` itself**: its key lives in
+  control-panel's own `engine/view/client.ejs` hunk (`/lclite/panel.js?v=N`), so a mod
+  that adds panel rows hand-edits that line in the live tree, bumps N, and runs
+  `regen` BEFORE `apply` — otherwise a returning player keeps the cached panel and
+  their new row is missing (or shows up as the synthesized fallback). express serves
+  them with `max-age=0` + ETag, and
   browsers — Brave demonstrably — re-serve stale disk-cache copies of a plain
   path *past hard refreshes*; the bundled core can't see it but the DOM layer is
   then an ancient build (tcg shipped through exactly this: old HUD anchored
