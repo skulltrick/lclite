@@ -25,7 +25,8 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
   per-mod view, tooltips, toast, pin, the alt-drag placement layer (`window.lcmAnchor`),
   legacy-bar coordination. Structure: `MOD_REGISTRY` (the list's rows: id/name/
   desc/master/status) + `MODS` (a mod's own settings rows: toggle/slider/color/
-  select/action). Single-toggle mods intentionally have NO settings rows (RuneLite
+  select/action — an action row may carry `btn: 'Open'` for its button label,
+  default "Run"). Single-toggle mods intentionally have NO settings rows (RuneLite
   law: no config => nothing to open, so clicking one toasts).
 - `files/engine/public/lclite/panel.css` — the whole look; theme vars on `:root`
   (`--lcm-*`), all of them the launcher's values (see the section above).
@@ -107,7 +108,7 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
 
 ## Version-keying (stale-cache law, MODS.md "The contract")
 
-The ejs tags carry `?v=N` (`panel.css?v=9`, `panel.js?v=10` today). ANY revision of
+The ejs tags carry `?v=N` (`panel.css?v=9`, `panel.js?v=11` today). ANY revision of
 panel.js or panel.css shipped to a live server MUST bump N in the hunk (edit the
 live client.ejs, then `node tools/regen.mjs` BEFORE `apply` — regen-before-apply or
 the manifest thinks control-panel uninstalled). Brave re-serves stale plain paths
@@ -131,7 +132,13 @@ did not apply.
   already carries the name, the star, the status line and the master, and a
   header over a single open section would just repeat the name.
 - TCG/anti-cheat rows carry a live `status()` line (positional `window.tcgInfo()`
-  contract) refreshed on the panel's 400ms sync tick.
+  contract) refreshed on the panel's 400ms sync tick; TCG's reads
+  `window.tcgLoggedIn()` first and says `not logged in` instead of reporting the
+  `default` account's balance while the game is on its title screen.
+- TCG is the first mod to grow a settings view purely for a PAGE overlay: its four
+  HUD switches are keys ui.js reads at its own tick, and its two action rows call
+  `window.tcgShowAlbum()` / `window.tcgOpenPack()` — the same entry points the
+  HUD's right/left click uses, so hiding the box never strands the player.
 - The row click-to-open behaviour predates the gear and stays (RuneLite parity);
   the gear exists because discoverability beat parity here. Inside a mod's own
   view the row's body click is a no-op — the row is that view's header, not a

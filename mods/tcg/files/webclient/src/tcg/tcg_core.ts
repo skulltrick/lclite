@@ -16,7 +16,10 @@
    The credits HUD is MOVABLE: hold Alt and drag it to any of the 9 anchor
    points (control-panel's placement layer writes lcmTcgHudAnchor/Offset; the
    HUD reads its own keys per tick, dodges a relocated FAB by default, and
-   pauses while the drag ghost owns it — see docs/MODS.md "Placement").
+   pauses while the drag ghost owns it — see docs/MODS.md "Placement"). It also
+   only draws while a player is logged in (tcgLoggedIn, below) and honours the
+   control panel's per-part switches (tcgHud / tcgHudCredits / tcgHudRate /
+   tcgHudProgress, read by ui.js at its own tick — rule 5).
 
    BUNDLED into client.js via one side-effect import hunk in Client.ts. Terser
    rules that shaped this file (each learned the hard way):
@@ -65,8 +68,8 @@
     // ?v= cache key: 'force-cache' happily serves a STALE catalog forever (Brave
     // bit us exactly this way) — bump v with any cards.json format change.
     const CAT_URL = '/lclite/tcg/cards.json?v=7';
-    const UI_SRC = '/lclite/tcg/ui.js?v=7';
-    const UI_VER = 7;                   // ui.js stamps window.__lctcgUi; stale UI is re-fetched+replaced
+    const UI_SRC = '/lclite/tcg/ui.js?v=8';
+    const UI_VER = 8;                   // ui.js stamps window.__lctcgUi; stale UI is re-fetched+replaced
 
     const TIER_LABELS = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Godly'];
 
@@ -657,6 +660,21 @@
         // offline or on a previous character with this account.
         settleUntil = Date.now() + 5000;
         W['tcgHudDirty'] = true;
+    };
+    // Is a player actually IN THE WORLD? The HUD is a DOM overlay (ui.js) and a
+    // page script cannot read the engine's own flag: page scripts are not mangled,
+    // so a property read there either misses (silent wrong comparison — the terser
+    // READ-mangle trap, see FOR_AGENTS) or depends on a reserve that upstream could
+    // drop. Reading it HERE is mangle-proof by construction — terser renames this
+    // access and Client's own `this.ingame` to the SAME name, so the two always
+    // agree ('ingame' is also in the upstream reserved list today). The Client
+    // instance is the one the camera mod parks on window.lostcityClient. Absent
+    // object/field (camera stripped, older bundle) => report "in game", so a
+    // half-updated install keeps its old always-visible HUD instead of losing it.
+    W['tcgLoggedIn'] = function (): boolean {
+        const c = W['lostcityClient'];
+        if (!c || typeof c.ingame !== 'boolean') { return true; }
+        return c.ingame;
     };
     W['tcgOnXp'] = onXp;
     W['tcgEngageNpc'] = onEngage;

@@ -18,7 +18,7 @@
     "    </script>",
     "    <!-- lclite:tcg -->",
     "    <!-- lclite tcg mod (DOM layer; the engine side is bundled into client.js) -->",
-    "    <script src=\"/lclite/tcg/ui.js?v=7\" defer data-lctcg-ui=\"7\"></script>",
+    "    <script src=\"/lclite/tcg/ui.js?v=8\" defer data-lctcg-ui=\"8\"></script>",
     "",
     "</body>",
     ""

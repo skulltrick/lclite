@@ -6,7 +6,15 @@
    object literals unreadable — see tcg_core.ts header for the index maps).
    Talks to the engine ONLY through those globals + the 'tcg' localStorage key
    — no canvas DOM injection, no game-frame coupling. If the core hunk failed
-   on a future rev, every entry point no-ops and the game is untouched. */
+   on a future rev, every entry point no-ops and the game is untouched.
+
+   HUD visibility is a chain of gates read PER TICK at this layer's own hook
+   (rule 5, no settings hub): master 'tcg' -> logged in (window.tcgLoggedIn, the
+   core's read of the engine's own flag — see tcg_core.ts for why the page can't
+   read it) -> 'tcgHud' (the box itself) -> 'tcgHudCredits'/'tcgHudRate'/
+   'tcgHudProgress' (each line of it; all three off hides the empty box). The
+   control panel owns the switches; the album/pack actions there are the way in
+   when the box is hidden. */
 (() => {
     'use strict';
 
@@ -14,6 +22,15 @@
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const fmt = n => Math.floor(n || 0).toLocaleString('en-US');
     const masterOn = () => (localStorage.getItem('tcg') || 'true') === 'true';
+    // The control panel's HUD switches (panel.js writes them; this layer reads its
+    // OWN keys at its own tick — rule 5, no hub). Absent key => the default below.
+    const on = (key, def) => (localStorage.getItem(key) || (def ? 'true' : 'false')) === 'true';
+    // Logged-in gate. The engine's flag lives in the bundle, so the CORE exposes
+    // it (tcgLoggedIn; a page script reading a bundled property directly would be
+    // comparing against a mangled name — see tcg_core.ts). No accessor at all
+    // (stale bundle, mod half-updated) => assume in game: the HUD then behaves
+    // exactly as it did before this gate existed instead of disappearing.
+    const inGame = () => (typeof window.tcgLoggedIn === 'function' ? window.tcgLoggedIn() !== false : true);
 
     // info() indices — must match tcg_core.ts
     const I_CREDITS = 0, I_XPPOOL = 1, I_PRICE = 2, I_PACKS = 3, I_EARN_XP = 6, I_EARN_LVL = 7, I_EARN_DUP = 8,
@@ -24,6 +41,7 @@
     const A_NAME = 1, A_TIER = 2, A_IMG = 4, A_OWNED = 5, A_FOILS = 6;
 
     let root, hud, toastEl, scrim, albumEl;
+    let hudCoins, hudRate, hudProg;
     let toastT = 0;
 
     const style = document.createElement('style');
@@ -90,13 +108,13 @@
     document.head.appendChild(style);
 
     function build() {
-        window.__lctcgUi = 7;           // stamp the core checks (replace stale cached copies)
+        window.__lctcgUi = 8;           // stamp the core checks (replace stale cached copies)
         // stamp OUR script tag too (currentScript is live at defer execution; the
         // ejs tag also ships the attribute, and dynamic injection sets it at
         // create time) — without a tagged script the core's self-heal can't see
-        // us and injects a second copy (double HUD boot, console v7 twice)
+        // us and injects a second copy (double HUD boot, console v8 twice)
         try { if (document.currentScript) document.currentScript.setAttribute('data-lctcg-ui', String(window.__lctcgUi)); } catch (e) { /* empty */ }
-        console.log('[lclite:tcg] ui v7');
+        console.log('[lclite:tcg] ui v8');
         root = document.createElement('div');
         root.id = 'lctcg-root';
         root.innerHTML = `
@@ -110,6 +128,9 @@
             <div class="lctcg-album" id="lctcg-album"></div>`;
         document.body.appendChild(root);
         hud = root.querySelector('#lctcg-hud');
+        hudCoins = hud.querySelector('.coins');
+        hudRate = hud.querySelector('.rate');
+        hudProg = hud.querySelector('.sub');
         toastEl = root.querySelector('#lctcg-toast');
         scrim = root.querySelector('#lctcg-scrim');
         albumEl = root.querySelector('#lctcg-album');
@@ -185,11 +206,24 @@
 
     function tick() {
         if (!hud || !window.tcgInfo) { return; }
-        if (!masterOn()) { hud.style.display = 'none'; return; }
+        // visibility, cheapest gate first: master switch -> logged in -> the HUD's
+        // own switches. Each part of the box has its own key (control panel), and a
+        // box with every part hidden is nothing but a stray rounded rectangle, so it
+        // hides as a whole (the panel's album/pack actions stay reachable).
+        const showCredits = on('tcgHudCredits', true);
+        const showRate = on('tcgHudRate', true);
+        const showProg = on('tcgHudProgress', true);
+        if (!masterOn() || !inGame() || !on('tcgHud', true) || !(showCredits || showRate || showProg)) {
+            hud.style.display = 'none';
+            return;
+        }
         let i;
         try { i = window.tcgInfo(); } catch (e) { return; }   // core not ready
         hud.style.display = 'flex';
         anchorHud();
+        hudCoins.style.display = showCredits ? '' : 'none';
+        hudRate.style.display = showRate ? '' : 'none';
+        hudProg.style.display = showProg ? '' : 'none';
         root.querySelector('#lctcg-credits').textContent = fmt(i[I_CREDITS]);
         const earned = i[I_EARN_XP] + i[I_EARN_LVL] + i[I_EARN_DUP] + (i[I_EARN_KILL] || 0);   // grants excluded
         const hours = Math.max(1 / 60, (Date.now() - i[I_SINCE]) / 3600000);

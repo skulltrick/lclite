@@ -34,7 +34,10 @@ counts, discovery silhouettes, rarity colors and per-tier collection progress.
   reveal overlay, collection album: a plain page script next to panel.js
   (client.ejs hunk). No engine coupling beyond the `window['tcg*']` API + the
   `tcg` key. Lays over the LCLite chrome (z 9600 > panel 9000) so the FAB never
-  eats its clicks. **Page assets are version-keyed** (currently `ui.js?v=7` /
+  eats its clicks. **The HUD is gated** (master `tcg` → logged in → `tcgHud` →
+  each line's own key; see "HUD visibility" below) and the control panel carries
+  its switches plus two actions that reach the album and a pack without the HUD.
+  **Page assets are version-keyed** (currently `ui.js?v=8` /
   `cards.json?v=7`): express re-validates stale cached copies and Brave
   demonstrably re-serves deleted assets past hard-refresh, so any ui.js/
   cards.json revision shipped here MUST bump BOTH `?v=` numbers (client.ejs
@@ -66,13 +69,47 @@ counts, discovery silhouettes, rarity colors and per-tier collection progress.
   `bun run <overlay>/mods/tcg/tools/tcg_test.ts` — never the install's own `lclite/`
   copy, which is a snapshot from install time and can be stale.
 
+## HUD visibility (the gate chain)
+
+The credits box draws only when EVERY one of these holds — read per tick at
+ui.js's own hook, so a switch takes effect on the next tick with no reload:
+
+| key | default | meaning |
+|---|---|---|
+| `tcg` | on | the mod's master switch (also gates the whole economy) |
+| — | — | **logged in** — the engine's own `Client.ingame`, no key |
+| `tcgHud` | on | the box itself (credits + rate + progress) |
+| `tcgHudCredits` | on | the `◈ N` credits line |
+| `tcgHudRate` | on | the green `+N/h` line |
+| `tcgHudProgress` | on | the `N to next pack` line |
+
+All three line switches off hides the box as a whole — an empty rounded
+rectangle is not a state anyone wants. The panel's **Collection album** and
+**Open a pack** action rows are the way in when the box is hidden (or when you
+just want the album without a right-click).
+
+**Logged in** is not a localStorage key: the core exposes
+`window.tcgLoggedIn()`, which reads `Client.ingame` from INSIDE the bundle.
+That is deliberate — a page script cannot read a bundled property safely
+(unmangled name vs. the mangler's rename = a silent wrong answer, the read-side
+of the terser trap), and `ingame` is the client's own truth, so logout,
+disconnect, `lostCon` and a failed login all hide the HUD for free with no new
+`Client.ts` hunk to reseat on rev day. Before this gate the box sat on the login
+screen reporting the `default` account's balance; the panel's TCG row says
+`not logged in` for the same reason. Absent accessor (stale bundle, camera
+stripped so there is no `window.lostcityClient`) ⇒ the gate reports "in game",
+i.e. the HUD behaves exactly as it did before the gate existed rather than
+disappearing.
+
 ## Settings contract
 
 localStorage key `tcg` (master, default ON), read per-gain at the core's own
-hook (no hub). State: key `lcliteTcg` = `{ "<username>": save }`; the core
-never writes anything else. Panel: MOD_REGISTRY entry in control-panel's
-panel.js with a live credits status (positional info() indices — see
-tcg_core.ts header).
+hook (no hub). The HUD's four switches above are read by ui.js at its own tick
+and written by the control panel. State: key `lcliteTcg` = `{ "<username>": save }`;
+the core never writes anything else. Panel: MOD_REGISTRY entry in
+control-panel's panel.js with a live credits status (positional info() indices —
+see tcg_core.ts header) plus the mod's own settings view (4 HUD toggles + 2
+actions).
 
 ## Deliberate divergences from the OSRS plugin
 

@@ -92,6 +92,10 @@
         { id: 'tcg', name: 'TCG', desc: 'Left click opens pack, right click opens album. 1k exp = 100 credits, level ups = 1k-25k credits, kills = 1 credit per cb lvl.', master: { key: 'tcg', def: 'true' },
           status() {
               if (LS.get('tcg', 'true') !== 'true') return '';
+              // logged out: the row would otherwise report the 'default' save's
+              // balance, which is not this player's (the HUD hides for the same
+              // reason — see tcg_core.ts tcgLoggedIn)
+              if (typeof window.tcgLoggedIn === 'function' && window.tcgLoggedIn() === false) return 'not logged in';
               if (typeof window.tcgInfo !== 'function') return 'core not loaded';
               const i = window.tcgInfo();   // positional contract (see tcg_core.ts)
               return '◈ ' + i[0].toLocaleString('en-US') + ' · ' + i[11] + ' cards · ' + i[16] + ' kills';
@@ -151,7 +155,7 @@
             if (typeof hideControls === 'function') hideControls(); else toast('No legacy bar present');
         } },
         { id: 'reset-all', mod: 'control-panel', name: 'Reset all lclite settings', desc: 'Clears every toggle/zoom/placement and reloads.', kind: 'action', run() {
-            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'smoothShading', 'antiCheat', 'gpu', 'statOrbs', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'lcliteLegacyBar', 'tcg', 'lclitePanelMod', 'lclitePanelPinned',
+            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'smoothShading', 'antiCheat', 'gpu', 'statOrbs', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'lcliteLegacyBar', 'tcg', 'tcgHud', 'tcgHudCredits', 'tcgHudRate', 'tcgHudProgress', 'lclitePanelMod', 'lclitePanelPinned',
                 'canvasSize', 'canvasScale', 'canvasAutoFit', 'filtering', 'hideRoofs', 'lowDetail', 'shiftDrop'].forEach(k => localStorage.removeItem(k));
             // hotkeys: wiped by prefix so every current AND future keybind resets too
             Object.keys(localStorage).filter(k => k.indexOf('hotkeys') === 0).forEach(k => localStorage.removeItem(k));
@@ -161,6 +165,29 @@
             toast('Settings cleared — reloading'); setTimeout(() => location.reload(), 500);
         } }
     ];
+
+    // ---- TCG (mods/tcg) ------------------------------------------------------
+    // The HUD is a PAGE overlay (ui.js), so its switches are plain localStorage
+    // keys this panel writes and that layer reads at its own tick — no engine
+    // round trip, no hub (rule 5). The two actions are the same entry points the
+    // HUD's own left/right click uses, which is how a player who hid the box (or
+    // never had it in view) still reaches packs and the album.
+    // Guarded like every page-side call: a stale bundle or a failed ui.js hunk
+    // leaves the button working but toasting why nothing happened.
+    MODS.push(
+        { id: 'tcg-hud', mod: 'tcg', name: 'Show credits HUD', desc: 'The in-game box with your credits, credits per hour and progress to the next pack.', key: 'tcgHud', kind: 'toggle', def: 'true' },
+        { id: 'tcg-hud-credits', mod: 'tcg', name: 'Show credits', desc: 'The ◈ credits line in the HUD.', key: 'tcgHudCredits', kind: 'toggle', def: 'true' },
+        { id: 'tcg-hud-rate', mod: 'tcg', name: 'Show credits per hour', desc: 'The green +N/h earning-rate line in the HUD.', key: 'tcgHudRate', kind: 'toggle', def: 'true' },
+        { id: 'tcg-hud-progress', mod: 'tcg', name: 'Show credits to next pack', desc: 'The "N to next pack" line in the HUD. Hiding all three lines hides the box.', key: 'tcgHudProgress', kind: 'toggle', def: 'true' },
+        { id: 'tcg-album', mod: 'tcg', name: 'Collection album', desc: 'Browse the cards you have discovered. The same view as right-clicking the HUD.', kind: 'action', btn: 'Open', run() {
+            if (typeof window.tcgShowAlbum === 'function') { window.tcgShowAlbum(); }
+            else { toast('TCG page layer not loaded (lclite apply)'); }
+        } },
+        { id: 'tcg-pack', mod: 'tcg', name: 'Open a pack', desc: 'Spends 2,500 credits on a Standard Pack and reveals five cards. Same as clicking the HUD.', kind: 'action', btn: 'Open', run() {
+            if (typeof window.tcgOpenPack === 'function') { window.tcgOpenPack(); }
+            else { toast('TCG engine not loaded (rebuild needed)'); }
+        } }
+    );
 
     // ---- Hotkeys (mods/hotkeys) ---------------------------------------------
     // Keybinds: F-key sidebar tabs, Esc closes interfaces, WASD camera. The key list
@@ -555,8 +582,10 @@
         const row = document.createElement('div');
         row.className = 'lcm-row';
         row.dataset.name = f.name.toLowerCase() + ' ' + (f.desc || '').toLowerCase();
+        // optional btn: some actions read better than "Run" (TCG's two doorways
+        // into its own UI both say "Open")
         row.innerHTML = `${labelHtml(f)}
-            <button class="lcm-zreset">Run</button>`;
+            <button class="lcm-zreset">${esc(f.btn || 'Run')}</button>`;
         row.querySelector('button').addEventListener('click', () => f.run());
         return row;
     }
