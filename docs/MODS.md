@@ -147,7 +147,15 @@ overlay — see CONTRIBUTING for its refusals and `--prune`.)
 Hunks are `{find:[old lines], replace:[new lines]}` — `find` is the MINIMAL unique
 window in the pristine old file (2-line context floor, expanded only while the anchor
 is non-unique). If regen warns `AMBIGUOUS`, your hook site's surroundings repeat in the
-file — widen your edit to include a unique line rather than fighting the tool. When one
+file — widen your edit to include a unique line rather than fighting the tool. **A hunk's
+context floor must also be REVISION-STABLE:** the floor reaches ~2 lines past your
+insertion, so a neighbouring revision-specific line lands in `find[]` and the anchor can
+only ever match the revision it was authored on — `mods/hover-tile`'s payload import
+anchored after `import JagFX …` swallowed `const CLIENT_VERSION = 289;` and silently
+expired 274's `inherits` claim (matrix: exact 111, reseat 1). Move the insertion until the
+whole window is byte-identical on every revision that inherits, and let `tools/matrix.mjs`
+prove it — the failure is invisible to `apply --check`, which only ever tests the tree you
+are standing in. When one
 file hosts SEVERAL mods (Client.ts does), each added block MUST start with a
 `lclite:<mod>` marker (comment form matching the language, `<!-- lclite:mod -->` in
 EJS); regen routes by marker with 100% precision and warns loudly on any unmarked
