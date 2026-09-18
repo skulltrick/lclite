@@ -42,7 +42,7 @@ export const MOD_META = {
     },
     'stat-orbs': {
         label: 'Stat orbs',
-        desc: 'HP/Prayer/Run/etc orbs by the minimap.',
+        desc: 'HP/Prayer/Run data orbs on the minimap panel. Alt+drag to move them.',
     },
     'tcg': {
         label: 'TCG',

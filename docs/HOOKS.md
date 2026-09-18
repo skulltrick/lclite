@@ -40,7 +40,7 @@
 | webclient/src/client/Client.ts | 2942 | anti-cheat | `// lclite:anti-cheat` |
 | webclient/src/client/Client.ts | 3091 | tcg | `// lclite:tcg — ::tcg opens the album; staff subcommands (give/roll)` |
 | webclient/src/client/Client.ts | 3227 | camera | `// custom: smooth the wheel zoom toward its target (OSRS-style easing) lclite:ca` |
-| webclient/src/client/Client.ts | 3888 | stat-orbs | `/// custom (lclite "stat-orbs" mod): fields + methods live in this one lclite:st` |
+| webclient/src/client/Client.ts | 3888 | stat-orbs | `/// custom (lclite "stat-orbs" mod): fields + tunables live in this one lclite:s` |
 | webclient/src/client/Client.ts | 4174 | low-detail | `// lclite:low-detail` |
 | webclient/src/client/Client.ts | 4193 | camera | `// custom: uniform zoom — the entire camera-relative geometry (orbit distance lc` |
 | webclient/src/client/Client.ts | 4259 | camera | `// lclite:camera` |

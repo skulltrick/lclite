@@ -45,7 +45,7 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
   The panel's own mark (FAB + header, `MARK()` in panel.js) is the SAME art at the same
   48-unit viewBox, inlined with per-instance mask/gradient ids — three copies of one
   logo, so change all three together or none.
-- `patches/client_ejs.json` — the two tags (currently `?v=9`/`?v=12` — see below), the
+- `patches/client_ejs.json` — the two tags (currently `?v=9`/`?v=13` — see below), the
   favicon `<link>` pair in the head, the `<title>` (and the `data-rev` attribute the
   panel's header chip reads — see the next bullet), and the
   canvas-sizing logic itself: `setSize()` now takes ANY decimal (clamped 0.25x..8x),
@@ -117,6 +117,32 @@ page chrome, and a stale panel.js cannot replace itself), so the version key is 
 only defense. The one self-heal it does carry is the tab title: `data-rev` on the
 script tag lets a loaded panel.js put `LCLite - <rev>` back if the `<title>` hunk
 did not apply.
+
+## Placement API (`window.lcmAnchor`)
+
+The panel owns the alt-drag layer, and it is the ONLY writer of the anchor keys. Two
+registration shapes, both positional because object literals mangle across the
+bundle→page boundary:
+
+- `register({id, el, anchorKey, offsetKey, defA, defO})` — a DOM surface (the FAB, the
+  tcg HUD). The panel positions it; it anchors to the whole client window.
+- `registerCanvas([id, anchorKey, offsetKey, defA, defO, getBounds, region])` — a surface
+  an owner mod paints into a canvas buffer (the xp tracker, the stat orbs). The panel
+  drags a ghost box sized from `getBounds()` (a positional `[x, y, w, h]` in that
+  buffer's own px, or `null` while the surface is hidden) and never positions the real
+  thing: the owner re-reads its own keys per frame. `region` is optional —
+  `[x, y, w, h, bufferW, bufferH]` in the canvas's 765×503 logical space, defaulting to
+  the game viewport (`areaGame`, 512×334 at 4,4). The stat orbs pass the minimap widget
+  (`[550, 4, 172, 156, 172, 156]`) so they drag inside the panel they are drawn on.
+  The region is measured off the CANVAS ELEMENT, never the window: the page centres a
+  scaled canvas inside the letterbox, so window-derived maths put every canvas ghost
+  hundreds of px from its real pixels.
+
+`lcmAnchor.reset(id)` is the one reset path for both kinds (Alt+right-click calls it;
+`lcm-anchor-reset` with the id as `detail` is the event form). It returns `false` for an
+unknown id, so a caller can tell "this surface does not exist right now" — e.g. a mod
+that is switched off and therefore has not registered. A panel action row for another
+mod's surface uses exactly this, which is why no mod ever touches `lcm*` keys itself.
 
 ## Deliberate divergences / notes
 

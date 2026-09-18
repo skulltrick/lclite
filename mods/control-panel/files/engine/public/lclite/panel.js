@@ -87,7 +87,7 @@
               return s.tris + '△ · ' + s.batches + ' calls · ' + s.ms + 'ms';
           } },
         { id: 'xp-drops', name: 'XP drops', desc: 'Customizable XP drops.', master: { key: 'xpDrops', def: 'true' } },
-        { id: 'stat-orbs', name: 'Stat orbs', desc: 'HP/Prayer/Run/etc orbs by the minimap.', master: { key: 'statOrbs', def: 'false' } },
+        { id: 'stat-orbs', name: 'Stat orbs', desc: 'HP/Prayer/Run data orbs on the minimap panel. Alt+drag to move them.', master: { key: 'statOrbs', def: 'false' } },
         { id: 'true-tile', name: 'True tile', desc: "Highlights player's true server tile. Customizable.", master: { key: 'trueTile', def: 'true' } },
         { id: 'tcg', name: 'TCG', desc: 'Left click opens pack, right click opens album. 1k exp = 100 credits, level ups = 1k-25k credits, kills = 1 credit per cb lvl.', master: { key: 'tcg', def: 'true' },
           status() {
@@ -129,6 +129,21 @@
         { id: 'true-tile-outline', mod: 'true-tile', name: 'Border thickness', desc: 'Width of the true-tile outline, in pixels.', key: 'trueTileOutline', kind: 'slider', min: 1, max: 8, step: 1, def: '1', unit: 'px' },
         { id: 'true-tile-fill', mod: 'true-tile', name: 'Fill opacity', desc: 'Translucent color wash inside the tile (OSRS fill style). 0 = outline only.', key: 'trueTileFill', kind: 'slider', min: 0, max: 100, step: 5, def: '0', unit: '%' },
         { id: 'true-tile-desync', mod: 'true-tile', name: 'Only when out of sync', desc: 'Hide the tile while your model stands on the server tile — pops up only when the tick is visibly delayed.', key: 'trueTileOnlyDesync', kind: 'toggle', def: 'false' },
+        // stat-orbs: the orbs are canvas-drawn into the minimap widget buffer, so the
+        // engine re-reads every one of these per frame at its own hook (rule 5) — all of
+        // them apply live, size included. The placement keys (lcmStatOrbs*) belong to the
+        // drag layer, so the reset row below asks IT to clear them (never a 2nd writer).
+        { id: 'orbs-size', mod: 'stat-orbs', name: 'Orb size', desc: 'Diameter of each data orb. The column re-spreads to fill the panel strip.', key: 'statOrbsSize', kind: 'slider', min: 20, max: 28, step: 2, def: '22', unit: 'px' },
+        { id: 'orbs-numbers', mod: 'stat-orbs', name: 'Orb numbers', desc: 'Where the HP/Prayer/Run readouts go: to the left of each orb (OSRS), inside the orb, or hidden.', kind: 'select', key: 'statOrbsNumbers', def: 'left', options: [['left', 'Left of orb'], ['inside', 'Inside orb'], ['hidden', 'Hidden']], apply(v) { LS.set('statOrbsNumbers', v); } },
+        { id: 'orbs-fill', mod: 'stat-orbs', name: 'Fill style', desc: 'Liquid level (OSRS: drains downward as the stat falls) or a clockwise pie sweep from the top.', kind: 'select', key: 'statOrbsFill', def: 'liquid', options: [['liquid', 'Liquid level'], ['pie', 'Pie sweep']], apply(v) { LS.set('statOrbsFill', v); } },
+        { id: 'orbs-pulse', mod: 'stat-orbs', name: 'Low HP warning', desc: 'Flash the Hitpoints orb while you are below a quarter health (OSRS behaviour).', key: 'statOrbsPulse', kind: 'toggle', def: 'true' },
+        { id: 'orbs-hp-color', mod: 'stat-orbs', name: 'Hitpoints color', desc: 'Liquid color of the Hitpoints orb.', kind: 'color', key: 'statOrbsHpColor', def: '#e82623' },
+        { id: 'orbs-prayer-color', mod: 'stat-orbs', name: 'Prayer color', desc: 'Liquid color of the Prayer orb.', kind: 'color', key: 'statOrbsPrayerColor', def: '#d9a318' },
+        { id: 'orbs-run-color', mod: 'stat-orbs', name: 'Run energy color', desc: 'Liquid color of the Run energy orb.', kind: 'color', key: 'statOrbsRunColor', def: '#71c8e8' },
+        { id: 'orbs-reset', mod: 'stat-orbs', name: 'Reset position', desc: 'Put the orbs back in their default spot down the minimap panel. Same as Alt+right-click on them.', kind: 'action', btn: 'Reset', run() {
+            if (window.lcmAnchor && typeof window.lcmAnchor.reset === 'function') window.lcmAnchor.reset('stat-orbs');
+            else toast('LCLite panel not loaded');
+        } },
         // canvas sizing: a real scale slider (the old 1x/2x/3x dropdown was the whole
         // range) plus a Fit toggle for the old "Auto". Both go through setSize(), which
         // writes canvasSize (the key the page reads) and remembers the fixed scale in
@@ -154,7 +169,7 @@
             if (typeof hideControls === 'function') hideControls(); else toast('No legacy bar present');
         } },
         { id: 'reset-all', mod: 'control-panel', name: 'Reset all lclite settings', desc: 'Clears every toggle/zoom/placement and reloads.', kind: 'action', run() {
-            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'antiCheat', 'gpu', 'statOrbs', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'lcliteLegacyBar', 'tcg', 'tcgHud', 'tcgHudCredits', 'tcgHudRate', 'tcgHudProgress', 'lclitePanelMod', 'lclitePanelPinned',
+            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'antiCheat', 'gpu', 'statOrbs', 'statOrbsSize', 'statOrbsNumbers', 'statOrbsFill', 'statOrbsPulse', 'statOrbsHpColor', 'statOrbsPrayerColor', 'statOrbsRunColor', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'lcliteLegacyBar', 'tcg', 'tcgHud', 'tcgHudCredits', 'tcgHudRate', 'tcgHudProgress', 'lclitePanelMod', 'lclitePanelPinned',
                 'canvasSize', 'canvasScale', 'canvasAutoFit', 'filtering', 'hideRoofs', 'lowDetail', 'shiftDrop'].forEach(k => localStorage.removeItem(k));
             // hotkeys: wiped by prefix so every current AND future keybind resets too
             Object.keys(localStorage).filter(k => k.indexOf('hotkeys') === 0).forEach(k => localStorage.removeItem(k));
@@ -752,10 +767,13 @@
     // settings-with-a-UI, not a settings hub). Surfaces register via
     // window.lcmAnchor.register({id, el, anchorKey, offsetKey, defA, defO});
     // a mod that loads without the panel simply has no writer and keeps its
-    // default spot. Anchor = one of 9 points on the GAME CANVAS rect + a px
+    // default spot. Anchor = one of 9 points on the surface's REGION rect + a px
     // offset to the element's top-left, always clamped inside the rect, so a
-    // dragged overlay can never be lost off-screen. Alt+drag moves, Alt+right-
-    // click resets, Escape cancels — same gestures as RuneLite.
+    // dragged overlay can never be lost off-screen. DOM surfaces anchor to the
+    // client window; canvas surfaces anchor to their own BUFFER (see regionRect).
+    // Alt+drag moves, Alt+right-click resets, Escape cancels — same gestures as
+    // RuneLite; lcmAnchor.reset(id) is the same reset for anything that is not a
+    // pointer gesture (a panel row, another mod's ui.js).
     const ANCH = { TL: [0, 0], TC: [.5, 0], TR: [1, 0], ML: [0, .5], MC: [.5, .5], MR: [1, .5], BL: [0, 1], BC: [.5, 1], BR: [1, 1] };
     const SPECS = [];
     const SNAP_HIT = 34;          // px from an anchor point that snaps to it
@@ -765,7 +783,7 @@
         // RuneLite parity: DOM surfaces anchor to the WHOLE client window (the
         // browser viewport) — the black letterbox around the scaled canvas is
         // valid real estate (that's where the FAB lives by default). Canvas-
-        // drawn surfaces are limited by the game buffer itself; see vpRect().
+        // drawn surfaces are limited by the game buffer itself; see regionRect().
         return { left: 0, top: 0, right: innerWidth, bottom: innerHeight, width: innerWidth, height: innerHeight };
     }
     function placeXY(el, x, y) {
@@ -774,10 +792,15 @@
         el.style.right = 'auto';
         el.style.bottom = 'auto';
     }
-    function clampInto(r, x, y, w, h) {
+    function clampInto(r, x, y, w, h, m = 4) {
+        // m = the margin a surface keeps from its region's edge. DOM surfaces keep 4px
+        // so a dragged panel/FAB never sits flush against the viewport edge; canvas
+        // surfaces are clamped FLUSH (m = 0) because their region IS the buffer they
+        // draw into — flush placement is a legitimate look there (orbs hugging the
+        // frame), and the owner clamps with the same margin.
         return [
-            w + 8 < r.width ? Math.max(r.left + 4, Math.min(x, r.left + r.width - w - 4)) : x,
-            h + 8 < r.height ? Math.max(r.top + 4, Math.min(y, r.top + r.height - h - 4)) : y
+            w + 2 * m < r.width ? Math.max(r.left + m, Math.min(x, r.left + r.width - w - m)) : x,
+            h + 2 * m < r.height ? Math.max(r.top + m, Math.min(y, r.top + r.height - h - m)) : y
         ];
     }
     function specPos(spec, rect) {
@@ -831,17 +854,27 @@
             applySpec(s);
             return true;
         },
-        // canvas-buffer surfaces (xp tracker): registered BY THE OWNER from the
-        // bundle with a POSITIONAL array (terser mangles object-literal keys —
-        // same boundary law as tcg's info()). No element: the drag layer shows
-        // a ghost box sized by the owner's getBounds() (positional [x,y,w,h] in
-        // logical canvas units, 765x503 space) and persists anchor/offset in
-        // those same logical units; the owner re-reads its own keys per frame.
+        // canvas-buffer surfaces (xp tracker, stat orbs): registered BY THE OWNER from the
+        // bundle with a POSITIONAL array (terser mangles object-literal keys — same
+        // boundary law as tcg's info()). No element: the drag layer shows a ghost box
+        // sized by the owner's getBounds() (positional [x,y,w,h] in that buffer's OWN
+        // px) and persists anchor/offset in those same units; the owner re-reads its own
+        // keys per frame. a[6] is OPTIONAL and selects the buffer the surface lives in:
+        // [x, y, w, h, bufferW, bufferH] in the canvas's 765x503 logical space (see
+        // regionRect) — omit it for the game viewport (areaGame), pass it for anything
+        // else (stat-orbs uses the minimap widget, areaMap at 550,4).
         registerCanvas(a) {
-            const s = { id: a[0], el: null, canvas: true, anchorKey: a[1], offsetKey: a[2], defA: a[3], defO: a[4], getBounds: a[5] };
+            const s = { id: a[0], el: null, canvas: true, anchorKey: a[1], offsetKey: a[2], defA: a[3], defO: a[4], getBounds: a[5], region: a[6] || null };
             const i = SPECS.findIndex(x => x.id === s.id);
             if (i >= 0) SPECS[i] = s; else SPECS.push(s);
             return true;
+        },
+        // Put ONE surface back in its default spot. The drag layer is the only writer of
+        // the anchor keys, so this is the sanctioned way for anyone else (a panel action
+        // row, another mod's ui.js) to reset one: Alt+right-click in-game does the same.
+        // Also reachable by dispatching `lcm-anchor-reset` with the surface id as detail.
+        reset(id) {
+            return resetSurface(id);
         }
     };
     const fabSpec = { id: 'fab', el: fab, anchorKey: 'lcmFabAnchor', offsetKey: 'lcmFabOffset', defA: 'TR', defO: '-62,14' };
@@ -869,15 +902,33 @@
             d.style.top = Math.round(r.top + r.height * k[1]) + 'px';
         });
     }
-    // The GAME VIEWPORT sub-rect of the canvas (areaGame occupies (4,4)-(516,338)
-    // of the 765x503 logical frame; the sidebar/chat are other buffers a canvas
-    // overlay cannot be dragged into). Canvas-owned surfaces snap inside THIS
-    // rect, in buffer px — the owner applies the same 9-anchor math per frame.
-    function vpRect() {
-        const b = gameRect();
+    // The GAME CANVAS rect — NOT the window. The page sizes the canvas to a scale of its
+    // fixed 765x503 logical frame and centres it, so the black letterbox around it is
+    // real estate the canvas cannot draw into; a canvas surface's region must therefore
+    // be measured off the element itself. (Measuring it off the window put every canvas
+    // ghost hundreds of px from its real pixels — the letterbox is that wide.)
+    function canvasRect() {
+        const el = document.getElementById('canvas');
+        if (el) {
+            const r = el.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0) return r;
+        }
+        return gameRect();   // pre-boot page (no canvas yet): window fallback
+    }
+    // A canvas surface's REGION = which BUFFER it draws into, as [x, y, w, h] in the
+    // canvas's own 765x503 logical space, plus that buffer's pixel size [bw, bh].
+    // Default = the game viewport (areaGame: 512x334 at 4,4) — the normal home of a
+    // canvas overlay. stat-orbs passes the minimap widget instead (areaMap: 172x156 at
+    // 550,4), and THAT buffer is its hard boundary. sx/sy convert buffer px <-> css px
+    // per axis, and the owner applies the same 9-anchor math to its own keys.
+    const VP_REGION = [4, 4, 512, 334, 512, 334];
+    function regionRect(spec) {
+        const c = canvasRect();
+        const g = (spec && spec.region) || VP_REGION;
+        const width = c.width * (g[2] / 765), height = c.height * (g[3] / 503);
         return {
-            left: b.left + b.width * (4 / 765), top: b.top + b.height * (4 / 503),
-            width: b.width * (512 / 765), height: b.height * (334 / 503)
+            left: c.left + c.width * (g[0] / 765), top: c.top + c.height * (g[1] / 503),
+            width: width, height: height, sx: width / g[4], sy: height / g[5]
         };
     }
     function ghostBox() {
@@ -893,15 +944,17 @@
     let ds = null;   // active drag session
     function hitCanvasSpec(e) {
         if (!e.target || e.target.id !== 'canvas') return null;
-        const vp = vpRect(), sx = vp.width / 512, sy = vp.height / 334;
         for (const spec of SPECS) {
             if (!spec.canvas) continue;
             let b = null;
             try { b = spec.getBounds && spec.getBounds(); } catch (err) { /* not visible */ }
             if (!b) continue;
-            const r = { left: vp.left + b[0] * sx, top: vp.top + b[1] * sy, width: b[2] * sx, height: b[3] * sy };
-            if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
-                return { spec, r, sx, sy };
+            const vp = regionRect(spec);   // each canvas surface has its OWN buffer
+            const r = { left: vp.left + b[0] * vp.sx, top: vp.top + b[1] * vp.sy, width: b[2] * vp.sx, height: b[3] * vp.sy };
+            // explicit left+width (not r.right): these are plain objects, so a .right
+            // read was always undefined and the hit test could never match at all
+            if (e.clientX >= r.left && e.clientX <= r.left + r.width && e.clientY >= r.top && e.clientY <= r.top + r.height) {
+                return { spec, r, sx: vp.sx, sy: vp.sy };
             }
         }
         return null;
@@ -936,15 +989,15 @@
             grabX: e.clientX - r.left, grabY: e.clientY - r.top, origX: e.clientX, origY: e.clientY,
             orig: { left: spec.el ? spec.el.style.left : '', top: spec.el ? spec.el.style.top : '', right: spec.el ? spec.el.style.right : '', bottom: spec.el ? spec.el.style.bottom : '' }
         };
-        showDots(spec.canvas ? vpRect() : gameRect(), true);
+        showDots(spec.canvas ? regionRect(spec) : gameRect(), true);
         window.dispatchEvent(new CustomEvent('lcm-drag', { detail: spec.id }));
         try { (spec.el || box).setPointerCapture(e.pointerId); } catch (err) { /* window listeners still fire */ }
     }, true);
     window.addEventListener('pointermove', e => {
         if (!ds) return;
         if (Math.abs(e.clientX - ds.origX) + Math.abs(e.clientY - ds.origY) > 3) ds.moved = true;
-        const r = ds.spec.canvas ? vpRect() : gameRect();
-        const [x, y] = clampInto(r, e.clientX - ds.grabX, e.clientY - ds.grabY, ds.w, ds.h);
+        const r = ds.spec.canvas ? regionRect(ds.spec) : gameRect();
+        const [x, y] = clampInto(r, e.clientX - ds.grabX, e.clientY - ds.grabY, ds.w, ds.h, ds.spec.canvas ? 0 : 4);
         placeXY(ds.box, x, y);
         let best = null, bd = SNAP_HIT;
         for (const name in ANCH) {
@@ -963,7 +1016,7 @@
         showDots(null, false);
         window.dispatchEvent(new CustomEvent('lcm-drag-end', { detail: spec.id }));
         if (ds.moved) {
-            const r = spec.canvas ? vpRect() : gameRect();
+            const r = spec.canvas ? regionRect(spec) : gameRect();
             const x = parseFloat(box.style.left) || 0, y = parseFloat(box.style.top) || 0;
             let a = ds.snap;
             if (!a) {   // free placement: anchor named by the element centre's region
@@ -1004,6 +1057,20 @@
         suppressClick = performance.now() + 300;
         ds = null;
     }
+    // Reset a surface to its default spot (the drag layer owns the keys — see the
+    // lcmAnchor.reset doc above). Returns false for an unknown id so a caller can tell
+    // "the panel has no such surface" (e.g. the mod is switched off / not installed).
+    function resetSurface(id) {
+        const spec = SPECS.find(s => s.id === id);
+        if (!spec) return false;
+        localStorage.removeItem(spec.anchorKey);
+        localStorage.removeItem(spec.offsetKey);
+        applySpec(spec);
+        window.dispatchEvent(new CustomEvent('lcm-anchor-changed', { detail: spec.id }));
+        layoutPanel();
+        toast(`${spec.id === 'fab' ? 'FAB' : spec.id}: position reset`);
+        return true;
+    }
     // Alt+right-click: reset one surface to its default corner
     document.addEventListener('contextmenu', e => {
         if (!e.altKey) return;
@@ -1014,13 +1081,11 @@
         if (!spec) return;
         e.preventDefault();
         e.stopPropagation();
-        localStorage.removeItem(spec.anchorKey);
-        localStorage.removeItem(spec.offsetKey);
-        applySpec(spec);
-        window.dispatchEvent(new CustomEvent('lcm-anchor-changed', { detail: spec.id }));
-        layoutPanel();
-        toast(`${spec.id === 'fab' ? 'FAB' : spec.id}: position reset`);
+        resetSurface(spec.id);
     }, true);
+    // ...and the same thing over an event, for a page-side mod that has no reference
+    // to this object (the panel's own rows call lcmAnchor.reset(id) directly).
+    window.addEventListener('lcm-anchor-reset', e => { resetSurface(e.detail); });
     // alt-hot cursor hints + escape-cancel
     window.addEventListener('keydown', e => {
         if (e.key === 'Alt' && !e.repeat) { document.body.classList.add('lcm-alt'); window.lcmAlt = true; }
