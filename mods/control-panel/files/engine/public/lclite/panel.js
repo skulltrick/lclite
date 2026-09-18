@@ -253,10 +253,10 @@
     // (lcmWikiLookup*) belong to the drag layer, so the reset row below asks IT to clear
     // them (never a 2nd writer).
     MODS.push(
-        { id: 'wiki-lookup-button', mod: 'wiki-lookup', name: 'Minimap wiki button', desc: 'The wiki orb at the bottom-left of the minimap panel. Click it, then click any NPC, object or item — world, inventory, worn, bank or shop — and its wiki page opens. It highlights while armed; clicking it again (or using it) turns it off. Alt+drag moves it.', key: 'wikiLookupButton', kind: 'toggle', def: 'true' },
+        { id: 'wiki-lookup-button', mod: 'wiki-lookup', name: 'Minimap wiki button', desc: 'The wiki orb at the bottom-right of the minimap panel. Click it, then click any NPC, object or item — world, inventory, worn, bank or shop — and its wiki page opens. It highlights while armed; clicking it again (or using it) turns it off. Alt+drag moves it.', key: 'wikiLookupButton', kind: 'toggle', def: 'true' },
         { id: 'wiki-lookup-menu', mod: 'wiki-lookup', name: 'Right-click menu row', desc: 'The classic RuneLite form: a \'Wiki <target>\' row in the right-click menu, on the bottom line above Cancel. Off by default — the minimap button is the usual way in.', kind: 'select', key: 'wikiLookupMenu', def: 'off', options: [['off', 'Off'], ['always', 'Always'], ['shift', 'Hold Shift'], ['ctrl', 'Hold Ctrl'], ['alt', 'Hold Alt']], apply(v) { LS.set('wikiLookupMenu', v); } },
         { id: 'wiki-lookup-style', mod: 'wiki-lookup', name: 'Lookup style', desc: 'Direct page (the exact page for the name, RuneLite\'s classic behaviour) or the wiki\'s search results, which always land somewhere.', kind: 'select', key: 'wikiLookupStyle', def: 'page', options: [['page', 'Direct page'], ['search', 'Wiki search']], apply(v) { LS.set('wikiLookupStyle', v); } },
-        { id: 'wiki-lookup-reset', mod: 'wiki-lookup', name: 'Reset button position', desc: 'Put the minimap wiki button back at the bottom-left of the panel. Same as Alt+right-click on it.', kind: 'action', btn: 'Reset', run() {
+        { id: 'wiki-lookup-reset', mod: 'wiki-lookup', name: 'Reset button position', desc: 'Put the minimap wiki button back at the bottom-right of the panel. Same as Alt+right-click on it.', kind: 'action', btn: 'Reset', run() {
             if (window.lcmAnchor && typeof window.lcmAnchor.reset === 'function') window.lcmAnchor.reset('wiki-lookup');
             else toast('LCLite panel not loaded');
         } },

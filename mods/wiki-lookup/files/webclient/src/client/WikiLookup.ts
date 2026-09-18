@@ -216,12 +216,17 @@ export function wikiLookupArmedPlan(options: string[], count: number, settings: 
 
 /** The button is drawn into the minimap WIDGET's own 172x156 space (the areaMap
  *  buffer, composited at canvas 550,4) — the same space, and the same ride, as
- *  mods/stat-orbs' data orbs. The panel's left stone strip is 25px wide and the
- *  compass owns y < 33, so the button is a 21px stone-rimmed orb tucked into the
- *  BOTTOM-LEFT of the panel: exactly where OSRS and RuneLite put the wiki orb, and
- *  clear of the map window itself. The size is ODD on purpose: r = size >> 1 = 10 puts
- *  the centre on a pixel and the disc then fills the box edge to edge (a 20px box with
- *  r=10 spilled one pixel past it, which the pixel test caught). */
+ *  mods/stat-orbs' data orbs. The button is a 21px stone-rimmed orb in the
+ *  BOTTOM-RIGHT of the panel, where OSRS and RuneLite put the wiki orb: it sits over
+ *  the bottom-right corner of the rotating map window (which spans (25,5)-(170,155)),
+ *  the way the orbs overlap the map's own edge in OSRS. The map is re-blitted every
+ *  frame before the composite, so an orb there never leaves a stale pixel behind, and
+ *  the panel's left stone strip stays free for mods/stat-orbs' column. It keeps 3px of
+ *  clearance from the panel's right and bottom edges so its own outline never merges
+ *  with the panel's border. The size is ODD
+ *  on purpose: r = size >> 1 = 10 puts the centre on a pixel and the disc then fills
+ *  the box edge to edge (a 20px box with r=10 spilled one pixel past it, which the
+ *  pixel test caught). */
 export const WIKI_LOOKUP_BUTTON_SIZE: number = 21;
 export const WIKI_LOOKUP_PANEL_W: number = 172;
 export const WIKI_LOOKUP_PANEL_H: number = 156;
@@ -234,10 +239,14 @@ export const WIKI_LOOKUP_ORIGIN_Y: number = 4;
  *  object literal in bundled code (terser's property mangler renames the keys). */
 export const WIKI_LOOKUP_ANCH_NAMES: string[] = ['TL', 'TC', 'TR', 'ML', 'MC', 'MR', 'BL', 'BC', 'BR'];
 export const WIKI_LOOKUP_ANCH: number[][] = [[0, 0], [0.5, 0], [1, 0], [0, 0.5], [0.5, 0.5], [1, 0.5], [0, 1], [0.5, 1], [1, 1]];
-/** Default placement: bottom-left, 2px in from the panel's left edge and 24px up from
- *  its bottom (so the orb is not flush against the panel's frame). */
-export const WIKI_LOOKUP_ANCHOR_DEF: string = 'BL';
-export const WIKI_LOOKUP_OFFSET_DEF: string = '2,-24';
+/** Default placement: the bottom-right corner of the map window, 3px clear of the
+ *  panel's right and bottom edges — the orb's dark outline against the panel's own dark
+ *  border is what a flush placement reads as (a merged, clipped-looking circle), and the
+ *  same 3px on both axes is what makes the spot look deliberate rather than dropped.
+ *  Documentation only for the drag layer (a canvas surface's default spot is the box
+ *  below; `defA`/`defO` are never resolved for one — `applySpec` returns early). */
+export const WIKI_LOOKUP_ANCHOR_DEF: string = 'BR';
+export const WIKI_LOOKUP_OFFSET_DEF: string = '-3,-3';
 
 /** The button's box [x, y, w, h] in the widget's own space, from the placement keys the
  *  panel's drag layer writes (alt+drag). Clamped FLUSH — the widget IS the boundary, so
@@ -245,8 +254,8 @@ export const WIKI_LOOKUP_OFFSET_DEF: string = '2,-24';
  *  No keys stored (the normal case) = the default spot above. */
 export function wikiLookupButtonBox(anchor: string, offset: string): number[] {
     const size: number = WIKI_LOOKUP_BUTTON_SIZE;
-    let ox: number = 2;
-    let oy: number = WIKI_LOOKUP_PANEL_H - 24;
+    let ox: number = WIKI_LOOKUP_PANEL_W - size - 3;   // the default spot above
+    let oy: number = WIKI_LOOKUP_PANEL_H - size - 3;
 
     const ai: number = WIKI_LOOKUP_ANCH_NAMES.indexOf(anchor);
     if (ai >= 0) {

@@ -5,7 +5,7 @@ whatever you click next — RuneLite's *Wiki* plugin (its modern wiki-orb form),
 plugin's classic form as an opt-in: a **`Wiki <target>` row in the right-click menu**.
 
 Player-visible effect, the default way in: click the stone-rimmed **W** orb at the
-bottom-left of the minimap panel, then click any NPC, object or item — a goblin, a tree,
+bottom-right of the minimap panel, then click any NPC, object or item — a goblin, a tree,
 a bank booth, a coin stack on the floor, a shark in your bank, the sword you are wearing
 — and `oldschool.runescape.wiki/w/<name>` opens in a new tab. While the button is armed
 it turns OSRS-blue and pulses, and the thing under your cursor gets **`Lookup <name>`**
@@ -57,7 +57,7 @@ everything after 2004), which is why this mod looks up by name and never sends a
   was bumped for this change (15 → 16), the house rule for any panel.js edit. The
   button's cross-realm placement name `lcmWikiLookupBounds` was added to the
   control-panel reserve island in `webclient/bundle.ts`.
-- `tools/wiki_lookup_test.ts` — 158-check bun harness (see *Verified*).
+- `tools/wiki_lookup_test.ts` — 159-check bun harness (see *Verified*).
 - `tools/wiki_button_edit.py` — the idempotent, CRLF-preserving script that writes the
   seven hunks into a live `Client.ts` (region-based, so a re-run is a no-op). Kept
   because it is the fastest way to re-do this edit after a revision port or an anchor
@@ -101,10 +101,16 @@ Three things fall out of reading the menu instead of the world:
 ## The minimap button
 
 **Where it lives.** The 2004 minimap panel (`areaMap`, 172x156, composited onto the
-canvas at 550,4) has a free stone strip 25px wide down its left side, with the compass
-owning `y < 33` and the map window starting at `x = 25`. The button is a 21px orb tucked
-into the **bottom-left** of that strip — where OSRS and RuneLite put the wiki orb. It is
-drawn in the same visual language as `mods/stat-orbs`' data orbs (hard 1px steps, a
+canvas at 550,4) is a 146x151 rotating map window at (25,5) with a 25px stone strip down
+its left side and the compass owning `y < 33`. The button is a 21px orb in the
+**bottom-right** of the panel — where OSRS and RuneLite put the wiki orb — sitting over
+the map window's own corner with 3px of clearance from the panel's right and bottom
+edges (flush placement made the orb's dark outline merge with the panel's border, which
+the zoomed render showed immediately; the even 3px is what makes the spot read as
+deliberate). Over the map is also the safest place for it to leave no trace: the map is
+re-blitted every frame before the composite, so a moved or switched-off orb can never
+strand a pixel there, and the panel's left stone strip stays free for stat-orbs' column.
+It is drawn in the same visual language as `mods/stat-orbs`' data orbs (hard 1px steps, a
 bevelled stone rim lit upper-left, a dark glass body, no anti-aliasing) with the wiki's
 own **W** as a 7x7 pixel glyph. Idle it is stone and dark glass; hovered its rim warms;
 armed its glass turns OSRS-blue and pulses on a 16-tick period.
@@ -193,7 +199,7 @@ no hub, no other mod's key, and every change lands on the next frame.
 | `wikiLookupButton` | `'true'`/`'false'` | `'true'` | Minimap wiki button (toggle) |
 | `wikiLookupMenu` | `'off'`/`'always'`/`'shift'`/`'ctrl'`/`'alt'` | `'off'` | Right-click menu row (select) |
 | `wikiLookupStyle` | `'page'`/`'search'` | `'page'` | Lookup style (select) |
-| `lcmWikiLookupAnchor`, `lcmWikiLookupOffset` | anchor name + px offset | `'BL'`, `'2,-24'` | written by the panel's drag layer only |
+| `lcmWikiLookupAnchor`, `lcmWikiLookupOffset` | anchor name + px offset | `'BR'`, `'-3,-3'` (documentation — the default spot is the payload's own box) | written by the panel's drag layer only |
 
 Every value is validated in the payload (`wikiLookupSettings`), not at the call site: an
 unknown style clamps to `page`, an unknown menu value clamps to `off` (so a player's
@@ -236,17 +242,19 @@ reset never races it.
 - **Ground-item stacks and multi-name menus use the TOP row.** Only one row is added, for
   the entry a left click would have run — so a tile with three items gets the page for the
   top one, exactly as RuneLite behaves.
-- **It shares the panel's left strip with `mods/stat-orbs`.** With both mods on their
-  default spots the wiki orb overlaps the bottom data orb slightly (stat-orbs' column
-  runs down the same strip). Both are alt-draggable — grab whichever one you can see and
-  move it — and the panel's *Reset button position* row puts the orb back.
+- **Placement is free, the default is out of stat-orbs' way.** The orb sits in the
+  bottom-right corner, so `mods/stat-orbs`' default column down the left strip is
+  untouched; if you drag the orb onto it, both are still alt-draggable and the panel's
+  *Reset button position* row puts the orb back in the corner. Note the drag layer clamps
+  canvas surfaces FLUSH, so dragging the orb hard into the corner parks it flush rather
+  than at the default 3px inset.
 - **289 and 274 only.** `274` inherits the 289 corpus; `254` has its own corpus and this
   mod is not ported to it (same as camera, control-panel, hotkeys, stat-orbs, hover-tile
   and xp-drops). `node tools/port.mjs 254` is the one command that changes that.
 
 ## Verified
 
-- `tools/wiki_lookup_test.ts` — 158 checks, all green, run against both the `files/`
+- `tools/wiki_lookup_test.ts` — 159 checks, all green, run against both the `files/`
   payload and the copy inside an applied tree: the action id against `MiniMenuAction`'s
   own numbers and the `>1000 / <2000` range; the target parse against the exact option
   strings the 289 client builds (loc/NPC/item ops, use-item-on-X, spell targets, bank and
@@ -258,8 +266,9 @@ reset never races it.
   row OFF — every clamp, a stale `wikiLookupModifier`); the classic plan and the armed
   plan (master off, menu off, button off, not armed, a 499/500-entry menu); the classic
   insertion and the armed overwrite replayed through the engine's own sort; the button's
-  box maths (default spot inside the strip, every anchor, garbage offsets, clamping) and
-  its hit test (exactly 21x21 clicks); and the **pixels** — nothing painted outside the
+  box maths (the default spot inside the map window's corner with 3px clearance on both
+  edges, every anchor, garbage offsets, clamping) and its hit test (exactly 21x21
+  clicks); and the **pixels** — nothing painted outside the
   box, no pixel written as 0 (a hole in the stone), the disc covering ~317 of the 441 box
   pixels, hover/armed/pulse each repainting (104 / 253 / 130 px), the pulse period, and
   the 7x7 W glyph's shape and ink colour in both states. It also prints the idle button

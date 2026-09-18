@@ -119,7 +119,7 @@ BLOCK = '''    // lclite:wiki-lookup
 
     /// custom: the button's live box, in the minimap widget's own 172x156 space, from the
     /// placement keys the panel's drag layer writes (alt+drag; the owner reads its own
-    /// keys — rule 5). No keys stored = the default spot, bottom-left.
+    /// keys — rule 5). No keys stored = the default spot, the map window's bottom-right corner.
     private wikiLookupBox(): number[] {
         return wikiLookupButtonBox(
             localStorage.getItem('lcmWikiLookupAnchor') || '',
@@ -236,7 +236,7 @@ BLOCK = '''    // lclite:wiki-lookup
                 const s = wikiLookupSettings(wikiLookupRead);
                 return s.enabled && s.button ? this.wikiLookupBox() : null;
             };
-            W['lcmAnchor']['registerCanvas']?.(['wiki-lookup', 'lcmWikiLookupAnchor', 'lcmWikiLookupOffset', 'BL', '2,-24', () => (W['lcmWikiLookupBounds'] ? W['lcmWikiLookupBounds']() : null), [550, 4, 172, 156, 172, 156]]);
+            W['lcmAnchor']['registerCanvas']?.(['wiki-lookup', 'lcmWikiLookupAnchor', 'lcmWikiLookupOffset', 'BR', '-3,-3', () => (W['lcmWikiLookupBounds'] ? W['lcmWikiLookupBounds']() : null), [550, 4, 172, 156, 172, 156]]);
         }
     }
     // lclite:wiki-lookup

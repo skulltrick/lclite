@@ -331,14 +331,15 @@ console.log('\nthe armed row (over the top slot, after the sort)');
 // ---- the minimap button: geometry + hit test ---------------------------------
 console.log('\nthe minimap button — placement');
 const defBox = W.wikiLookupButtonBox('', '');
-eq(defBox, [2, 132, 21, 21], 'default box: bottom-left of the minimap panel');
-eq(W.wikiLookupButtonBox(W.WIKI_LOOKUP_ANCHOR_DEF, W.WIKI_LOOKUP_OFFSET_DEF), defBox, 'the registered default anchor/offset (BL, 2,-24) resolves to the same box');
-ok(defBox[0] + defBox[2] <= 25, 'it sits in the panel\'s free left stone strip (the map window starts at x=25)', defBox);
-ok(defBox[1] >= 33, 'and clear of the compass, which owns y < 33', defBox);
-ok(defBox[1] + defBox[3] <= W.WIKI_LOOKUP_PANEL_H, 'and inside the panel (156 tall)', defBox);
+eq(defBox, [148, 132, 21, 21], 'default box: bottom-right corner of the map window (RuneLite\'s spot)');
+eq(W.WIKI_LOOKUP_ANCHOR_DEF, 'BR', 'the registered default anchor is BR');
+ok(W.WIKI_LOOKUP_PANEL_W - (defBox[0] + defBox[2]) >= 3, 'it keeps 3px clear of the panel\'s right edge, so its outline never merges with the border', defBox);
+ok(W.WIKI_LOOKUP_PANEL_H - (defBox[1] + defBox[3]) >= 3, 'and 3px clear of the bottom edge', defBox);
+ok(defBox[0] >= 25 && defBox[1] >= 5 && defBox[0] <= 170 && defBox[1] <= 155, 'i.e. over the bottom-right corner of the MAP WINDOW (25,5)-(170,155), not the stone strip — the map is re-blitted every frame, so nothing stale can stay there', defBox);
+ok(defBox[0] > 25 + 146 / 2, 'and far enough right that it cannot touch stat-orbs\' left-strip column', defBox);
 eq(W.WIKI_LOOKUP_BUTTON_SIZE, 21, 'a 21px orb (OSRS-size next to the 22px data orbs)');
-eq(W.wikiLookupButtonBox('BR', '0,0'), [151, 135, 21, 21], 'anchor BR: flush bottom-right of the panel');
 eq(W.wikiLookupButtonBox('TL', '0,0'), [0, 0, 21, 21], 'anchor TL: flush top-left');
+eq(W.wikiLookupButtonBox('BL', '2,-24'), [2, 132, 21, 21], 'anchor BL: still reachable by hand (and is stat-orbs\' strip)');
 eq(W.wikiLookupButtonBox('TL', '-50,-50'), [0, 0, 21, 21], 'clamped FLUSH at the top-left (never off the panel)');
 eq(W.wikiLookupButtonBox('BR', '9999,9999'), [151, 135, 21, 21], 'and clamped at the bottom-right');
 eq(W.wikiLookupButtonBox('MC', '4,4'), [90, 82, 21, 21], 'a mid anchor + offset: 172/2+4, 156/2+4');
@@ -348,11 +349,11 @@ eq(W.WIKI_LOOKUP_ANCH_NAMES.length, W.WIKI_LOOKUP_ANCH.length, 'anchor names and
 
 console.log('\nthe minimap button — hit test');
 const hit = (mx: number, my: number) => W.wikiLookupButtonHit(mx, my, defBox);
-ok(hit(12, 142), 'the centre hits');
-ok(hit(2, 132), 'the near corner hits (inclusive)');
-ok(hit(22, 152), 'the far corner hits (half-open on the far edge)');
-ok(!hit(1, 142) && !hit(12, 131) && !hit(23, 142) && !hit(12, 153), 'a pixel outside each edge misses');
-ok(!hit(0, 0) && !hit(171, 155), 'the panel corners miss');
+ok(hit(158, 142), 'the centre hits');
+ok(hit(148, 132), 'the near corner hits (inclusive)');
+ok(hit(168, 152), 'the far corner hits (half-open on the far edge)');
+ok(!hit(147, 142) && !hit(158, 131) && !hit(169, 142) && !hit(158, 153), 'a pixel outside each edge misses');
+ok(!hit(0, 0) && !hit(25, 40), 'the panel\'s far corners miss');
 {
     let inside = 0;
     for (let x = 0; x < W.WIKI_LOOKUP_PANEL_W; x++) for (let y = 0; y < W.WIKI_LOOKUP_PANEL_H; y++) if (hit(x, y)) inside++;
