@@ -112,6 +112,12 @@ const MODS = {
     'shift-drop': [
         'webclient/src/client/Client.ts'
     ],
+    'wiki-lookup': [
+        // the menu row (buildMinimenu's tail), its dispatch (doAction's head) and the
+        // payload import; the parse/URL/plan logic ships as a files/ copy
+        // (webclient/src/client/WikiLookup.ts), like hotkeys/hover-tile.
+        'webclient/src/client/Client.ts'
+    ],
     'hotkeys': [
         // the two key hooks in GameShell.ts (claims + releases) and the keybind
         // block / chatbox prompt in Client.ts; the pure decision core ships as a
@@ -130,7 +136,8 @@ const HUNK_OWNER = {
         ['true-tile', /drawTrueTile|trueTileLine|trueTile\b|true tile|true-tile/i],
         ['anti-cheat', /antiCheatEnabled|antiCheat|ANTICHEAT_|telemetry|mouseTracking\.length|RuneScope/i],
         ['camera', /cameraZoom|wheelZoom|middleRotate|wheelScrollChat|rotateLastScreen|middleMouseDown|scrollChatbox|onwheel|camFollow|orbitCamera|setVisZoom|viewRadius|visTile|clearPick|World\.click|lostcityClient|applyCameraSettings/],
-        ['hotkeys', /hotkeys|Hotkeys|hotkeyKey|Press Enter to Chat/]
+        ['hotkeys', /hotkeys|Hotkeys|hotkeyKey|Press Enter to Chat/],
+        ['wiki-lookup', /wikiLookup|WikiLookup|wiki lookup|Wiki <target>/i]
     ],
     'webclient/bundle.ts': [
         // terser property reserves exist FOR the panel contract (client.ejs/

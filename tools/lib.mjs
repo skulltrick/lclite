@@ -81,6 +81,11 @@ export const MOD_META = {
         label: 'Hotkeys',
         desc: 'F-key sidebar tabs, Esc closes interfaces, WASD camera with press-enter-to-chat.',
     },
+    'wiki-lookup': {
+        label: 'Wiki lookup',
+        // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this)
+        desc: 'Right-click an NPC, object or item for a Wiki option that opens the OSRS wiki page for it.',
+    },
 };
 
 export const meta = name => MOD_META[name] || { label: name, desc: '', required: false };

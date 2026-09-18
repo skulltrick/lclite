@@ -88,6 +88,12 @@
     "marker": true
    },
    {
+    "mod": "wiki-lookup",
+    "note": "src/client/Client.ts @ old line 19",
+    "line": 19,
+    "marker": true
+   },
+   {
     "mod": "hover-tile",
     "note": "src/client/Client.ts @ old line 71",
     "line": 71,
@@ -205,6 +211,18 @@
     "mod": "camera",
     "note": "src/client/Client.ts @ old line 2326",
     "line": 2326,
+    "marker": true
+   },
+   {
+    "mod": "wiki-lookup",
+    "note": "src/client/Client.ts @ old line 2513",
+    "line": 2513,
+    "marker": true
+   },
+   {
+    "mod": "wiki-lookup",
+    "note": "src/client/Client.ts @ old line 2568",
+    "line": 2568,
     "marker": true
    },
    {
@@ -367,6 +385,12 @@
     "mod": "shift-drop",
     "note": "src/client/Client.ts @ old line 8364",
     "line": 8364,
+    "marker": true
+   },
+   {
+    "mod": "wiki-lookup",
+    "note": "src/client/Client.ts @ old line 8585",
+    "line": 8585,
     "marker": true
    },
    {

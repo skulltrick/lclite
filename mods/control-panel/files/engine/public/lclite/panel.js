@@ -108,6 +108,7 @@
         { id: 'low-detail', name: 'Low detail', desc: 'Untextured ground applies instantly; ground decorations and half-size textures need a client refresh (F5).', master: { key: 'lowDetail', def: 'false' } },
         { id: 'shift-drop', name: 'Shift-click drop', desc: 'Hold Shift and left-click an item to drop it straight away, skipping the menu.', master: { key: 'shiftDrop', def: 'true' } },
         { id: 'hotkeys', name: 'Hotkeys', desc: 'F-key sidebar tabs, Esc closes interfaces, WASD camera with press-enter-to-chat.', master: { key: 'hotkeys', def: 'true' } },
+        { id: 'wiki-lookup', name: 'Wiki lookup', desc: 'Right-click an NPC, object or item for a Wiki option that opens the OSRS wiki page for it.', master: { key: 'wikiLookup', def: 'true' } },
         { id: 'control-panel', name: 'LCLite', desc: 'This panel and the page around it: canvas size, scaling, legacy bar, fullscreen, screenshots.', master: null }
     ];
 
@@ -176,7 +177,7 @@
         } },
         { id: 'reset-all', mod: 'control-panel', name: 'Reset all lclite settings', desc: 'Clears every toggle/zoom/placement and reloads.', kind: 'action', run() {
             ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'antiCheat', 'gpu', 'statOrbs', 'statOrbsSize', 'statOrbsNumbers', 'statOrbsFill', 'statOrbsPulse', 'statOrbsHpColor', 'statOrbsPrayerColor', 'statOrbsRunColor', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'hoverTile', 'hoverTileColor', 'hoverTileOutline', 'hoverTileFill', 'lcliteLegacyBar', 'tcg', 'tcgHud', 'tcgHudCredits', 'tcgHudRate', 'tcgHudProgress', 'lclitePanelMod', 'lclitePanelPinned',
-                'canvasSize', 'canvasScale', 'canvasAutoFit', 'filtering', 'hideRoofs', 'lowDetail', 'shiftDrop'].forEach(k => localStorage.removeItem(k));
+                'canvasSize', 'canvasScale', 'canvasAutoFit', 'filtering', 'hideRoofs', 'lowDetail', 'shiftDrop', 'wikiLookup', 'wikiLookupStyle', 'wikiLookupModifier'].forEach(k => localStorage.removeItem(k));
             // hotkeys: wiped by prefix so every current AND future keybind resets too
             Object.keys(localStorage).filter(k => k.indexOf('hotkeys') === 0).forEach(k => localStorage.removeItem(k));
             // placement keys are namespaced lcm* (drag layer + owners): wipe by
@@ -240,6 +241,24 @@
         hkSelect('hk-cam-down', 'Camera down', 'Key that lowers the camera pitch.', 'hotkeysKeyCamDown', 'S'),
         hkSelect('hk-cam-left', 'Camera left', 'Key that rotates the camera left.', 'hotkeysKeyCamLeft', 'A'),
         hkSelect('hk-cam-right', 'Camera right', 'Key that rotates the camera right.', 'hotkeysKeyCamRight', 'D')
+    );
+
+    // ---- Wiki lookup (mods/wiki-lookup) -------------------------------------
+    // The engine re-reads its OWN keys every frame at its own hook (buildMinimenu), so
+    // every row here applies live — no reload, and the master switch on the mod's row IS
+    // wikiLookup. The URL is built here too (a page script cannot import the bundle's
+    // TS payload), which is why the search action repeats the wiki's base url: keep it
+    // in step with WIKI_LOOKUP_ORIGIN in
+    // mods/wiki-lookup/files/webclient/src/client/WikiLookup.ts.
+    MODS.push(
+        { id: 'wiki-lookup-style', mod: 'wiki-lookup', name: 'Lookup style', desc: 'Direct page (the exact page for the name, RuneLite\'s classic behaviour) or the wiki\'s search results, which always land somewhere.', kind: 'select', key: 'wikiLookupStyle', def: 'page', options: [['page', 'Direct page'], ['search', 'Wiki search']], apply(v) { LS.set('wikiLookupStyle', v); } },
+        { id: 'wiki-lookup-modifier', mod: 'wiki-lookup', name: 'Menu key', desc: 'Only put the Wiki option in the right-click menu while this key is held. "Always" is the default.', kind: 'select', key: 'wikiLookupModifier', def: 'none', options: [['none', 'Always'], ['shift', 'Hold Shift'], ['ctrl', 'Hold Ctrl'], ['alt', 'Hold Alt']], apply(v) { LS.set('wikiLookupModifier', v); } },
+        { id: 'wiki-lookup-search', mod: 'wiki-lookup', name: 'Search the wiki', desc: 'Type anything — a quest, a skill, a guide — and open the OSRS wiki search in a new tab. The stand-in for the wiki button\'s own Search option.', kind: 'action', btn: 'Open', run() {
+            const q = window.prompt('Search the OSRS wiki for:', '');
+            if (!q) { return; }
+            window.open('https://oldschool.runescape.wiki/w/Special:Search?search=' + encodeURIComponent(q) + '&utm_source=lclite', '_blank');
+            toast('Wiki search opened');
+        } }
     );
 
     // ---- effective mod list (registry ∪ manifest ∪ rows) ------------------

@@ -1,0 +1,189 @@
+{
+ "file": "webclient/src/client/Client.ts",
+ "mod": "wiki-lookup",
+ "rev": "289",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "a52b321a9f42530f3dd2f1a02cd335c955791a12"
+ },
+ "hunks": [
+  {
+   "find": [
+    "import IdkType from '#/config/IdkType.js';",
+    "import SpotType from '#/config/SpotType.js';",
+    "import VarpType from '#/config/VarpType.js';",
+    "import VarBitType from '#/config/VarBitType.js';"
+   ],
+   "replace": [
+    "import IdkType from '#/config/IdkType.js';",
+    "import SpotType from '#/config/SpotType.js';",
+    "",
+    "// lclite:wiki-lookup",
+    "import {",
+    "    WIKI_LOOKUP_ACTION, wikiLookupLabel, wikiLookupModifierHeld, wikiLookupOpen, wikiLookupPlan,",
+    "    wikiLookupRead, wikiLookupSettings, wikiLookupTarget, wikiLookupUrl",
+    "} from '#/client/WikiLookup.js'; // custom (lclite \"wiki-lookup\" mod): the menu row's target parse, the wiki url, the popup fallback",
+    "import VarpType from '#/config/VarpType.js';",
+    "import VarBitType from '#/config/VarBitType.js';"
+   ],
+   "note": "src/client/Client.ts @ old line 19",
+   "occ": 1,
+   "pos": [
+    19,
+    0,
+    17,
+    20
+   ]
+  },
+  {
+   "find": [
+    "    }",
+    "",
+    "    // todo: order",
+    "    private buildMinimenu(): void {"
+   ],
+   "replace": [
+    "    }",
+    "",
+    "    // lclite:wiki-lookup",
+    "    /// custom (lclite \"wiki-lookup\" mod): OSRS/RuneLite wiki lookup — a \"Wiki <target>\"",
+    "    /// row in the right-click menu that opens oldschool.runescape.wiki for the name on",
+    "    /// it. The name is read from the menu the ENGINE just built (the option text the",
+    "    /// player can see), never re-resolved from the cache, so every source of an entity",
+    "    /// option is covered at once: world npcs, locs, ground items, the inventory, worn",
+    "    /// equipment, the bank and shops.",
+    "    ///",
+    "    /// Where the row goes: slot 1, the bottom row directly above 'Cancel'. The TOP row",
+    "    /// is the left-click default, so a row landing there would replace the player's",
+    "    /// attack/chop/wield — RuneLite's wiki option is likewise never the default click.",
+    "    /// The row is stamped with WIKI_LOOKUP_ACTION (1234: not a MiniMenuAction value, and",
+    "    /// >1000 so the menu sort at the end of buildMinimenu() cannot move it — that sort",
+    "    /// only walks >1000 entries downward, and both of our neighbours fail its",
+    "    /// conditions, so the slot is stable).",
+    "    ///",
+    "    /// Settings are this mod's OWN keys, read per frame at this hook (rule 5):",
+    "    ///   wikiLookup          on/off master (default on)",
+    "    ///   wikiLookupStyle     'page' (default) | 'search'",
+    "    ///   wikiLookupModifier  'none' (default) | 'shift' | 'ctrl' | 'alt'",
+    "    /// The parse, the target extraction and the URL live in the mod's files/ payload",
+    "    /// (WikiLookup.ts), so mods/wiki-lookup/tools/wiki_lookup_test.ts exercises the real",
+    "    /// shipped logic headlessly.",
+    "    private wikiLookupMenu(): void {",
+    "        const settings = wikiLookupSettings(wikiLookupRead);",
+    "        const target = wikiLookupPlan(this.menuOption, this.menuNumEntries, settings, wikiLookupModifierHeld(settings.modifier));",
+    "",
+    "        if (!target) {",
+    "            return;",
+    "        }",
+    "",
+    "        for (let i: number = this.menuNumEntries; i > 1; i--) {",
+    "            this.menuOption[i] = this.menuOption[i - 1];",
+    "            this.menuAction[i] = this.menuAction[i - 1];",
+    "            this.menuParamA[i] = this.menuParamA[i - 1];",
+    "            this.menuParamB[i] = this.menuParamB[i - 1];",
+    "            this.menuParamC[i] = this.menuParamC[i - 1];",
+    "        }",
+    "",
+    "        this.menuOption[1] = wikiLookupLabel(target);",
+    "        this.menuAction[1] = WIKI_LOOKUP_ACTION;",
+    "        this.menuParamA[1] = 0;",
+    "        this.menuParamB[1] = 0;",
+    "        this.menuParamC[1] = 0;",
+    "        this.menuNumEntries++;",
+    "    }",
+    "",
+    "    /// custom (lclite \"wiki-lookup\" mod): is this menu slot ours? Every menu click ends",
+    "    /// up here (mouseLoop's default-click dispatch, the open-menu row click, and the",
+    "    /// touch paths all call doAction), so one check covers every way the row can be",
+    "    /// chosen. The page name comes off the row's own text — the same string the parse",
+    "    /// built it from — so the row and the lookup cannot disagree.",
+    "    private wikiLookupDispatch(optionId: number): boolean {",
+    "        if (this.menuAction[optionId] !== WIKI_LOOKUP_ACTION) {",
+    "            return false;",
+    "        }",
+    "",
+    "        const settings = wikiLookupSettings(wikiLookupRead);",
+    "        const target = wikiLookupTarget(this.menuOption[optionId]);",
+    "",
+    "        if (target) {",
+    "            wikiLookupOpen(wikiLookupUrl(target.name, settings.style), target.name);",
+    "        }",
+    "",
+    "        return true;",
+    "    }",
+    "    // lclite:wiki-lookup",
+    "",
+    "    // todo: order",
+    "    private buildMinimenu(): void {"
+   ],
+   "note": "src/client/Client.ts @ old line 2513",
+   "occ": 1,
+   "pos": [
+    2513,
+    0,
+    2511,
+    2514
+   ]
+  },
+  {
+   "find": [
+    "        }",
+    "",
+    "        let sorted: boolean = false;",
+    "        while (!sorted) {"
+   ],
+   "replace": [
+    "        }",
+    "",
+    "        // lclite:wiki-lookup",
+    "        /// custom (lclite \"wiki-lookup\" mod): own keys, read per frame — the \"Wiki",
+    "        /// <target>\" row for the menu's top entry, when that entry names an npc, object",
+    "        /// or item. Runs BEFORE the engine's own menu sort (below), which cannot move a",
+    "        /// >1000 row: the row stays on the bottom slot, above Cancel.",
+    "        this.wikiLookupMenu();",
+    "                // lclite:wiki-lookup",
+    "",
+    "        let sorted: boolean = false;",
+    "        while (!sorted) {"
+   ],
+   "note": "src/client/Client.ts @ old line 2568",
+   "occ": 1,
+   "pos": [
+    2568,
+    0,
+    2566,
+    2569
+   ]
+  },
+  {
+   "find": [
+    "",
+    "        let action: number = this.menuAction[optionId];",
+    "        const a: number = this.menuParamA[optionId];",
+    "        const b: number = this.menuParamB[optionId];"
+   ],
+   "replace": [
+    "",
+    "        let action: number = this.menuAction[optionId];",
+    "",
+    "        // lclite:wiki-lookup",
+    "        /// custom (lclite \"wiki-lookup\" mod): our own menu row opens the wiki page",
+    "        /// instead of running a game action (it is never the left-click default).",
+    "        if (this.wikiLookupDispatch(optionId)) {",
+    "            return;",
+    "        }",
+    "                // lclite:wiki-lookup",
+    "        const a: number = this.menuParamA[optionId];",
+    "        const b: number = this.menuParamB[optionId];"
+   ],
+   "note": "src/client/Client.ts @ old line 8585",
+   "occ": 1,
+   "pos": [
+    8585,
+    0,
+    8583,
+    8586
+   ]
+  }
+ ]
+}
