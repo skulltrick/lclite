@@ -104,6 +104,7 @@ Edit `webclient/src/...` directly (git-tracked — commit often). The client is 
 | hide/reveal whole levels (roofs) | `Client.roofCheck()` — its return value IS `renderAll`'s `maxLevel` (see `mods/hide-roofs`) |
 | low detail (untextured ground)   | `World.lowMem` (read per ground triangle) · `Pix3D.lowMem` (**unpack-time only**) · `ClientBuild.lowMem` (scene build) — `mods/low-detail` |
 | change what a left click does    | `Client.mouseLoop()` — the `doAction(menuNumEntries - 1)` dispatch, and the item-drag setup just above it (`mods/shift-drop`) |
+| highlight the tile under the mouse | `World`'s OWN ground pick: `renderQuickGround()` / `renderGround()` test `World.click` + `insideTriangle` per front-facing ground triangle while drawing back-to-front, so the last hit is the nearest tile. Arm your own pixel beside it (`mods/hover-tile`: fields by `groundX`, three pick sites, arm in `gameDrawMain` before `renderAll`, draw after `coordArrow`) |
 | overlay ON TOP of the interface  | end of `minimapDraw()` — Pix2D is bound to the 172x156 `areaMap` widget, composited over the sidebar every tick (stat orbs live here). NB: widget stone is painted once at boot — draw OPAQUE only, or repaint mapback to wipe |
 | add/replace sidebar UI           | `drawSide()` (~line 11192), stat values: `this.stats[s].base` (HP=3, Prayer=5), `this.runenergy`, redraw flag `redrawSide` |
 | react to input before the engine | `GameShell` handlers (see wheel zoom, ~line 300) |
@@ -119,6 +120,21 @@ cp out/client.js ../engine/public/client/client.js
 ```
 Then in the browser console you can poke real fields (`window.lostcityClient.cameraZoom`
 etc.). Use `bundle.ts` (prod) only for final builds.
+
+**Pure logic belongs in a `files/` payload, not in the hunk.** Anything a mod does that
+does not need client state — a settings parse, a decision table, geometry — ships as
+`mods/<mod>/files/webclient/src/...` and is pulled in by ONE import hunk, so a bun harness
+can import the REAL shipped file and test it headlessly (`mods/hotkeys`, `mods/gpu`,
+`mods/tcg`, `mods/hover-tile`). Two rules that bite: the client's tsconfig has
+`verbatimModuleSyntax`, so a payload's `interface` must be imported with `import type` (or
+avoided — `const s = mySettings(read)` infers it); and a payload's own cross-realm names
+still need their bundle.ts reserve.
+
+**A hook pair that must straddle the render pass takes TWO sites, not one.** Anything that
+arms engine state and reads the result back (hover-tile: arm the pick before
+`world.renderAll`, draw after it) inserts at both ends of the same call sequence — keep
+them ≥3 untouched lines apart so `-U0` gives them separate islands, and put the logic in
+methods parked in a pristine gap with only the two call lines in `gameDrawMain()`.
 
 ### 3. Snapshot your edit as hunks
 Add the file to `MODS` in `tools/regen.mjs` (new folder = new mod, e.g. `mods/xp-drops`),
