@@ -116,7 +116,9 @@ No other mod reads them, and this mod reads no other mod's keys.
 - `kind: 'text'` is new to the panel: it writes the raw string on `change` (Enter/blur)
   rather than per keystroke, so the engine never reads a half-typed list and a re-render
   cannot eat a keystroke. `.lcm-text` in `panel.css` styles it.
-- `Reset all lclite settings` wipes every `groundItems*` key by prefix.
+- `Reset all lclite settings` (which wiped every `groundItems*` key by prefix) is gone
+  from the panel: nothing wipes keys any more, so the two text rows are edited in place
+  (an empty list labels every item that is not on the hidden list).
 
 ## The high alch value is the server's, not an estimate
 

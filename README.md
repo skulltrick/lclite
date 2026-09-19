@@ -89,7 +89,7 @@ revision gets; how that works, and how a revision is added, is
 
 ![The LCLite panel](docs/screens/panel.png)
 
-<sub>The panel in game: one mod's settings at a time, favorites on top, every row a live switch.</sub>
+<sub>The panel in game: one mod's settings at a time, LCLite itself pinned on top of the list, every row a live switch.</sub>
 
 ## How it works
 

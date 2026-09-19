@@ -9,8 +9,10 @@
  *
  * Structure — ONE mod at a time, RuneLite's plugin-list-then-config shape:
  *   THE LIST  — one row per installed mod: favorite star + name + description
- *               + gear + master switch. Favorited mods sort to the top; the rest
- *               are alphabetical by name. Typing in the search box filters the
+ *               + gear + master switch. The panel's OWN row (LCLite itself, the
+ *               "core" row) is pinned first and set off from the rest by a
+ *               hairline; the mods below it are favorites first, then
+ *               alphabetical by name. Typing in the search box filters the
  *               list (a mod row matches on its settings' names too, so a query
  *               for "outline" still finds the mod that owns it).
  *   A MOD     — click a row (or its gear) and the panel shows THAT mod alone: its
@@ -115,8 +117,14 @@
         { id: 'hotkeys', name: 'Hotkeys', desc: 'F-key sidebar tabs, Esc closes interfaces, WASD camera with press-enter-to-chat.', master: { key: 'hotkeys', def: 'true' } },
         { id: 'wiki-lookup', name: 'Wiki lookup', desc: 'A wiki button on the minimap: click it, then click any NPC, object or item to open its OSRS wiki page. Optionally also a Wiki row in every right-click menu.', master: { key: 'wikiLookup', def: 'true' } },
         { id: 'ground-items', name: 'Ground item labels', desc: 'Labels on the items lying on the ground. Hold Alt to see every item and click the - / + boxes to hide or show one.', master: { key: 'groundItems', def: 'true' } },
-        { id: 'control-panel', name: 'LCLite', desc: 'This panel and the page around it: canvas size, scaling, legacy bar, fullscreen, screenshots.', master: null }
+        { id: 'control-panel', name: 'LCLite', desc: 'This panel and the page around it: canvas size, scaling, fullscreen, screenshots.', master: null }
     ];
+
+    // The panel's OWN row (mods/control-panel) is the LCLite core: it cannot be
+    // switched off, it is not a plugin you pick from a list, and it configures the
+    // page the other mods live on — so it ignores the favorite sort, carries no
+    // star, and is pinned to the top with a hairline under it (favCmp + renderView).
+    const CORE_ID = 'control-panel';
 
     // settings rows -----------------------------------------------------------
     // kind: 'toggle' writes 'true'/'false'; 'action' fires; 'slider' writes a float;
@@ -187,15 +195,15 @@
         // canvas sizing: a real scale slider (the old 1x/2x/3x dropdown was the whole
         // range) plus a Fit toggle for the old "Auto". Both go through setSize(), which
         // writes canvasSize (the key the page reads) and remembers the fixed scale in
-        // canvasScale, so the legacy bar's dropdown and this panel always agree.
-        { id: 'canvas-scale', mod: 'control-panel', name: 'Canvas scale', desc: 'Any size from 0.5x to 4x, not just 1x/2x/3x. The legacy bar follows along.', kind: 'slider', min: 0.5, max: 4, step: 0.05, def: '1', unit: '×', get: liveScale, apply(v) { if (typeof setSize === 'function') setSize(String(v)); } },
+        // canvasScale, so the page's own legacy dropdown (hidden — the panel replaces
+        // that bar) stays in step.
+        { id: 'canvas-scale', mod: 'control-panel', name: 'Canvas scale', desc: 'Any size from 0.5x to 4x, not just 1x/2x/3x.', kind: 'slider', min: 0.5, max: 4, step: 0.05, def: '1', unit: '×', get: liveScale, apply(v) { if (typeof setSize === 'function') setSize(String(v)); } },
         { id: 'canvas-autofit', mod: 'control-panel', name: 'Fit to window', desc: 'Overrides the scale slider and sizes the canvas to the window (the old Auto).', key: 'canvasAutoFit', kind: 'toggle', def: 'false', get: () => LS.get('canvasSize', '1') === 'auto', apply(on) { if (typeof setSize === 'function') setSize(on ? 'auto' : LS.get('canvasScale', '1')); } },
-        { id: 'canvas-scaling', mod: 'control-panel', name: 'Pixel scaling', desc: 'Smooth (auto) vs crisp (pixelated) upscaling.', kind: 'select', key: 'filtering', def: 'true', get: () => (LS.get('filtering', 'true') === 'true' ? 'pixelated' : 'auto'), options: [['auto', 'Auto'], ['pixelated', 'Pixelated']], apply(v) { if (typeof setFilter === 'function') setFilter(v); } },
-        { id: 'legacy-bar', mod: 'control-panel', name: 'Show legacy control bar', desc: 'The green text row under the canvas. The panel replaces it.', key: 'lcliteLegacyBar', kind: 'toggle', def: 'false', reload: false },
         { id: 'fullscreen', mod: 'control-panel', name: 'Fullscreen', desc: 'Toggle fullscreen for the game canvas.', kind: 'action', run() {
             if (document.fullscreenElement) document.exitFullscreen();
             else { const el = document.getElementById('canvas'); el && el.requestFullscreen && el.requestFullscreen(); }
         } },
+        { id: 'canvas-scaling', mod: 'control-panel', name: 'Pixel scaling', desc: 'Smooth (auto) vs crisp (pixelated) upscaling.', kind: 'select', key: 'filtering', def: 'true', get: () => (LS.get('filtering', 'true') === 'true' ? 'pixelated' : 'auto'), options: [['auto', 'Auto'], ['pixelated', 'Pixelated']], apply(v) { if (typeof setFilter === 'function') setFilter(v); } },
         { id: 'screenshot', mod: 'control-panel', name: 'Take screenshot', desc: 'Save the current frame as PNG.', kind: 'action', run() {
             const c = document.getElementById('canvas');
             if (!c) return;
@@ -204,23 +212,6 @@
             a.href = c.toDataURL('image/png');
             a.click();
             toast('Screenshot saved');
-        } },
-        { id: 'hide-controls', mod: 'control-panel', name: 'Hide page controls', desc: 'Hide the legacy bar countdown-style (F1 still opens this panel).', kind: 'action', run() {
-            if (typeof hideControls === 'function') hideControls(); else toast('No legacy bar present');
-        } },
-        { id: 'reset-all', mod: 'control-panel', name: 'Reset all lclite settings', desc: 'Clears every toggle/zoom/placement and reloads.', kind: 'action', run() {
-            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'antiCheat', 'gpu', 'statOrbs', 'statOrbsSize', 'statOrbsNumberScale', 'statOrbsNumbers', 'statOrbsFill', 'statOrbsPulse', 'statOrbsRunClick', 'statOrbsPrayerPanel', 'statOrbsHpColor', 'statOrbsPrayerColor', 'statOrbsRunColor', 'statOrbsSpecColor', 'statOrbsSpecFill', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'hoverTile', 'hoverTileColor', 'hoverTileOutline', 'hoverTileFill', 'lcliteLegacyBar', 'tcg', 'tcgHud', 'tcgHudCredits', 'tcgHudRate', 'tcgHudProgress', 'lclitePanelMod', 'lclitePanelPinned',
-                'canvasSize', 'canvasScale', 'canvasAutoFit', 'filtering', 'hideRoofs', 'lowDetail', 'shiftDrop', 'wikiLookup', 'wikiLookupButton', 'wikiLookupMenu', 'wikiLookupStyle', 'noCensor'].forEach(k => localStorage.removeItem(k));
-            // ground-items: wiped by prefix so its two free-text name lists go too
-            Object.keys(localStorage).filter(k => k.indexOf('groundItems') === 0).forEach(k => localStorage.removeItem(k));
-            // hotkeys: wiped by prefix so every current AND future keybind resets too
-            Object.keys(localStorage).filter(k => k.indexOf('hotkeys') === 0).forEach(k => localStorage.removeItem(k));
-            // true-tile-plus: wiped by prefix so every current AND future effect key resets too
-            Object.keys(localStorage).filter(k => k.indexOf('trueTilePlus') === 0).forEach(k => localStorage.removeItem(k));
-            // placement keys are namespaced lcm* (drag layer + owners): wipe by
-            // prefix so every current AND future movable surface resets too
-            Object.keys(localStorage).filter(k => k.startsWith('lcm')).forEach(k => localStorage.removeItem(k));
-            toast('Settings cleared — reloading'); setTimeout(() => location.reload(), 500);
         } }
     ];
 
@@ -391,12 +382,16 @@
     const ICON_STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3.1-5.8 3.1 1.1-6.5L2.6 9.3l6.5-.9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
     const ICON_GEAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
 
-    // favorites: panel-owned display state (lcm* prefix ⇒ Reset-all wipes it too)
+    // favorites: panel-owned display state (the lcm* prefix is the panel's own
+    // namespace — the drag layer's placement keys live in it too)
     const FAVS = new Set(String(LS.get('lcmFavMods', '')).split(',').filter(Boolean));
     const saveFavs = () => LS.set('lcmFavMods', [...FAVS].join(','));
-    // favorites first; the rest alphabetical by name (case-insensitive —
-    // 'Disable anti-cheat' sorts under D, 'GPU' under G, 'XP drops' last)
+    // the CORE row is always first (it is not a plugin: it cannot be switched off and
+    // it has nothing to sort against — see CORE_ID); below it, favorites first, then
+    // alphabetical by name (case-insensitive — 'Disable anti-cheat' sorts under D,
+    // 'GPU' under G, 'XP drops' last)
     const favCmp = (a, b) =>
+        (b.id === CORE_ID ? 1 : 0) - (a.id === CORE_ID ? 1 : 0) ||
         (FAVS.has(b.id) ? 1 : 0) - (FAVS.has(a.id) ? 1 : 0) ||
         a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
 
@@ -506,11 +501,6 @@
         label.appendChild(span);
         return label;
     }
-    const afterWrite = f => {
-        reapply();
-        if (f.id === 'legacy-bar') applyLegacyBar();
-    };
-
     // ---- MODS tab ----------------------------------------------------------
     function modRow(p, detail) {
         const row = document.createElement('div');
@@ -524,8 +514,14 @@
         const badge = p.badge ? `<span class="lcm-badge">${esc(p.badge)}</span>` : '';
         const status = typeof p.status === 'function' ? '<span class="lcm-status" style="display:none"></span>' : '';
         const hasRows = MODS.some(f => f.mod === p.id);
+        // the core row carries no star: it is pinned first by construction, so there is
+        // nothing for a favorite to do (a dead control that toasts "favorited" is worse
+        // than none). The spacer keeps its name column aligned with the mods below.
+        const star = p.id === CORE_ID
+            ? '<span class="lcm-favgap" aria-hidden="true"></span>'
+            : `<button class="lcm-fav${FAVS.has(p.id) ? ' on' : ''}" type="button" title="${FAVS.has(p.id) ? 'Unfavorite (back to default order)' : 'Favorite (pin to top of the list)'}" aria-pressed="${FAVS.has(p.id)}">${ICON_STAR}</button>`;
         row.innerHTML = `
-            <button class="lcm-fav${FAVS.has(p.id) ? ' on' : ''}" type="button" title="${FAVS.has(p.id) ? 'Unfavorite (back to default order)' : 'Favorite (pin to top of the list)'}" aria-pressed="${FAVS.has(p.id)}">${ICON_STAR}</button>
+            ${star}
             <div class="lcm-pmain">
                 <div class="lcm-pname">${esc(p.name)}${badge}${status}</div>
                 <div class="lcm-pdesc">${esc(p.desc)}</div>
@@ -533,7 +529,8 @@
             ${hasRows && !detail ? `<button class="lcm-gear" type="button" title="Open ${esc(p.name)} settings">${ICON_GEAR}</button>` : ''}`;
         const main = row.querySelector('.lcm-pmain');
 
-        row.querySelector('.lcm-fav').addEventListener('click', () => {
+        const fav = row.querySelector('.lcm-fav');
+        if (fav) fav.addEventListener('click', () => {
             if (FAVS.has(p.id)) FAVS.delete(p.id); else FAVS.add(p.id);
             saveFavs();
             toast(FAVS.has(p.id) ? `${p.name}: favorited` : `${p.name}: unfavorited`);
@@ -551,7 +548,7 @@
             const input = switchInput((LS.get(p.master.key, p.master.def) === 'true') !== inv);
             input.addEventListener('change', () => {
                 LS.set(p.master.key, (input.checked !== inv) ? 'true' : 'false');
-                afterWrite({ id: 'mod-master-' + p.id });
+                reapply();
                 toast(inv ? `${p.name}: ${input.checked ? 'on' : 'off'}` : `${p.name}: ${input.checked ? 'enabled' : 'disabled'}`);
                 renderView();                // section visibility can change
             });
@@ -603,7 +600,7 @@
         input.addEventListener('change', () => {
             LS.set(f.key, input.checked ? 'true' : 'false');
             if (typeof f.apply === 'function') { try { f.apply(input.checked); } catch (e) { /* keep the panel alive */ } }
-            afterWrite(f);
+            reapply();
             toast(`${f.name}: ${input.checked ? 'on' : 'off'}`);
         });
         row.appendChild(wrapSwitch(input));
@@ -756,7 +753,20 @@
             body.appendChild(modRow(p, true));
             body.appendChild(settingsSection(p));
         } else {
-            for (const m of modsList) body.appendChild(modRow(m));
+            // the core row is pinned first (favCmp); a hairline sets it off from the
+            // mods it configures, so it reads as the panel itself rather than as one
+            // more plugin in the list
+            let sepDone = false;
+            for (const m of modsList) {
+                body.appendChild(modRow(m));
+                if (!sepDone && m.id === CORE_ID && modsList.length > 1) {
+                    const sep = document.createElement('div');
+                    sep.className = 'lcm-sep';
+                    sep.setAttribute('role', 'separator');
+                    body.appendChild(sep);
+                    sepDone = true;
+                }
+            }
         }
         applySearch();
     }
@@ -786,6 +796,16 @@
         body.querySelectorAll('.lcm-group').forEach(g => {
             const any = [...g.querySelectorAll('[data-name]')].some(r => !r.classList.contains('dim'));
             g.classList.toggle('hideresult', q !== '' && !any);
+        });
+        // the hairline under the core row only earns its line while a mod row below it
+        // is still visible — a query that hides them all would leave it floating over
+        // nothing
+        body.querySelectorAll('.lcm-sep').forEach(sep => {
+            let any = false;
+            for (let n = sep.nextElementSibling; n; n = n.nextElementSibling) {
+                if (n.classList.contains('lcm-prow') && !n.classList.contains('dim')) { any = true; break; }
+            }
+            sep.classList.toggle('hideresult', !any);
         });
     }
     searchEl.addEventListener('input', applySearch);
@@ -1257,12 +1277,15 @@
     applySpec(fabSpec);
 
     // legacy bar coordination ----------------------------------------------------
+    // The page's own green control row (#controls) is REPLACED by this panel: it is
+    // hidden at boot, and the panel no longer offers a switch for it — the stored key
+    // is dropped so an old 'true' cannot bring the bar back under the panel.
     function applyLegacyBar() {
         const legacy = document.getElementById('controls');
         if (!legacy) return;
-        const show = LS.get('lcliteLegacyBar', 'false') === 'true';
-        legacy.style.display = show ? '' : 'none';
+        legacy.style.display = 'none';
     }
+    localStorage.removeItem('lcliteLegacyBar');
     applyLegacyBar();
 
     // live sync for sliders + mod status lines (engine wheel changes

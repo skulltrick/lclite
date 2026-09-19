@@ -30,7 +30,7 @@ export const MOD_META = {
         // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this): the
         // row lists what a player can DO here. The theme/tab-title work is not a
         // control, so it is documented in mods/control-panel/README.md instead.
-        desc: 'This panel and the page around it: canvas size, scaling, legacy bar, fullscreen, screenshots.',
+        desc: 'This panel and the page around it: canvas size, scaling, fullscreen, screenshots.',
         required: true,
     },
     'camera': {

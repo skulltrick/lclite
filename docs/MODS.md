@@ -21,11 +21,13 @@ TYPE B — engine mod       anything that touches the game client's internals (c
 ## TYPE A — UI-only mod (start here if you can)
 
 The panel shows ONE mod at a time (RuneLite's plugin-list-then-config shape): a
-**list** (one row per installed mod: name + description + master switch, favorites
-pinned to the top) and, when you click a row or its gear, that mod's own view —
-its row again with its settings under it and nothing else. The header's back
-chevron (or Esc) returns to the list. A pin button in the header keeps the panel
-open through in-game clicks. Everything is driven by two registries in `panel.js`:
+**list** (one row per installed mod: name + description + master switch; the panel's
+OWN row — LCLite itself — is pinned first behind a hairline, and the mods below it
+are favorites first, then alphabetical) and, when you click a row or its gear, that
+mod's own view — its row again with its settings under it and nothing else. The
+header's back chevron (or Esc) returns to the list. A pin button in the header keeps
+the panel open through in-game clicks. Everything is driven by two registries in
+`panel.js`:
 
 1. Add the mod's row to `MODS` (or nothing, if it's a single toggle — see below):
 
@@ -299,7 +301,8 @@ cp -r .. lclite && cd lclite && node tools/lclite.mjs        # t/ is the host ro
 - **Placement (alt-drag movable overlays) is the one cross-mod WRITE, by
   design.** RuneLite parity: hold **Alt** and drag any movable surface to one of
   9 anchor points plus a px offset; snap dots appear mid-drag; Alt+right-click
-  resets a surface; panel → Reset all wipes every `lcm*` key. The anchor RECT
+  resets a surface (the one reset path — there is no global settings wipe, so a
+  placement is only ever reset on the surface it belongs to). The anchor RECT
   depends on where the surface is painted: **DOM surfaces** (FAB, panel, tcg
   HUD) anchor to the whole CLIENT WINDOW (browser viewport) — the letterbox
   beside a scaled canvas is valid real estate, exactly where the FAB defaults;

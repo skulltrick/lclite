@@ -155,6 +155,13 @@
     color: var(--lcm-accent); border: 1px solid #5b4a20; border-radius: 999px; padding: 2px 8px;
     background: transparent;
 }
+/* the core row carries no favorite star (it is pinned first, so there is nothing to
+   sort) — the spacer is the star's own 22px, so the name column stays aligned */
+.lcm-favgap { flex: none; width: 22px; height: 22px; }
+/* the hairline under the core row: the quietest thing that reads as a division — a
+   1px line in the border colour, inset to the row's own text column */
+.lcm-sep { flex: none; height: 1px; margin: 5px 8px 6px; background: var(--lcm-border); }
+.lcm-sep.hideresult { display: none; }
 
 /* one mod's settings, under that mod's own row — no group header, no accordion:
    the panel shows a single mod at a time, so there is nothing to collapse against */

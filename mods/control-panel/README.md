@@ -23,7 +23,7 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
 
 - `files/engine/public/lclite/panel.js` — everything: registry, the list and the
   per-mod view, tooltips, toast, pin, the alt-drag placement layer (`window.lcmAnchor`),
-  legacy-bar coordination. Structure: `MOD_REGISTRY` (the list's rows: id/name/
+  legacy bar's own hide-at-boot. Structure: `MOD_REGISTRY` (the list's rows: id/name/
   desc/master/status) + `MODS` (a mod's own settings rows: toggle/slider/color/
   select/action — an action row may carry `btn: 'Open'` for its button label,
   default "Run"). Single-toggle mods intentionally have NO settings rows (RuneLite
@@ -45,7 +45,7 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
   The panel's own mark (FAB + header, `MARK()` in panel.js) is the SAME art at the same
   48-unit viewBox, inlined with per-instance mask/gradient ids — three copies of one
   logo, so change all three together or none.
-- `patches/client_ejs.json` — the two tags (currently `?v=9`/`?v=13` — see below), the
+- `patches/client_ejs.json` — the two tags (currently `?v=12`/`?v=26` — see below), the
   favicon `<link>` pair in the head, the `<title>` (and the `data-rev` attribute the
   panel's header chip reads — see the next bullet), and the
   canvas-sizing logic itself: `setSize()` now takes ANY decimal (clamped 0.25x..8x),
@@ -87,8 +87,15 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
   the list is favorites first, then alphabetical by name (case-insensitive
   localeCompare; favorites also sort alphabetically among themselves). Star at
   the left of each row toggles it; unfavoriting rebuilds the list so the
-  mod drops back into its alphabetical slot. The `lcm` prefix means "Reset all
-  lclite settings" wipes it along with placement keys.
+  mod drops back into its alphabetical slot. The lcm prefix is the panel's own
+  namespace, shared with the drag layer's placement keys.
+- **The core row is pinned first, always** (`CORE_ID = 'control-panel'`, applied in
+  `favCmp` before the favorite comparison, so no favorite can outrank it) and it
+  carries no star — there is nothing to sort it against, and a control that toasts
+  "favorited" while the row does not move is worse than no control. `renderView`
+  puts a `.lcm-sep` hairline right under it so LCLite itself reads as the panel
+  rather than as one more plugin in the list; `applySearch` hides that line while
+  every mod row below it is filtered out.
 - Master switches write each mod's OWN engine key (see MODS.md "The contract").
   `master.invert: true` flips the row's MEANING, not the storage: the switch is
   a DISABLE control (checked ⇔ key 'false'). Only "Disable anti-cheat" uses it
@@ -108,7 +115,7 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
 
 ## Version-keying (stale-cache law, MODS.md "The contract")
 
-The ejs tags carry `?v=N` (`panel.css?v=9`, `panel.js?v=12` today). ANY revision of
+The ejs tags carry `?v=N` (`panel.css?v=12`, `panel.js?v=26` today). ANY revision of
 panel.js or panel.css shipped to a live server MUST bump N in the hunk (edit the
 live client.ejs, then `node tools/regen.mjs` BEFORE `apply` — regen-before-apply or
 the manifest thinks control-panel uninstalled). Brave re-serves stale plain paths
@@ -160,6 +167,14 @@ mod's surface uses exactly this, which is why no mod ever touches `lcm*` keys it
 
 ## Deliberate divergences / notes
 
+- The panel's own row lost three controls: **Hide page controls** and **Show legacy
+  control bar** (the green page bar the panel replaces is now hidden unconditionally
+  at boot, and the stored `lcliteLegacyBar` key is dropped so an old `'true'` cannot
+  bring it back), and **Reset all lclite settings** (there is no global settings wipe
+  any more — a placement is reset on the surface it belongs to: Alt+right-click, or
+  that mod's own Reset row). Fullscreen moved up to sit with the other canvas
+  controls, so the LCLite rows now read canvas scale → fit to window → fullscreen →
+  pixel scaling → take screenshot.
 - The panel talks to the engine ONLY through localStorage + the reserved
   `window.lostcityClient`/`window.lcmAnchor` API. No hub reads: every mod's
   master key is written here but read by that mod at its own hook site.
