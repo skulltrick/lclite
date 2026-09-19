@@ -12,8 +12,9 @@
 # then bakes into the patch JSONs as the truth).
 #
 #   webclient/src/client/Client.ts   — the arm call in gameDrawMain()
-#   webclient/src/dash3d/World.ts    — the payload import, the parked state/methods, and
-#                                      the fill() call on the true tile's own turn
+#   webclient/src/dash3d/World.ts    — the payload import, the parked state/methods, and the
+#                                      fill() call that paints each edge's flames on the turn
+#                                      of the neighbour tile they lie over
 #
 # The strip runs ONCE per file, before any insert: per-edit stripping would have each edit
 # remove the blocks the previous one just inserted.
@@ -37,13 +38,12 @@ CLIENT_BLOCK = dedent('''\
         // lclite:true-tile-plus
         /// custom (lclite "true-tile-plus" mod): hand World the true tile — the head of the
         /// local move queue (routeX/routeZ[0]), the same tile mods/true-tile outlines — so
-        /// the ground effects can be drawn on that tile's OWN turn in the scene fill order
-        /// (World.trueTilePlusDraw, from fill()), where the player's model and every nearer
-        /// tile cover them. Only the tile and the level cross over: the effect's settings and
-        /// geometry live in the mod's files/ payload and are read World-side, at that hook
-        /// (rule 5). Armed up here rather than beside the other arms because a hunk's edit
-        /// site must stay >=3 untouched lines clear of its neighbours', and true-tile's arm
-        /// and hover-tile's sit inside the camera-shake block below this one.
+        /// the ground effects can be drawn on the turn of the tiles their flames reach over
+        /// (World.trueTilePlusDraw, from fill()). Only the tile and the level cross over: the
+        /// effect's settings and geometry live in the mod's files/ payload and are read
+        /// World-side, at that hook (rule 5). Armed up here rather than beside the other arms
+        /// because a hunk's edit site must stay >=3 untouched lines clear of its neighbours',
+        /// and true-tile's arm and hover-tile's sit inside the camera-shake block below.
         if (this.localPlayer) {
             World.trueTilePlusArm(this.localPlayer.routeX[0], this.localPlayer.routeZ[0], this.minusedlevel);
         }
@@ -60,16 +60,30 @@ WORLD_IMPORT_BLOCK = dedent('''\
 WORLD_PARKED_BLOCK = dedent('''\
     // lclite:true-tile-plus
     /// custom (lclite "true-tile-plus" mod): the ground effects' World-side state and draw.
-    /// Client.gameDrawMain arms the true tile once per frame (before renderAll) and fill()
-    /// calls the draw on that tile's OWN turn in the back-to-front ground pass — after the
-    /// tile's ground, before its walls and sprites — so the flames lie on the floor and
-    /// everything the engine draws after them covers them (the player's model above all).
+    /// Client.gameDrawMain arms the true tile once per frame (before renderAll); fill() then
+    /// calls the draw for EVERY tile, and the draw paints the edge whose flames lie over the
+    /// tile being drawn — right after that tile's ground, before its walls and sprites.
+    ///
+    /// That per-neighbour placement is the whole fix for "only 2-3 edges ever show": a flame
+    /// is rooted on the true tile's border and reaches OUTWARD, so it lies over the tile next
+    /// door, and renderAll walks the scene outward from the CAMERA's own tile — so a
+    /// neighbouring tile drawn after the true tile painted its ground straight over any blade
+    /// that reached into it, and which of the 4 edges survived changed with the camera angle.
+    /// Drawn on the neighbour's own turn, a blade cannot be covered by the ground it sits on,
+    /// its walls and sprites still cover it correctly, and no later tile overlaps the ground
+    /// it burns on.
+    ///
     /// The effect geometry and settings live in the mod's files/ payload
     /// (dash3d/TrueTilePlus.ts); this mod reads its OWN keys at this hook (rule 5).
     private static ttpArmed: boolean = false;
     private static ttpX: number = -1;
     private static ttpZ: number = -1;
     private static ttpLevel: number = 0;
+    private static ttpProjected: boolean = false;
+    private static ttpPx: number[] = [0, 0, 0, 0];
+    private static ttpPy: number[] = [0, 0, 0, 0];
+    private static ttpOx: number[] = [0, 0, 0, 0];
+    private static ttpOy: number[] = [0, 0, 0, 0];
 
     /// Arm the effects for this frame's render. Called from Client.gameDrawMain() before
     /// renderAll, so the projection below uses the camera the scene is drawn with.
@@ -78,6 +92,30 @@ WORLD_PARKED_BLOCK = dedent('''\
         this.ttpX = tileX;
         this.ttpZ = tileZ;
         this.ttpLevel = level;
+        this.ttpProjected = false;
+    }
+
+    /// Which edge's flames lie over this tile, as one of the armed tile's four neighbours?
+    /// -1 = this tile is not one of them. Edge i runs from corner i to corner (i + 1) & 3:
+    /// 0 = the -z side, 1 = +x, 2 = +z, 3 = -x — the same order the payload masks with.
+    private static ttpFacingEdge(tileX: number, tileZ: number): number {
+        if (tileX === World.ttpX) {
+            if (tileZ === World.ttpZ - 1) {
+                return 0;
+            }
+            if (tileZ === World.ttpZ + 1) {
+                return 2;
+            }
+        } else if (tileZ === World.ttpZ) {
+            if (tileX === World.ttpX + 1) {
+                return 1;
+            }
+            if (tileX === World.ttpX - 1) {
+                return 3;
+            }
+        }
+
+        return -1;
     }
 
     /// Project one world point to the game buffer. `false` = the point is behind the
@@ -104,72 +142,75 @@ WORLD_PARKED_BLOCK = dedent('''\
         return true;
     }
 
-    /// The armed tile's ground effects, drawn from fill() when that tile is reached. One
-    /// shot per frame: the first (and only) matching tile disarms it, so a tile the fill
-    /// queue hands back twice can never double-draw.
+    /// The flames that reach over THIS tile, drawn from fill() once this tile's ground is
+    /// down. Four neighbours match in a frame (in whatever order renderAll reaches them), so
+    /// unlike the tile decal there is nothing to disarm — the eight projections are computed
+    /// once and cached instead, since the camera cannot change mid-pass.
     private trueTilePlusDraw(tileX: number, tileZ: number, level: number): void {
-        if (!World.ttpArmed || tileX !== World.ttpX || tileZ !== World.ttpZ || level !== World.ttpLevel) {
+        if (!World.ttpArmed || level !== World.ttpLevel) {
             return;
         }
 
-        World.ttpArmed = false;
+        const edge: number = World.ttpFacingEdge(tileX, tileZ);
+        if (edge < 0) {
+            return;
+        }
 
         const settings = trueTilePlusSettings(trueTilePlusRead);   // this mod's OWN keys, at its own hook
         if (!settings.enabled) {
             return;
         }
 
-        // The four ground corners, plus one OUTWARD PROBE per edge: the edge's world
-        // midpoint pushed out along the tile's own plane. The probes are what give the
-        // payload a real outward direction and px-per-world-unit scale per edge, so a flame
-        // stays glued to its own border at any camera yaw, pitch or zoom. Corner i and probe
-        // i belong to the edge i -> (i + 1) & 3.
-        const px: number[] = [0, 0, 0, 0];
-        const py: number[] = [0, 0, 0, 0];
-        const ox: number[] = [0, 0, 0, 0];
-        const oy: number[] = [0, 0, 0, 0];
-        const wx: number[] = [0, 0, 0, 0];
-        const wz: number[] = [0, 0, 0, 0];
-        const wy: number[] = [0, 0, 0, 0];
-        const x0: number = tileX << 7;
-        const z0: number = tileZ << 7;
+        if (!World.ttpProjected) {
+            World.ttpProjected = true;
 
-        for (let i: number = 0; i < 4; i++) {
-            const x: number = i === 1 || i === 2 ? x0 + 128 : x0;
-            const z: number = i === 2 || i === 3 ? z0 + 128 : z0;
+            // The four ground corners of the ARMED tile, plus one OUTWARD PROBE per edge: the
+            // edge's world midpoint pushed out along the tile's own plane. The probes are
+            // what give the payload a real outward direction and px-per-world-unit scale per
+            // edge, so a flame stays glued to its own border at any yaw, pitch or zoom.
+            const x0: number = World.ttpX << 7;
+            const z0: number = World.ttpZ << 7;
+            const wx: number[] = [0, 0, 0, 0];
+            const wz: number[] = [0, 0, 0, 0];
+            const wy: number[] = [0, 0, 0, 0];
 
-            wx[i] = x;
-            wz[i] = z;
-            wy[i] = this.groundh[level][x >> 7][z >> 7];
-        }
+            for (let i: number = 0; i < 4; i++) {
+                const x: number = i === 1 || i === 2 ? x0 + 128 : x0;
+                const z: number = i === 2 || i === 3 ? z0 + 128 : z0;
 
-        for (let i: number = 0; i < 4; i++) {
-            const j: number = (i + 1) & 3;
-
-            // the edge's outward world direction, measured from the tile's own centre, so it
-            // is axis-aligned and exact (a tile is a square in world space)
-            const mx: number = (wx[i] + wx[j]) * 0.5;
-            const mz: number = (wz[i] + wz[j]) * 0.5;
-            const nx: number = mx - (x0 + 64);
-            const nz: number = mz - (z0 + 64);
-            const nlen: number = Math.sqrt(nx * nx + nz * nz);
-            if (!(nlen > 0)) {
-                return;
+                wx[i] = x;
+                wz[i] = z;
+                wy[i] = this.groundh[level][x >> 7][z >> 7];
             }
 
-            // The probe rides the TILE'S OWN PLANE — the mean of this edge's two corner
-            // heights — rather than sampling the ground beyond the tile: a flat decal that
-            // follows the tile it frames can never slide down a cliff face.
-            const ax: number = mx + (nx / nlen) * TRUE_TILE_PLUS_OUTER_UNITS;
-            const az: number = mz + (nz / nlen) * TRUE_TILE_PLUS_OUTER_UNITS;
-            const ay: number = (wy[i] + wy[j]) * 0.5;
+            for (let i: number = 0; i < 4; i++) {
+                const j: number = (i + 1) & 3;
 
-            if (!World.ttpProject(px, py, i, wx[i], wy[i], wz[i])) {
-                return;   // a corner is behind the camera: skip the frame, like every overlay
-            }
+                // the edge's outward world direction, measured from the tile's own centre, so
+                // it is axis-aligned and exact (a tile is a square in world space)
+                const mx: number = (wx[i] + wx[j]) * 0.5;
+                const mz: number = (wz[i] + wz[j]) * 0.5;
+                const nx: number = mx - (x0 + 64);
+                const nz: number = mz - (z0 + 64);
+                const nlen: number = Math.sqrt(nx * nx + nz * nz);
+                if (!(nlen > 0)) {
+                    return;
+                }
 
-            if (!World.ttpProject(ox, oy, i, ax, ay, az)) {
-                return;
+                // The probe rides the TILE'S OWN PLANE — the mean of this edge's two corner
+                // heights — rather than sampling the ground beyond the tile: a flat decal
+                // that follows the tile it frames can never slide down a cliff face.
+                const ax: number = mx + (nx / nlen) * TRUE_TILE_PLUS_OUTER_UNITS;
+                const az: number = mz + (nz / nlen) * TRUE_TILE_PLUS_OUTER_UNITS;
+                const ay: number = (wy[i] + wy[j]) * 0.5;
+
+                if (!World.ttpProject(World.ttpPx, World.ttpPy, i, wx[i], wy[i], wz[i])) {
+                    return;   // a corner is behind the camera: skip the frame, like every overlay
+                }
+
+                if (!World.ttpProject(World.ttpOx, World.ttpOy, i, ax, ay, az)) {
+                    return;
+                }
             }
         }
 
@@ -183,7 +224,7 @@ WORLD_PARKED_BLOCK = dedent('''\
         trueTilePlusEffect((xA: number, xB: number, xC: number, yA: number, yB: number, yC: number, colour: number, trans: number): void => {
             Pix3D.trans = trans;
             Pix3D.flatTriangle(xA, xB, xC, yA, yB, yC, colour);
-        }, px, py, ox, oy, settings, Date.now() / 1000);
+        }, World.ttpPx, World.ttpPy, World.ttpOx, World.ttpOy, settings, Date.now() / 1000, 1 << edge);
         Pix3D.trans = savedTrans;
         Pix3D.hclip = savedHclip;
     }
@@ -194,11 +235,12 @@ WORLD_PARKED_BLOCK = dedent('''\
 WORLD_FILL_BLOCK = dedent('''\
                 // lclite:true-tile-plus
                 if (tileDrawn) {
-                    this.trueTilePlusDraw(tileX, tileZ, level); // custom (lclite "true-tile-plus") — on this tile's own turn: over its ground, under its walls and sprites
+                    this.trueTilePlusDraw(tileX, tileZ, level); // custom (lclite "true-tile-plus") — the edge whose flames lie over THIS tile, so the ground under them is already down
                 }
                 // lclite:true-tile-plus:end
 
 ''')
+
 
 def read(path):
     with open(path, 'rb') as f:
@@ -270,9 +312,9 @@ splice(WORLD,
        'before',
        WORLD_PARKED_BLOCK)
 
-# 4. World.ts: the draw call in fill(), on the tile's own turn. `let frontWallTypes` is the
-#    unique half of the window — `const wall: Wall | null = tile.wall;` alone appears 5x in
-#    the file, and the two lines between it and true-tile's island are the clearance.
+# 4. World.ts: the draw call in fill(), once this tile's ground is down. `let frontWallTypes`
+#    is the unique half of the window — `const wall: Wall | null = tile.wall;` alone appears
+#    5x in the file, and the lines between it and true-tile's island are the clearance.
 FILL_ANCHOR = '                let frontWallTypes: number = 0;\n\n                const wall: Wall | null = tile.wall;\n'
 splice(WORLD,
        FILL_ANCHOR,

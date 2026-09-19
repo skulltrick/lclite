@@ -143,6 +143,11 @@
         // its own hook, so a change lands on the next frame.
         { id: 'true-tile-plus-effect', mod: 'true-tile-plus', name: 'Ground effect', desc: 'Which effect rides your true tile. More effects land in this list as they ship.', kind: 'select', key: 'trueTilePlusEffect', def: 'flames', options: [['flames', 'Flames'], ['none', 'None']], apply(v) { LS.set('trueTilePlusEffect', v); } },
         { id: 'true-tile-plus-color', mod: 'true-tile-plus', name: 'Effect color', desc: 'Color of the ground effect (flames). Black reads as black fire on most ground.', kind: 'color', key: 'trueTilePlusColor', def: '#000000' },
+        { id: 'true-tile-plus-count', mod: 'true-tile-plus', name: 'Flames per edge', desc: 'How many flames lick off each side of the tile.', key: 'trueTilePlusCount', kind: 'slider', min: 1, max: 8, step: 1, def: '4' },
+        { id: 'true-tile-plus-reach', mod: 'true-tile-plus', name: 'Flame reach', desc: 'How far a flame reaches, as a share of a tile side — it scales with the camera, so a flame keeps its size on the tile.', key: 'trueTilePlusReach', kind: 'slider', min: 4, max: 75, step: 1, def: '23', unit: '%' },
+        // the speed slider's step is a fraction, so it writes its raw value (the default
+        // slider write rounds to an integer, which would pin every setting to 0 or 1)
+        { id: 'true-tile-plus-speed', mod: 'true-tile-plus', name: 'Flicker speed', desc: 'How fast the flames dance. 0 freezes them.', key: 'trueTilePlusSpeed', kind: 'slider', min: 0, max: 3, step: 0.25, def: '1', unit: '×', apply(v) { LS.set('trueTilePlusSpeed', String(v)); } },
         // hover-tile: the same contract as true-tile's rows — the engine re-reads its
         // own keys every frame at its own hook, so all three apply live.
         { id: 'hover-tile-color', mod: 'hover-tile', name: 'Outline color', desc: 'Color of the hover-tile border.', kind: 'color', key: 'hoverTileColor', def: '#ffffff' },
