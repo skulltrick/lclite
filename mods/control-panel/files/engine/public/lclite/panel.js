@@ -117,7 +117,7 @@
         { id: 'hotkeys', name: 'Hotkeys', desc: 'F-key sidebar tabs, Esc closes interfaces, Space and 1-5 drive dialogues, WASD camera with press-enter-to-chat.', master: { key: 'hotkeys', def: 'true' } },
         { id: 'wiki-lookup', name: 'Wiki lookup', desc: 'A wiki button on the minimap: click it, then click any NPC, object or item to open its OSRS wiki page. Optionally also a Wiki row in every right-click menu.', master: { key: 'wikiLookup', def: 'true' } },
         { id: 'ground-items', name: 'Ground item labels', desc: 'Labels on the items lying on the ground. Hold Alt to see every item and click the - / + boxes to hide or show one.', master: { key: 'groundItems', def: 'true' } },
-        { id: 'control-panel', name: 'LCLite', desc: 'This panel and the page around it: canvas size, scaling, fullscreen, screenshots.', master: null }
+        { id: 'control-panel', name: 'LCLite', desc: 'This panel and the page around it: canvas size, fullscreen, screenshots.', master: null }
     ];
 
     // The panel's OWN row (mods/control-panel) is the LCLite core: it cannot be
@@ -130,15 +130,25 @@
     // kind: 'toggle' writes 'true'/'false'; 'action' fires; 'slider' writes a float;
     // 'text' writes the raw string (an item-name list) on commit
     // desc is the hover tooltip text (and search fodder), not visible subtext
-    // NOTE: single-toggle mods (stat-orbs, xp-drops, anti-cheat, gpu)
-    // intentionally have NO row here — their master switch on their list row IS
-    // their only setting (RuneLite: no config => nothing to open). true-tile
-    // graduated: master trueTile on its row, plus the look rows below.
+    // NOTE: single-toggle mods (xp-drops, anti-cheat, no-censor, hide-roofs,
+    // low-detail, shift-drop) intentionally have NO row here — their master switch
+    // on their list row IS their only setting (RuneLite: no config => nothing to
+    // open). true-tile, stat-orbs and gpu graduated: master on the row, plus their
+    // own rows below.
     const MODS = [
         { id: 'wheel-zoom', mod: 'camera', name: 'Wheel zoom', desc: 'Scroll the mouse wheel to zoom the camera.', key: 'wheelZoom', kind: 'toggle', def: 'true' },
         { id: 'middle-rotate', mod: 'camera', name: 'Middle-drag rotate', desc: 'Hold middle mouse + drag to rotate. Drag follows the mouse (OSRS style).', key: 'middleRotate', kind: 'toggle', def: 'true' },
         { id: 'wheel-scroll-chat', mod: 'camera', name: 'Wheel scrolls chat', desc: 'Mouse wheel over the chatbox scrolls history instead of zooming.', key: 'wheelScrollChat', kind: 'toggle', def: 'true' },
         { id: 'zoom', mod: 'camera', name: 'Camera zoom', desc: '0.4× close-up to 2.6× wide. Mouse wheel still works in-game.', kind: 'slider', min: 0.4, max: 2.6, step: 0.05, def: '1', unit: '×', get: liveZoom, apply(v) { LS.set('cameraZoom', String(v)); reapply(); } },
+        // gpu: the mod's ONE setting, and it is a GPU concern now. The mod owns
+        // #canvas's inline image-rendering — it reads this key every frame at its own
+        // hook (rule 5) and its overlay canvas copies the same style, so the game rect
+        // scales exactly like the sidebar, chatbox and minimap beside it. The LCLite
+        // row lost the control: with the GPU off there is nothing to configure here
+        // (the section shows the off note), and the mod puts the canvas back to Auto
+        // itself. Default is Pixelated — the page stylesheet's own look for #canvas,
+        // and what this setting is FOR: crisp upscaling at any canvas size.
+        { id: 'gpu-pixel-scaling', mod: 'gpu', name: 'Pixel scaling', desc: 'Pixelated keeps the upscaled canvas crisp (recommended); Auto smooths it. Applied by the GPU mod — with the GPU off, scaling is Auto.', kind: 'select', key: 'gpuPixelScaling', def: 'pixelated', options: [['pixelated', 'Pixelated (recommended)'], ['auto', 'Auto']], apply(v) { LS.set('gpuPixelScaling', v); } },
         // true-tile settings: the engine re-reads every key each frame, so all of
         // these apply live. Only the master needs no row — its row's switch IS
         // trueTile itself; these are the look of the tile.
@@ -203,7 +213,9 @@
             if (document.fullscreenElement) document.exitFullscreen();
             else { const el = document.getElementById('canvas'); el && el.requestFullscreen && el.requestFullscreen(); }
         } },
-        { id: 'canvas-scaling', mod: 'control-panel', name: 'Pixel scaling', desc: 'Smooth (auto) vs crisp (pixelated) upscaling.', kind: 'select', key: 'filtering', def: 'true', get: () => (LS.get('filtering', 'true') === 'true' ? 'pixelated' : 'auto'), options: [['auto', 'Auto'], ['pixelated', 'Pixelated']], apply(v) { if (typeof setFilter === 'function') setFilter(v); } },
+        { id: 'canvas-scaling-note', mod: 'control-panel', name: 'Pixel scaling moved', desc: 'Pixel scaling is a GPU setting now: open the GPU mod to choose Pixelated (default) or Auto. With the GPU off, the canvas scales Auto.', kind: 'action', btn: 'Open GPU', run() {
+            openModView('gpu');
+        } },
         { id: 'screenshot', mod: 'control-panel', name: 'Take screenshot', desc: 'Save the current frame as PNG.', kind: 'action', run() {
             const c = document.getElementById('canvas');
             if (!c) return;

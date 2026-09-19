@@ -67,7 +67,11 @@
 // glance separates "backend/canvas broken" from "capture/depth wrong".
 //
 // Settings: localStorage 'gpu' (default OFF), re-read at Pix2D.cls() so it
-// can never flip mid-frame.
+// can never flip mid-frame; localStorage 'gpuPixelScaling' ('pixelated' |
+// 'auto', default 'pixelated') is the pixel-scaling setting the panel's GPU
+// row writes. The mod owns #canvas's inline image-rendering with it (the
+// overlay copies that style, so the game rect scales like the sidebar beside
+// it) and puts the canvas back to 'auto' whenever the GPU is off.
 //
 // The WebGL2 v1 (the reference implementation this ports, retired) lives in
 // lclite git at 45eb643 — its capture semantics, colourTable/texture/blend
@@ -161,6 +165,51 @@ export class GpuRenderer {
         WIN['lcliteGpuAttached'] = true;
         WIN['lcliteGpuStats'] = this.stats;
         this.installPatches();
+        // Pixel scaling, applied as early as it can be: this module runs while the
+        // body's module script is being evaluated, and that script's own
+        // loadSettings() (which writes #canvas's image-rendering from the page's
+        // legacy 'filtering' key) runs AFTER it — so the filter is re-applied on
+        // window 'load', and every frame thereafter by refresh().
+        this.applyPixelScaling(this.masterOn());
+        window.addEventListener('load', (): void => {
+            this.applyPixelScaling(this.masterOn());
+        });
+    }
+
+    /** localStorage 'gpu' — the mod's master switch, read live (never cached). */
+    private static masterOn(): boolean {
+        return typeof localStorage !== 'undefined' && localStorage.getItem('gpu') === 'true';
+    }
+
+    /** The canvas filter this mod wants: the pixel-scaling setting while the GPU
+     *  is on, 'auto' whenever it is not. Anything but an explicit 'auto' reads as
+     *  pixelated, so a stale/garbled key can never leave the canvas smooth. */
+    private static pixelFilter(gpuOn: boolean): string {
+        if (!gpuOn || typeof localStorage === 'undefined') {
+            return 'auto';
+        }
+        return localStorage.getItem('gpuPixelScaling') === 'auto' ? 'auto' : 'pixelated';
+    }
+
+    /** Own #canvas's inline image-rendering. The overlay REPLACES the game rect
+     *  and copies this style (see place()), so one write keeps the game window,
+     *  the sidebar, the chatbox and the minimap scaling identically — and the
+     *  setting is what makes it crisp or smooth at any canvas size.
+     *
+     *  The mod owns it rather than the page's legacy 'filtering' key because the
+     *  panel's GPU row is where pixel scaling lives now: GPU on => the setting
+     *  (default 'pixelated', the page stylesheet's own look for #canvas), GPU off
+     *  => 'auto', so switching the mod off hands the page back its smooth
+     *  default. Compare-guarded: steady state is one string compare per frame. */
+    private static applyPixelScaling(gpuOn: boolean): void {
+        const base = document.getElementById('canvas') as HTMLCanvasElement | null;
+        if (!base) {
+            return;
+        }
+        const want = this.pixelFilter(gpuOn);
+        if (base.style.imageRendering !== want) {
+            base.style.imageRendering = want;
+        }
     }
 
     // ---- lifecycle ------------------------------------------------------------
@@ -168,7 +217,7 @@ export class GpuRenderer {
     /** Refresh on/off at Pix2D.cls(): the flag can never flip between the
      *  world render and the composite inside one frame (same as v1). */
     public static refresh(): void {
-        const wanted = typeof localStorage !== 'undefined' && localStorage.getItem('gpu') === 'true';
+        const wanted = this.masterOn();
         const now = performance.now();
         if (wanted && this.ready && !this.failed) {
             // P7 stat: CPU ms between frame starts — scene culling/lighting/
@@ -185,6 +234,10 @@ export class GpuRenderer {
             this.startInit();
         }
         this.wanted = wanted && !this.failed;
+        // pixel scaling rides the same per-frame read: the panel's GPU row writes
+        // 'gpuPixelScaling' and this is what applies it (and what puts the canvas
+        // back to 'auto' the frame the mod is switched off or fails).
+        this.applyPixelScaling(this.wanted);
         if (!this.wanted) {
             this.hideOverlay();
             if (!this.failed) {
@@ -788,11 +841,12 @@ export class GpuRenderer {
         const sx = rect.width / base.width;   // css px per backing-store px
         const sy = rect.height / base.height;
         // The overlay REPLACES the game rect, so it has to scale exactly the way
-        // the page canvas does. The page's "Auto Scaling / Pixel Scaling" control
-        // writes #canvas's inline image-rendering (auto = smooth by default), and
-        // this used to hard-code 'pixelated' — so at any canvas size other than
-        // 1:1 the game window came out crisper than the sidebar, chatbox and
-        // minimap it sits beside. Fall back to pixelated, which is what the
+        // the page canvas does. #canvas's inline image-rendering is THIS mod's own
+        // pixel-scaling setting (applyPixelScaling writes it from the GPU row's
+        // 'gpuPixelScaling', default 'pixelated'), so the game window, the sidebar,
+        // the chatbox and the minimap always scale identically — the old
+        // hard-coded 'pixelated' made the game rect crisper than the sidebar at any
+        // canvas size other than 1:1. Fall back to pixelated, which is what the
         // stylesheet gives #canvas on a host page that never sets it.
         const filter = base.style.imageRendering !== '' ? base.style.imageRendering : 'pixelated';
         const want = 'position:fixed;z-index:3;pointer-events:none;image-rendering:' + filter + ';'

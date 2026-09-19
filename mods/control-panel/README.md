@@ -174,7 +174,12 @@ mod's surface uses exactly this, which is why no mod ever touches `lcm*` keys it
   any more — a placement is reset on the surface it belongs to: Alt+right-click, or
   that mod's own Reset row). Fullscreen moved up to sit with the other canvas
   controls, so the LCLite rows now read canvas scale → fit to window → fullscreen →
-  pixel scaling → take screenshot.
+  take screenshot, and **Pixel scaling left the core entirely**: it is a GPU setting
+  now (the GPU mod owns `#canvas`'s `image-rendering` — Pixelated by default while
+  the GPU is on, Auto whenever it is off), and the LCLite section keeps only a
+  pointer row ("Pixel scaling moved" → Open GPU) so nobody hunts for it here. The
+  core row it replaces was also wrong on the page's behalf: it read "Pixelated" by
+  default while the page's own `filtering` key actually booted `auto` (smooth).
 - The panel talks to the engine ONLY through localStorage + the reserved
   `window.lostcityClient`/`window.lcmAnchor` API. No hub reads: every mod's
   master key is written here but read by that mod at its own hook site.

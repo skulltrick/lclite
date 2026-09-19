@@ -58,6 +58,24 @@ page asset):
   per frame at `Pix2D.cls()` so it can never flip between the world render and
   the composite inside one frame. Read at the mod's own hook site (no hub);
   written by the control panel's top-level **GPU** row.
+- `localStorage 'gpuPixelScaling'` — `'pixelated'` (**default**) or `'auto'`: the
+  mod's **Pixel scaling** setting, the one row in its panel section (the panel
+  writes the key, the mod reads it per frame). The mod OWNS `#canvas`'s inline
+  `image-rendering` with it — the same style `place()` copies onto the overlay,
+  so the game rect scales exactly like the sidebar, chatbox and minimap beside
+  it. With the GPU off (or self-disabled after a failure) the canvas is put back
+  to `'auto'`, so pixel scaling is a GPU feature by construction: `pixelated` is
+  the page stylesheet's own look for `#canvas`, `auto` is the smooth opt-out.
+  It is written at `attach()`, again on `window` `load` (the body's own
+  `loadSettings()` runs *after* this module and would otherwise clobber it from
+  the page's legacy `filtering` key), and then every frame at `Pix2D.cls()` —
+  which only runs on a game frame, so a change made in the panel lands on the
+  next one, exactly like every other mod's settings (the title screen keeps
+  whatever the two boot-time writes set). Compare-guarded, so steady state is
+  one string compare per frame. This replaced the LCLite core row, which wrote
+  the page's `filtering` key and claimed "Pixelated" by default while the page
+  actually booted `auto` (smooth) — a panel row's `def` is a display fallback,
+  never an applied default.
 - `localStorage 'gpudbg'` — `'1'` draws the P1 proof triangle through the same
   canvas/place/depth plumbing (no capture, no overlay). One glance separates
   "backend/canvas broken" from "capture/depth wrong".
@@ -98,8 +116,9 @@ page asset):
   order, exactly as they would with the mod off.
 - The overlay copies the page canvas's `image-rendering` instead of forcing
   `pixelated`, so the game rect scales exactly like the sidebar, chatbox and
-  minimap beside it (the page's Auto/Pixel Scaling control writes that inline
-  style, and `auto` is its default).
+  minimap beside it — and that style is this mod's own **Pixel scaling**
+  setting now (see the settings contract): `pixelated` by default while the GPU
+  is on, `auto` whenever it is off.
 - Capture overflow past `MAX_TRIS` degrades honestly: the leftover triangles
   fall through to the software raster and ride up with the overlay, so the
   frame stays correct.
