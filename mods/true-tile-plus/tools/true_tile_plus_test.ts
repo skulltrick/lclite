@@ -298,5 +298,207 @@ eq(dispatch(DEF, 0, T.TRUE_TILE_PLUS_EDGE_X1), collect(0, DEF, T.TRUE_TILE_PLUS_
 eq(dispatch(S({ trueTilePlusColor: '#123456' })), collect(0, S({ trueTilePlusColor: '#123456' })), 'a stored colour reaches the geometry through the dispatcher');
 eq(dispatch({ ...DEF, effect: 99 }).length, 0, 'an unknown future effect id emits nothing rather than guessing');
 
+
+// ---- the WAVE effect --------------------------------------------------------
+// The wave is a mitred RING: four border bands, closed at the corners by the miters that the
+// tiles owning those corners draw. These checks cover what a browser cannot tell us cheaply:
+// the settings, the budget, the trans contract (crest over swell), the mask AND corner split
+// the World hook relies on, the ring actually closing at every corner, the train never
+// vanishing, the reach being honoured, and the dispatcher passing the corner through.
+console.log('\nthe WAVE: settings, budget and the pixel contract');
+const WAVE = S({ trueTilePlusEffect: 'wave' });
+eq(S({ trueTilePlusEffect: 'wave' }).effect, T.TRUE_TILE_PLUS_EFFECT_WAVE, "'wave' → the wave effect");
+eq([T.TRUE_TILE_PLUS_EFFECT_NONE, T.TRUE_TILE_PLUS_EFFECT_FLAMES, T.TRUE_TILE_PLUS_EFFECT_WAVE], [0, 1, 2], 'the effect ids are integers, in the order the select row lists them');
+eq(S({ trueTilePlusEffect: 'flames' }).effect, T.TRUE_TILE_PLUS_EFFECT_FLAMES, "'flames' still → flames");
+eq(S({ trueTilePlusEffect: 'junk' }).effect, T.TRUE_TILE_PLUS_EFFECT_FLAMES, 'junk → flames, never a silent nothing (and never the second effect)');
+
+function wave(settings: any, phase: number, mask = T.TRUE_TILE_PLUS_EDGE_ALL, corner = -1) {
+    const tris: number[][] = [];
+    const emit = (xA: number, xB: number, xC: number, yA: number, yB: number, yC: number, colour: number, trans: number) =>
+        tris.push([xA, yA, xB, yB, xC, yC, colour, trans]);
+    T.trueTilePlusWave(emit, QUAD.px, QUAD.py, QUAD.ox, QUAD.oy, settings, phase, mask, corner);
+    return tris;
+}
+const vertsOf = (tris: number[][]) => tris.flatMap(t => [[t[0], t[1]], [t[2], t[3]], [t[4], t[5]]]);
+const WCOUNT = WAVE.count;
+const WSEGS = T.trueTilePlusWaveSegments(WCOUNT);
+const WREACH = (WAVE.reach * T.TRUE_TILE_PLUS_TILE_UNITS) / 100 * SCALE;   // px, in this synthetic view
+// a vertex's distance out from a border, and its position ALONG that border (0..1 = its span)
+const radiusOf = (x: number, y: number, e: number) => (x - QUAD.px[e]) * OUTWARD[e][0] + (y - QUAD.py[e]) * OUTWARD[e][1];
+function alongOf(x: number, y: number, e: number): number {
+    const j = (e + 1) & 3;
+    const ex = QUAD.px[j] - QUAD.px[e];
+    const ey = QUAD.py[j] - QUAD.py[e];
+    return ((x - QUAD.px[e]) * ex + (y - QUAD.py[e]) * ey) / (ex * ex + ey * ey);
+}
+{
+    const one = wave(WAVE, 0, T.TRUE_TILE_PLUS_EDGE_Z0);
+    ok(one.length > 0, 'a border alone paints something');
+    ok(one.length <= WCOUNT * WSEGS * 4, `at most ${WCOUNT} ripples x ${WSEGS} quads x 4 triangles per border (got ${one.length})`);
+    ok(one.every(t => t.slice(0, 6).every(Number.isInteger)), 'every emitted coordinate is an integer (the rasterizer works in ints)');
+    ok(one.every(t => t[6] === 0x000000), 'every triangle carries the requested colour');
+    ok(one.every(t => t[7] >= 0 && t[7] < 256), 'every trans is a legal destination weight [0, 256)');
+    ok(one.every(t => {
+        const [ax, ay, bx, by, cx, cy] = t;
+        return (bx - ax) * (cy - ay) - (cx - ax) * (by - ay) !== 0;
+    }), 'no ripple triangle is degenerate (a zero-area triangle would be a silent no-op)');
+    ok(T.TRUE_TILE_PLUS_WAVE_CREST_ALPHA > T.TRUE_TILE_PLUS_WAVE_ALPHA,
+        'the crest is the bolder of the two, so it can never read as the trail');
+    // ONE ripple at full envelope, sampled where nothing collapses: the documented emit order is
+    // swell, swell, crest, crest per quad, and the crest must never be the more transparent of
+    // the pair (a dropped zero-area triangle would break a coarser version of this check, so it
+    // is pinned to a frame where the geometry is fat)
+    const c1 = S({ trueTilePlusEffect: 'wave', trueTilePlusCount: '1' });
+    const want = T.trueTilePlusWaveSegments(1) * 4;
+    let clean = -1;
+    for (let p = 0; p < 2; p += 0.001) {
+        if (wave(c1, p, T.TRUE_TILE_PLUS_EDGE_Z0).length === want) { clean = p; break; }
+    }
+    ok(clean >= 0, `a frame exists where nothing collapsed (${want} triangles), so the emit order can be checked`);
+    const mid = wave(c1, clean, T.TRUE_TILE_PLUS_EDGE_Z0);
+    eq(mid.length, want, 'one ripple with nothing collapsed emits every quad');
+    let ordered = true;
+    for (let g = 0; g + 3 < mid.length; g += 4) {
+        if (!(mid[g + 2][7] <= mid[g][7] && mid[g + 3][7] <= mid[g + 1][7])) { ordered = false; }
+    }
+    ok(ordered, 'per quad: the crest is never more transparent than the swell it trails');
+    // and over a sweep, both ends of the fade are really reached
+    let sawOpaque = false, sawFaded = false, distinct = new Set<number>();
+    for (let p = 0; p < 40; p += 0.05) {
+        for (const t of wave(WAVE, p, T.TRUE_TILE_PLUS_EDGE_Z0)) {
+            distinct.add(t[7]);
+            if (t[7] <= 8) { sawOpaque = true; }
+            if (t[7] >= 200) { sawFaded = true; }
+        }
+    }
+    ok(sawOpaque, 'a young ripple carries a near-opaque crest');
+    ok(sawFaded, 'and a dying one a ghost of it, so the ring dissolves instead of scaling forever');
+    ok(distinct.size >= 16, `the fade is a real gradient, not two steps (${distinct.size} distinct trans values)`);
+}
+
+console.log('\nthe EDGE MASK and the CORNER split the World hook relies on');
+for (let e = 0; e < 4; e++) {
+    const one = wave(WAVE, 1.1, 1 << e);
+    ok(one.length > 0, `mask ${1 << e} paints border ${e}`);
+    let outside = true, onOwnBorder = true;
+    for (const [x, y] of vertsOf(one)) {
+        if (radiusOf(x, y, e) < -1) { outside = false; }
+        if (alongOf(x, y, e) < -0.02 || alongOf(x, y, e) > 1.02) { onOwnBorder = false; }
+    }
+    ok(outside, `border ${e}'s ripples never reach inside the true tile (radius >= 0)`);
+    ok(onOwnBorder, `border ${e}'s band stays within its own span (0..1)`);
+}
+for (let k = 0; k < 4; k++) {
+    const eEnd = (k + 3) & 3, eStart = k;
+    const m = wave(WAVE, 0.6, 0, k);
+    ok(m.length > 0, `corner ${k} paints its miters`);
+    let outside = true;
+    for (const [x, y] of vertsOf(m)) {
+        // a point in the diagonal tile at this corner is outside the true tile: it must have a
+        // non-negative radius on at least one of the two borders meeting here
+        if (radiusOf(x, y, eEnd) < -1 && radiusOf(x, y, eStart) < -1) { outside = false; }
+    }
+    ok(outside, `corner ${k}'s miters stay outside the true tile`);
+    // THE RING CLOSES: both borders' miters must arrive at the corner at the same radius, which
+    // is what makes the four bands one ring instead of four bars with notched diagonals
+    const farEnd = vertsOf(m).filter(([x, y]) => alongOf(x, y, eEnd) > 1.02).map(([x, y]) => radiusOf(x, y, eEnd));
+    const farStart = vertsOf(m).filter(([x, y]) => alongOf(x, y, eStart) < -0.02).map(([x, y]) => radiusOf(x, y, eStart));
+    const cornerR = (vs: number[]) => (vs.length ? Math.max(...vs) : -1);
+    ok(farEnd.length > 0 && farStart.length > 0, `corner ${k}: both borders reach past their own span to the corner`);
+    ok(cornerR(farEnd) > 0 && Math.abs(cornerR(farEnd) - cornerR(farStart)) <= 1,
+        `corner ${k}: the two borders' miters meet at the same corner radius (${cornerR(farEnd).toFixed(0)} vs ${cornerR(farStart).toFixed(0)}px)`);
+    // and the miter stays inside the tile that owns it: at most 2x the reach of Manhattan
+    // distance from the tile's corner (r out AND r along)
+    const c = [[0, 0], [64, 0], [64, 64], [0, 64]][k];
+    const man = Math.max(...vertsOf(m).map(([x, y]) => Math.abs(x - c[0]) + Math.abs(y - c[1])));
+    ok(man <= 2 * WREACH + 2, `corner ${k}'s miters stay within the diagonal tile (${man.toFixed(0)}px <= ${(2 * WREACH + 2).toFixed(0)}px)`);
+}
+eq(wave(WAVE, 0, T.TRUE_TILE_PLUS_EDGE_Z0 | T.TRUE_TILE_PLUS_EDGE_Z1).length,
+   wave(WAVE, 0, T.TRUE_TILE_PLUS_EDGE_Z0).length + wave(WAVE, 0, T.TRUE_TILE_PLUS_EDGE_Z1).length,
+   'two mask bits paint exactly the two borders');
+
+console.log('\nthe train: never vanishing, always outward, and bounded by the reach');
+{
+    let emptyFrames = 0, worstRadius = 0, minRadius = Infinity;
+    for (let p = 0; p < 200; p += 0.0137) {
+        const t = wave(WAVE, p, 1);
+        if (t.length === 0) { emptyFrames++; }
+        for (const [x, y] of vertsOf(t)) {
+            const r = radiusOf(x, y, 0);
+            worstRadius = Math.max(worstRadius, r);
+            minRadius = Math.min(minRadius, r);
+        }
+    }
+    console.log(`    over 200 phases: worst radius ${worstRadius.toFixed(1)}px, nearest ${minRadius.toFixed(1)}px, reach ${WREACH.toFixed(1)}px`);
+    eq(emptyFrames, 0, 'EVERY phase paints a ripple on the border (a bunched train could blink out entirely — measured, it did)');
+    ok(minRadius >= -1, 'no vertex of the train reaches inside the tile at any phase');
+    ok(worstRadius <= WREACH + 2, `the train stays within the reach (${worstRadius.toFixed(1)}px <= ${(WREACH + 2).toFixed(1)}px)`);
+    ok(worstRadius > WREACH * 0.8, 'and it really does reach the end of it, rather than hugging the border');
+}
+
+console.log('\nthe wave animates: determinism, the envelope, and the speed slider');
+eq(wave(WAVE, 0), wave(WAVE, 0), 'the same phase replays byte-identically');
+eq(wave(WAVE, 0, 0, 2), wave(WAVE, 0, 0, 2), 'and so does a corner call');
+ok(JSON.stringify(wave(WAVE, 0)) !== JSON.stringify(wave(WAVE, 0.4)), 'a different phase emits a different frame (it sweeps)');
+{
+    const env = (u: number) => T.trueTilePlusWaveEnv(u);
+    eq(env(0), 0, 'the envelope is 0 on the border');
+    eq(env(1), 0, 'and 0 at the reach — nothing pops in or out');
+    let lo = Infinity, hi = -Infinity, peak = 0;
+    for (let u = 0.001; u < 1; u += 0.001) {
+        const v = env(u);
+        lo = Math.min(lo, v); hi = Math.max(hi, v);
+        if (v > env(peak)) { peak = u; }
+    }
+    ok(lo > 0 && hi <= 1, `the envelope stays in (0, 1] between the ends (saw ${lo.toFixed(3)}..${hi.toFixed(3)})`);
+    ok(peak < 0.5, `and peaks before half way (u=${peak.toFixed(3)}), so a ripple is born strong and dies slow`);
+    const frozen = S({ trueTilePlusEffect: 'wave', trueTilePlusSpeed: '0' });
+    eq(wave(frozen, 0), wave(frozen, 7.5), 'speed 0 freezes the wave (same frame at any phase)');
+    const fast = S({ trueTilePlusEffect: 'wave', trueTilePlusSpeed: '2' });
+    eq(wave(fast, 0.5), wave(WAVE, 1), 'speed 2 at phase 0.5 == speed 1 at phase 1 (speed is a pure time scale)');
+    eq(wave(fast, 0.5, 0, 3), wave(WAVE, 1, 0, 3), 'and the same for the miters');
+}
+{
+    // the sliders change the geometry they claim to
+    const c8 = S({ trueTilePlusEffect: 'wave', trueTilePlusCount: '8' });
+    const c1 = S({ trueTilePlusEffect: 'wave', trueTilePlusCount: '1' });
+    const r75 = S({ trueTilePlusEffect: 'wave', trueTilePlusReach: '75' });
+    const r12 = S({ trueTilePlusEffect: 'wave', trueTilePlusReach: '12' });
+    const maxR = (st: any) => { let m = 0; for (let p = 0; p < 60; p += 0.02) { for (const [x, y] of vertsOf(wave(st, p, 1))) { m = Math.max(m, radiusOf(x, y, 0)); } } return m; };
+    const far75 = maxR(r75), far12 = maxR(r12);
+    console.log(`    furthest vertex: reach 75% = ${far75.toFixed(1)}px, reach 12% = ${far12.toFixed(1)}px`);
+    ok(far75 > far12 * 3, 'the reach slider really moves the train out');
+    eq(wave(c8, 0.6, 1).length > wave(c1, 0.6, 1).length, true, 'count 8 paints more ripples than count 1');
+    eq(T.trueTilePlusWaveSegments(1), 14, 'a lone ripple gets the finest sampling (14 quads)');
+    eq(T.trueTilePlusWaveSegments(8), 10, 'a dense train gets the coarsest, so the budget stays bounded');
+}
+
+console.log('\ndegenerate quads emit nothing (wave)');
+eq(wave(WAVE, 0, T.TRUE_TILE_PLUS_EDGE_ALL, -1).length > 0 && wave(WAVE, 0, T.TRUE_TILE_PLUS_EDGE_ALL, -1) !== null, true, 'a normal frame paints');
+eq(T.trueTilePlusWave((() => 0) as any, [0, 10, 20, 30], [0, 10, 20, 30], [0, 0, 0, 0], [0, 0, 0, 0], WAVE, 0, T.TRUE_TILE_PLUS_EDGE_ALL), undefined, 'a zero-area (edge-on) quad emits nothing');
+eq(T.trueTilePlusWave((() => 0) as any, [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], WAVE, 0, T.TRUE_TILE_PLUS_EDGE_ALL), undefined, 'a collapsed projection emits nothing');
+eq(T.trueTilePlusWave((() => 0) as any, QUAD.px, QUAD.py, [32, 64, 32, 0], [0, 32, 64, 32], WAVE, 0, T.TRUE_TILE_PLUS_EDGE_ALL), undefined, 'collapsed probes (no outward direction) emit nothing');
+{
+    const small = { px: [0, 2, 2, 0], py: [0, 0, 2, 2], ox: [1, 2 + OUT * 0.03125, 1, -OUT * 0.03125], oy: [-OUT * 0.03125, 1, 2 + OUT * 0.03125, 1] };
+    eq(wave(WAVE, 0, T.TRUE_TILE_PLUS_EDGE_ALL).length >= 0, true, 'sanity');
+    eq(T.trueTilePlusWave((() => 0) as any, small.px, small.py, small.ox, small.oy, WAVE, 0, T.TRUE_TILE_PLUS_EDGE_ALL), undefined, 'a tile whose borders are under TRUE_TILE_PLUS_MIN_EDGE emits nothing');
+}
+
+console.log('\nthe dispatcher passes the corner through (what the World hook calls)');
+function dispatchW(settings: any, phase = 0, mask = T.TRUE_TILE_PLUS_EDGE_ALL, corner = -1) {
+    const tris: number[][] = [];
+    const emit = (xA: number, xB: number, xC: number, yA: number, yB: number, yC: number, colour: number, trans: number) =>
+        tris.push([xA, yA, xB, yB, xC, yC, colour, trans]);
+    T.trueTilePlusEffect(emit, QUAD.px, QUAD.py, QUAD.ox, QUAD.oy, settings, phase, mask, corner);
+    return tris;
+}
+eq(dispatchW(WAVE), wave(WAVE, 0), 'wave → exactly trueTilePlusWave');
+eq(dispatchW(WAVE, 0, 0, 3), wave(WAVE, 0, 0, 3), 'the corner reaches the wave through the dispatcher');
+eq(dispatchW({ ...WAVE, enabled: false }, 0, 0, 3).length, 0, 'master off → nothing, miters included');
+eq(dispatchW({ ...WAVE, effect: T.TRUE_TILE_PLUS_EFFECT_NONE }).length, 0, "effect 'none' → nothing");
+eq(dispatchW({ ...WAVE, effect: T.TRUE_TILE_PLUS_EFFECT_FLAMES }).length, collect(0).length, 'effect flames → the flames, unchanged (the corner argument is ignored)');
+eq(dispatch(S({ trueTilePlusEffect: 'wave' })), wave(WAVE, 0), 'the settings object alone selects the wave');
+
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 if (fail > 0) process.exit(1);

@@ -89,7 +89,7 @@
         { id: 'xp-drops', name: 'XP drops', desc: 'Customizable XP drops.', master: { key: 'xpDrops', def: 'true' } },
         { id: 'stat-orbs', name: 'Stat orbs', desc: 'HP/Prayer/Run data orbs on the minimap panel. Alt+drag to move them.', master: { key: 'statOrbs', def: 'false' } },
         { id: 'true-tile', name: 'True tile', desc: "Highlights player's true server tile. Customizable.", master: { key: 'trueTile', def: 'true' } },
-        { id: 'true-tile-plus', name: 'True tile+', desc: 'Ground effects on your true tile: flat flames licking off its border.', master: { key: 'trueTilePlus', def: 'true' } },
+        { id: 'true-tile-plus', name: 'True tile+', desc: 'Ground effects on your true tile: flat flames licking off its border, or a ripple wave sweeping out of it.', master: { key: 'trueTilePlus', def: 'true' } },
         { id: 'hover-tile', name: 'Hover tile', desc: 'Highlights the tile your mouse is over. Customizable.', master: { key: 'hoverTile', def: 'true' } },
         { id: 'tcg', name: 'TCG', desc: 'Left click opens pack, right click opens album. 1k exp = 100 credits, level ups = 1k-25k credits, kills = 1 credit per cb lvl.', master: { key: 'tcg', def: 'true' },
           status() {
@@ -139,15 +139,16 @@
         { id: 'true-tile-fill', mod: 'true-tile', name: 'Fill opacity', desc: 'Translucent color wash inside the tile (OSRS fill style). 0 = outline only.', key: 'trueTileFill', kind: 'slider', min: 0, max: 100, step: 5, def: '0', unit: '%' },
         { id: 'true-tile-desync', mod: 'true-tile', name: 'Only when out of sync', desc: 'Hide the tile while your model stands on the server tile — pops up only when the tick is visibly delayed.', key: 'trueTileOnlyDesync', kind: 'toggle', def: 'false' },
         // true-tile-plus: ground effects on the same true tile, with its OWN keys (rule 5 —
-        // it never reads true-tile's). Both rows are re-read by the engine every frame at
-        // its own hook, so a change lands on the next frame.
-        { id: 'true-tile-plus-effect', mod: 'true-tile-plus', name: 'Ground effect', desc: 'Which effect rides your true tile. More effects land in this list as they ship.', kind: 'select', key: 'trueTilePlusEffect', def: 'flames', options: [['flames', 'Flames'], ['none', 'None']], apply(v) { LS.set('trueTilePlusEffect', v); } },
-        { id: 'true-tile-plus-color', mod: 'true-tile-plus', name: 'Effect color', desc: 'Color of the ground effect (flames). Black reads as black fire on most ground.', kind: 'color', key: 'trueTilePlusColor', def: '#000000' },
-        { id: 'true-tile-plus-count', mod: 'true-tile-plus', name: 'Flames per edge', desc: 'How many flames lick off each side of the tile.', key: 'trueTilePlusCount', kind: 'slider', min: 1, max: 8, step: 1, def: '4' },
-        { id: 'true-tile-plus-reach', mod: 'true-tile-plus', name: 'Flame reach', desc: 'How far a flame reaches, as a share of a tile side — it scales with the camera, so a flame keeps its size on the tile.', key: 'trueTilePlusReach', kind: 'slider', min: 4, max: 75, step: 1, def: '23', unit: '%' },
+        // it never reads true-tile's). Every row here is re-read by the engine every frame at
+        // its own hook, so a change lands on the next frame; the rows are shared by BOTH
+        // effects (flames and wave), which is why none of them names one.
+        { id: 'true-tile-plus-effect', mod: 'true-tile-plus', name: 'Ground effect', desc: 'Which effect rides your true tile. More effects land in this list as they ship.', kind: 'select', key: 'trueTilePlusEffect', def: 'flames', options: [['flames', 'Flames'], ['wave', 'Wave'], ['none', 'None']], apply(v) { LS.set('trueTilePlusEffect', v); } },
+        { id: 'true-tile-plus-color', mod: 'true-tile-plus', name: 'Effect color', desc: 'Color of the ground effect. Black reads as black fire (or a dark ripple) on most ground.', kind: 'color', key: 'trueTilePlusColor', def: '#000000' },
+        { id: 'true-tile-plus-count', mod: 'true-tile-plus', name: 'Elements per edge', desc: 'How many elements ride each side of the tile: flame tongues, or ripples in the wave train.', key: 'trueTilePlusCount', kind: 'slider', min: 1, max: 8, step: 1, def: '4' },
+        { id: 'true-tile-plus-reach', mod: 'true-tile-plus', name: 'Effect reach', desc: 'How far an element reaches out from the tile, as a share of a tile side — it scales with the camera, so it keeps its size on the tile. The wave wants more than the flames do: try 50-75% for the full shockwave.', key: 'trueTilePlusReach', kind: 'slider', min: 4, max: 75, step: 1, def: '23', unit: '%' },
         // the speed slider's step is a fraction, so it writes its raw value (the default
         // slider write rounds to an integer, which would pin every setting to 0 or 1)
-        { id: 'true-tile-plus-speed', mod: 'true-tile-plus', name: 'Flicker speed', desc: 'How fast the flames dance. 0 freezes them.', key: 'trueTilePlusSpeed', kind: 'slider', min: 0, max: 3, step: 0.25, def: '1', unit: '×', apply(v) { LS.set('trueTilePlusSpeed', String(v)); } },
+        { id: 'true-tile-plus-speed', mod: 'true-tile-plus', name: 'Effect speed', desc: 'How fast the effect animates — the flames dance, the ripples sweep. 0 freezes it.', key: 'trueTilePlusSpeed', kind: 'slider', min: 0, max: 3, step: 0.25, def: '1', unit: '×', apply(v) { LS.set('trueTilePlusSpeed', String(v)); } },
         // hover-tile: the same contract as true-tile's rows — the engine re-reads its
         // own keys every frame at its own hook, so all three apply live.
         { id: 'hover-tile-color', mod: 'hover-tile', name: 'Outline color', desc: 'Color of the hover-tile border.', kind: 'color', key: 'hoverTileColor', def: '#ffffff' },

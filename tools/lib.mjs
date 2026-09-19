@@ -99,7 +99,7 @@ export const MOD_META = {
     'true-tile-plus': {
         label: 'True tile+',
         // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this)
-        desc: 'Ground effects on your true tile: flat flames licking off its border.',
+        desc: 'Ground effects on your true tile: flat flames licking off its border, or a ripple wave sweeping out of it.',
     },
 };
 
