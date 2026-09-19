@@ -246,10 +246,12 @@
 /* affordance: while Alt is held, draggable surfaces advertise themselves */
 body.lcm-alt [data-lcm-surface] { cursor: move; outline: 1px dashed rgba(var(--lcm-accent-rgb), .65); outline-offset: 2px; }
 
-/* drag ghost for canvas-drawn surfaces (xp tracker): the real thing keeps
-   drawing at its live anchor, this frame is what you drag */
+/* drag ghost for canvas-drawn surfaces (xp tracker, stat orbs): the surface itself now
+   moves live from the keys this layer writes, so the ghost is a bare outline — a tinted
+   box would just sit on top of the thing you are placing */
 #lcm-ghost {
     position: fixed; z-index: 9700; pointer-events: none; display: none;
     border: 2px solid var(--lcm-accent); border-radius: 4px;
     background: rgba(var(--lcm-accent-rgb), .15); box-shadow: 0 0 14px rgba(var(--lcm-accent-rgb), .4);
 }
+#lcm-ghost.hollow { background: none; box-shadow: none; border-width: 1px; border-style: dashed; }

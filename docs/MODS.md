@@ -310,6 +310,16 @@ cp -r .. lclite && cd lclite && node tools/lclite.mjs        # t/ is the host ro
   `areaGame` buffer at 4,4) — the xp tracker's home; the stat orbs pass the
   minimap widget instead (`[550, 4, 172, 156, 172, 156]`). Either way the buffer
   is a hard boundary: it physically cannot paint into the sidebar/chat/letterbox.
+  An 8th optional element widens that boundary for a mod that composites a
+  SECOND buffer outside the one it draws into: the OVERHANG
+  `[left, right, top, bottom]` as DISTANCES OUTWARD in the same buffer px, which extends the drag's
+  clamp and moves the snap targets outward while the ANCHOR POINTS and the
+  stored offsets stay the region's (so no saved placement shifts meaning).
+  stat-orbs passes `[34, 0, 0, 0]`: it paints the sidebar's own stone strip
+  left of the minimap widget into a buffer of its own (see its README), which
+  is what lets a dragged orb column hang out of the widget — the first surface
+  that can leave its buffer at all, and the reason the ghost's clamp and the
+  owner's clamp have to be told the same number.
   The region is measured off the CANVAS ELEMENT (`getBoundingClientRect`), not the
   window — the page centres a scaled 765×503 canvas inside the letterbox, so a
   window-derived rect put every canvas ghost hundreds of px from its pixels. The DRAG LAYER (control-panel's
@@ -331,6 +341,15 @@ cp -r .. lclite && cd lclite && node tools/lclite.mjs        # t/ is the host ro
   owner keeps painting the real thing at the live anchor — the ghost and the
   element agree because both derive from the same keys + the same viewport
   rect (`panel.js vpRect()`: canvas × 512/765, 4/765 offset, 334/503).
+  **Canvas surfaces are placed LIVE:** the drag layer writes the anchor keys on
+  every pointermove (not just on release), because that is what makes a canvas
+  surface FOLLOW the cursor — its owner re-reads its own keys every frame, so
+  the keys ARE the position. The write is unsnapped (the snap still lands on
+  release, where it always did) and the ghost for a canvas surface is a bare
+  dashed outline, since a tinted box would sit on top of the thing you are
+  placing. Escape and window blur CANCEL a drag: the keys as they were before
+  it are restored (and UNSET keys go back to unset) — a half-dragged surface
+  must not be left placed.
   A new movable DOM surface = one `register()` call; a new movable canvas
   surface = that same pattern (live origin, bounds fn, registerCanvas + its
   region, reserve the names). Canvas surfaces clamp FLUSH (the panel passes margin

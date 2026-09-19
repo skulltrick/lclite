@@ -32,7 +32,10 @@
 //     the refusals (uneven thresholds, one segment, a non-pushvar script, no tree);
 //  7. the panel's box (beside the orb column, sliding right as the readouts grow,
 //     clamped flush inside the 172x156 widget), its fifteen cell positions, its hit
-//     test, and the spec orb's own box, hit test and inside-number scale.
+//     test, and the spec orb's own box, hit test and inside-number scale;
+//  8. the STONE STRIP the column may hang into (the sidebar's own stone left of the
+//     minimap widget, canvas 516..549): its geometry against the widget's, and the
+//     placement clamp — the left wall is the strip, everything else is the widget.
 import path from 'node:path';
 
 const LCLITE = path.resolve(import.meta.dir, '../../..');
@@ -505,6 +508,45 @@ console.log('\norb hit test:');
     ok(!S.statOrbsOrbHit(cx + 8, 94 + 8, cx, 94, L.r), 'and a corner inside the bounding box is not (the orbs are round)');
     ok(!S.statOrbsOrbHit(cx, 94 - 49, cx, 94, L.r), 'the orbs do not overlap: the HP orb’s centre is not on the prayer orb');
     ok(!S.statOrbsOrbHit(cx - 14, 94, cx, 94, L.r), 'the readout beside an orb is not part of it');
+}
+
+// ---- the stone strip (the drag overhang) ------------------------------------------
+console.log('\nstone strip:');
+{
+    // the strip is the sidebar's own stone between the game viewport (ends 516) and the
+    // minimap widget (starts 550): it must meet the widget exactly, and be exactly as
+    // tall, or a column dragged into it would sit on the wrong pixels
+    eq([S.ORB_STRIP_W, S.ORB_STRIP_H, S.ORB_STRIP_X], [34, 156, 516], 'the strip is 34x156 at canvas 516');
+    eq(S.ORB_STRIP_X + S.ORB_STRIP_W, S.ORB_ORIGIN_X, 'its right edge is the widget’s left edge, to the pixel');
+    eq(S.ORB_STRIP_H, S.ORB_PANEL_H, 'and it is exactly the widget’s height (so nothing can overhang up or down)');
+    ok(S.ORB_STRIP_X >= 0 && S.ORB_STRIP_W > 0 && S.ORB_STRIP_X < S.ORB_ORIGIN_X, 'it sits left of the widget, on the canvas');
+
+    // the left wall is the strip; everything else is the widget
+    eq(S.statOrbsClampX(0, 36), 0, 'the shipped default spot is untouched by the overhang');
+    eq(S.statOrbsClampX(-1, 36), -1, 'a box one pixel into the strip stays there');
+    eq(S.statOrbsClampX(-34, 36), -34, 'and the far end of the strip is reachable');
+    eq(S.statOrbsClampX(-35, 36), -34, 'but never further: the strip is the wall');
+    eq(S.statOrbsClampX(-9999, 36), -34, 'no hand-typed key can push it off the sidebar');
+    eq(S.statOrbsClampX(136, 36), 136, 'the widget’s right edge still clamps flush');
+    eq(S.statOrbsClampX(9999, 36), 136, 'and stays the wall on that side');
+    ok([36, 53, 62].every((w: number) => {
+        const x = S.statOrbsClampX(-9999, w);
+        return x === -34 && x + w <= S.ORB_PANEL_W + S.ORB_STRIP_W;
+    }), 'at every readout width the box hangs at most the strip’s width out of the widget');
+    eq(S.statOrbsClampX(0, 300), -34, 'a box wider than the whole area clamps to its left wall, not to a broken range');
+
+    // vertically there is no overhang at all
+    eq(S.statOrbsClampY(34, 120), 34, 'the column’s default top is untouched');
+    eq(S.statOrbsClampY(-5, 120), 0, 'and the widget’s top is still the wall');
+    eq(S.statOrbsClampY(36, 120), 36, 'the widget’s bottom edge clamps flush');
+    eq(S.statOrbsClampY(9999, 120), 36, 'and stays the wall');
+
+    // what decides whether the strip buffer is painted at all
+    ok(!S.statOrbsInStrip(0, 40), 'nothing in the strip: the column at 0, the spec orb at 40');
+    ok(S.statOrbsInStrip(-1, 40), 'the column one pixel in');
+    ok(S.statOrbsInStrip(0, -1), 'the spec orb one pixel in');
+    ok(S.statOrbsInStrip(-34, -34), 'both at the far wall');
+    ok(!S.statOrbsInStrip(5, 5), 'and neither of them in it');
 }
 
 console.log('\n' + (fail === 0 ? '✔ green' : '✗ ' + fail + ' failed') + ' — ' + pass + ' passed, ' + fail + ' failed\n');

@@ -126,9 +126,9 @@ bundle→page boundary:
 
 - `register({id, el, anchorKey, offsetKey, defA, defO})` — a DOM surface (the FAB, the
   tcg HUD). The panel positions it; it anchors to the whole client window.
-- `registerCanvas([id, anchorKey, offsetKey, defA, defO, getBounds, region])` — a surface
-  an owner mod paints into a canvas buffer (the xp tracker, the stat orbs). The panel
-  drags a ghost box sized from `getBounds()` (a positional `[x, y, w, h]` in that
+- `registerCanvas([id, anchorKey, offsetKey, defA, defO, getBounds, region, overhang])` — a
+  surface an owner mod paints into a canvas buffer (the xp tracker, the stat orbs). The
+  panel drags a ghost box sized from `getBounds()` (a positional `[x, y, w, h]` in that
   buffer's own px, or `null` while the surface is hidden) and never positions the real
   thing: the owner re-reads its own keys per frame. `region` is optional —
   `[x, y, w, h, bufferW, bufferH]` in the canvas's 765×503 logical space, defaulting to
@@ -136,7 +136,21 @@ bundle→page boundary:
   (`[550, 4, 172, 156, 172, 156]`) so they drag inside the panel they are drawn on.
   The region is measured off the CANVAS ELEMENT, never the window: the page centres a
   scaled canvas inside the letterbox, so window-derived maths put every canvas ghost
-  hundreds of px from its real pixels.
+  hundreds of px from its real pixels. `overhang` is optional too —
+  `[left, right, top, bottom]` as distances OUTWARD in the same buffer px, for an owner that composites a
+  buffer OUTSIDE the one it draws into: the stat orbs paint the sidebar's stone strip
+  left of the minimap widget themselves, so they pass `[34, 0, 0, 0]` and the clamp (and
+  the snap targets) follow them out. The anchor POINTS and the stored offsets stay the
+  region's, so widening the overhang never shifts a saved placement.
+
+**A canvas surface is placed LIVE.** The drag writes the anchor keys on every pointermove,
+not just on release — an owner paints itself from those keys every frame, so that is what
+makes the xp tracker and the orbs follow the cursor instead of jumping into place when you
+let go. The move writes are unsnapped (the snap still lands on release, as it always did),
+the ghost over a canvas surface is a bare dashed outline (a tinted box would sit on the
+thing being placed), and Escape or a window blur cancels the drag by restoring the keys the
+drag started with — unset keys back to unset, so a half-drag never leaves a placement
+behind.
 
 `lcmAnchor.reset(id)` is the one reset path for both kinds (Alt+right-click calls it;
 `lcm-anchor-reset` with the id as `detail` is the event form). It returns `false` for an

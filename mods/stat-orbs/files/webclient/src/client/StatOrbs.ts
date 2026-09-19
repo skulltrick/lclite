@@ -26,6 +26,18 @@ export const ORB_PANEL_H: number = 156;
 /** That widget's origin in the 765x503 canvas space (`this.areaMap?.draw(550, 4)`). */
 export const ORB_ORIGIN_X: number = 550;
 export const ORB_ORIGIN_Y: number = 4;
+/** The sidebar's OWN stone strip left of that widget: canvas x 516..549, exactly the
+ *  widget's height. The client paints its background sprites at 516 (`backvmid1`), and the
+ *  widget is composited over them at 550 — so this strip is free stone, and it is the one
+ *  piece of the sidebar a dragged orb column can hang into. Pixels outside the widget
+ *  buffer cannot exist IN it, so the strip is a second buffer this mod composites itself
+ *  (see `orbsStripFrame` in Client.ts): its background is copied straight out of the
+ *  sidebar's own `backvmid1` pixels, which makes it pixel-identical to the stone already
+ *  on the canvas. ORB_STRIP_W is therefore also how far a box may overhang the widget's
+ *  left edge — the same number the drag layer is told (registerCanvas' 8th element). */
+export const ORB_STRIP_W: number = 34;
+export const ORB_STRIP_H: number = ORB_PANEL_H;
+export const ORB_STRIP_X: number = ORB_ORIGIN_X - ORB_STRIP_W;
 
 // ---- the readout font ------------------------------------------------------------
 /** The 3x5 pixel digits, row-major, '1' = ink — the WHOLE-step font (1x, 2x, 3x; the half
@@ -304,6 +316,52 @@ export function statOrbsOrbLeft(numbers: string, scale: number): number {
     }
 
     return ORB_NUMBER_GAP + statOrbsNumberWidth('000', scale);
+}
+
+/** The orb column's and the spec orb's live geometry — what `orbLayout()` computes every
+ *  frame in Client.ts from this mod's own keys (rule 5). Declared here so the two drawing
+ *  passes (the widget buffer and the stone strip) and the placement maths all speak of
+ *  one shape. */
+export interface OrbLayout {
+    /** Orb radius (size / 2). */
+    r: number;
+    /** The column's left inset: the room a 'left' readout needs, else 3. */
+    orbLeft: number;
+    /** The vertical pitch between two orbs (60 - r). */
+    step: number;
+    /** The column's box origin — negative ox means it hangs into the stone strip. */
+    ox: number;
+    oy: number;
+    /** The column's box: the readouts plus the orbs. */
+    boxW: number;
+    boxH: number;
+    numbers: string;
+    scale: number;
+    pie: boolean;
+    pulse: boolean;
+    specX: number;
+    specY: number;
+    specR: number;
+}
+
+/** Clamp a box's left edge into the widget, ALLOWING it to overhang the widget's left
+ *  edge by the sidebar's stone strip — the orbs are painted into the widget buffer, and
+ *  the strip is the mod's own second buffer, so `-ORB_STRIP_W` is the real wall (the drag
+ *  layer is told the same number, so the ghost and the drawn orbs agree). Vertically the
+ *  widget IS the boundary: the strip is exactly its height. */
+export function statOrbsClampX(x: number, boxW: number): number {
+    return Math.max(-ORB_STRIP_W, Math.min(x, ORB_PANEL_W - boxW));
+}
+
+export function statOrbsClampY(y: number, boxH: number): number {
+    return Math.max(0, Math.min(y, ORB_PANEL_H - boxH));
+}
+
+/** Does anything reach into the stone strip at these positions? That is what decides
+ *  whether the strip buffer is painted at all — and it must be asked every frame, or a
+ *  column dragged back out of the strip would leave its pixels on the stone. */
+export function statOrbsInStrip(ox: number, specX: number): boolean {
+    return ox < 0 || specX < 0;
 }
 
 // ---- the structural lookups ------------------------------------------------------

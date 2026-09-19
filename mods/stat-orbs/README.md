@@ -10,8 +10,13 @@ bottom), each with its value **to its left**, plus a fourth, larger **special at
 at the panel's bottom left. The orbs fill and drain live, the Hitpoints orb flashes below
 a quarter health, and the column can be moved with **Alt+drag** and put back with
 **Alt+right-click** or the panel's *Reset position* row (the spec orb has its own drag and
-its own reset row). Every setting applies on the next frame — nothing here needs a rebuild
-or a reload.
+its own reset row). Dragging moves the orbs **with the cursor, live** — they are painted
+from the placement keys, and the drag layer writes those keys as the pointer moves, so
+there is no ghost-only phase and no jump on release. The column may also be dragged
+**past the minimap panel's left edge**: the 34px of the sidebar's own stone left of the
+widget is painted by this mod too (see *The stone strip* below), so the readouts can be
+pushed out until they sit flush against the sidebar's edge. Every setting applies on the
+next frame — nothing here needs a rebuild or a reload.
 
 Four of the orbs' own behaviours sit on top of that readout:
 
@@ -36,30 +41,33 @@ Four of the orbs' own behaviours sit on top of that readout:
 - `files/webclient/src/client/StatOrbs.ts` — the mod's **pure core**: this mod's settings
   parse, the readout font (both tables and their rasterizer), the orb marks, the
   STRUCTURAL lookup of the prayer book, the run/walk buttons and the special-attack bar in
-  the loaded interface list, and the quick-prayer panel's and the spec orb's geometry and
-  hit tests. Nothing in it touches client state, the DOM or Pix2D, so
-  `mods/stat-orbs/tools/stat_orbs_test.ts` runs the REAL shipped logic headlessly. `apply`
-  copies it verbatim; one import hunk in `Client.ts` pulls it into the bundle.
+  the loaded interface list, the quick-prayer panel's and the spec orb's geometry and hit
+  tests, and the placement geometry the strip hangs off (`OrbLayout`, `ORB_STRIP_*`,
+  `statOrbsClampX/Y`, `statOrbsInStrip`). Nothing in it touches client state, the DOM or
+  Pix2D, so `mods/stat-orbs/tools/stat_orbs_test.ts` runs the REAL shipped logic
+  headlessly. `apply` copies it verbatim; one import hunk in `Client.ts` pulls it into the
+  bundle.
 - `patches/289/Client_ts.json` — SIX hunks into `webclient/src/client/Client.ts`:
   1. the payload import, parked under the `IfType` imports (clear of every other mod's
      import islands, and nowhere near `import JagFX` — whose neighbourhood carries the
      revision-specific `const CLIENT_VERSION = 289;` line that would expire 274's
      `inherits` claim);
-  2. the fields + `orbLayout()` / `drawStatOrbs()` / `drawOrb()` / `drawOrbNumber()` /
+  2. the fields + `orbLayout()` / `drawStatOrbs()` / `orbsDrawOrbs()` / `orbsStripFrame()` /
+     `orbsStripClear()` / `orbsStripStone()` / `drawOrb()` / `drawOrbNumber()` /
      `drawOrbBook()` / `orbsResolve()` / `orbsClickLoop()` / `orbsRunToggle()` /
      `orbsPrayerClick()` / helpers block, parked in the isolated slot before `gameDraw()`
      so regen routes the whole block to this mod (far from any other mod's hunks);
   3. `if (this.orbsClickLoop()) return;` at the TOP of `minimapLoop()` — see *The click
      hook* below for why it is not in `checkClickInput` with the wiki button's;
   4. the top of `minimapDraw()` — the master-key read plus the one-shot wipe when the
-     mod is switched off mid-session;
+     mod is switched off mid-session (the widget buffer AND the stone strip);
   5. the hidden-minimap branch of `minimapDraw()` (`minimapState == 2`);
   6. the end of `minimapDraw()` — the normal draw.
 - Panel rows: `MOD_REGISTRY` + fourteen `MODS[]` rows for `stat-orbs` in
   `mods/control-panel/files/engine/public/lclite/panel.js` (size, number size, numbers,
   fill style, low-HP warning, run click, prayer book, five colours, two reset positions).
-  The `panel.js?v=` key in `client.ejs` was bumped for this change (23 → 24), the house
-  rule for any panel.js edit.
+  The `panel.js?v=` key in `client.ejs` was bumped for this change (24 → 25), and so was
+  `panel.css?v=` (10 → 11) — the house rule for any panel edit.
 - `lcmStatOrbsBounds` is the only cross-realm *global* this mod adds, and it is reserved in
   `bundle.ts` (control-panel's island). The spec orb registers a second surface with a
   closure instead, so it needs no new reserve; its keys
@@ -91,6 +99,39 @@ Two facts about that buffer drive the whole design:
   (The mapback's transparent region is the map CIRCLE plus a 33px compass hole, so
   re-plotting it restores the stone and disturbs neither the map nor the compass.)
 
+### The stone strip (why the orbs can leave the panel at all)
+
+The widget buffer is the orbs' canvas, so **the widget's left edge used to be the hard
+wall** — dragging further left simply clamped and nothing moved. But the sidebar's own
+stone starts further left than that: the client paints its background sprites at canvas
+x 516 (`backvmid1`, drawn at `(516, 4)`), and the minimap widget is composited *over*
+them at 550. That leaves **34px of free sidebar stone** — `ORB_STRIP_W`, canvas
+516..549, exactly the widget's height — and it is now the column's left wall instead.
+
+Pixels outside the widget buffer cannot exist *in* it, so the strip is a **second buffer
+this mod composites itself** (`orbsStripStone()` / `orbsStripFrame()`): a 34×156 `PixMap`
+whose background is copied straight out of the sidebar's own `areaBackvmid1` pixels (the
+same buffer the client's `backvmid1.draw(516, 4)` puts on the canvas, so the strip is
+pixel-identical to the stone already there), composited at `(516, 4)` with
+`PixMap.draw` — which forces every pixel opaque, exactly what a never-re-cleared strip
+needs. The same orbs are then drawn over it, shifted right by the strip's width; Pix2D
+clips each pass to the buffer it is bound to, so an overhanging column is simply drawn
+half in the widget and half in the strip (`orbsDrawOrbs` is one routine, called twice).
+
+Two consequences worth knowing:
+
+- **No strip wipe is needed.** The stone is re-copied and the strip re-composited on
+  every frame the orbs actually reach into it, so it can never hold a stale orb — and the
+  frame they stop reaching, the bare stone is composited once more and the strip goes
+  quiet (`statOrbsInStrip` is the test). Switching the mod off mid-session with the orbs
+  hanging in the strip calls `orbsStripClear()` from the same off-wipe hook that
+  re-plots the mapback, because nothing else would ever repaint that stone.
+- **The strip's own limit is the sidebar's edge.** Further left is the game viewport
+  (the world ends at 516) and the world is dynamic: an orb there would have to be
+  re-composited over live terrain every frame, and on a gpu frame the world is not in
+  any buffer the mod can read. So 34px is the whole of the extra room, and the drag's
+  clamp, the ghost's clamp and the panel's own overhang all end at the same pixel.
+
 ## Layout
 
 `orbLayout()` recomputes this every frame from this mod's own keys (rule 5):
@@ -103,7 +144,11 @@ Two facts about that buffer drive the whole design:
 - The three orbs spread evenly down y 34–154 (below the compass, above the widget edge):
   `step = 60 - r`, so the group is always 120px tall whatever the size.
 - The group box (`orbLeft + 2r` × 120) is then placed from the `lcmStatOrbs*` placement
-  keys and clamped **flush** inside the widget — the same clamp the panel applies.
+  keys and clamped **flush** — the same clamp the panel applies — with ONE exception: the
+  left edge may overhang the widget by `ORB_STRIP_W` (34px, into the sidebar's own stone
+  strip, see above), which is what `statOrbsClampX` encodes. Vertically the widget is
+  still the whole world (`statOrbsClampY`), because the strip is exactly the widget's
+  height.
 - The **spec orb** is 2px of radius bigger (`statOrbsSpecBox`), and its default spot is
   bottom-aligned with the column's own bottom edge, 4px clear of the column's right edge:
   the panel's bottom left, in the free stone below the map circle's left rim. It follows
@@ -342,14 +387,24 @@ while the mod is off, so Alt+drag cannot grab a hidden surface). The 7th element
 array is this mod's contribution to the placement platform: the **region** descriptor
 `[550, 4, 172, 156, 172, 156]` — the minimap widget's rect in the canvas's 765×503
 logical space plus that buffer's pixel size. Without it the panel would clamp the orbs
-into the game viewport, which is a different buffer entirely.
+into the game viewport, which is a different buffer entirely. The 8th element is the
+**overhang** `[ORB_STRIP_W, 0, 0, 0]`: the stone strip the mod paints itself means the
+box may hang 34px out of the widget on the left, and the drag layer has to clamp and snap
+against the same wall the owner does. Only the clamp and the snap targets widen — the
+anchor points and the stored offsets stay the region's, so **no existing dragged position
+shifts meaning** when the overhang is added.
 
 The panel drags a ghost box and writes the keys; this mod only ever **reads** them
-(rule 5). Reset comes from the drag layer too — the panel's *Reset position* row calls
+(rule 5). Since the orbs are painted from those keys on every frame, the drag layer
+writes them **as the pointer moves** (not just on release), which is what makes the orbs
+follow the cursor instead of waiting for the drop; the snap still lands on release, and
+Escape or a window blur restores the keys the drag started with. The ghost over a canvas
+surface is a bare dashed outline, because the real orbs are moving underneath it.
+Reset comes from the drag layer too — the panel's *Reset position* row calls
 `window.lcmAnchor.reset('stat-orbs')`, which is the same code path as Alt+right-click. The
-**spec orb** registers a second canvas surface on the same region (`stat-orbs-spec`),
-whose bounds are a closure over the same layout, so the panel hit-tests and drags it
-exactly like the column while it needs no new `bundle.ts` reserve.
+**spec orb** registers a second canvas surface on the same region and overhang
+(`stat-orbs-spec`), whose bounds are a closure over the same layout, so the panel
+hit-tests and drags it exactly like the column while it needs no new `bundle.ts` reserve.
 
 Two traps found while wiring this up, both now fixed platform-wide:
 
@@ -363,11 +418,14 @@ Two traps found while wiring this up, both now fixed platform-wide:
 
 ## Deliberate divergences and limits
 
-- **The orbs ride the minimap widget, not a DOM overlay.** They therefore cannot be
-  dragged into the sidebar, the chatbox or the letterbox — the 172×156 buffer is their
-  hard boundary. That is the same limit the xp tracker has, and it is why the drag layer
-  clamps canvas surfaces flush instead of leaving a margin. The quick-prayer book lives
-  inside the same buffer and is positioned from the orbs, not dragged.
+- **The orbs ride the minimap widget, not a DOM overlay.** Their own canvas is the
+  172×156 buffer, so 34px of the sidebar's stone left of it (the strip this mod paints)
+  is the entire freedom they have outside the panel: the rest of the sidebar, the chatbox
+  and the letterbox are out of reach, and so is the game world — that would mean drawing
+  over live terrain every frame, and on a gpu frame the world is not in any buffer a mod
+  can read. It is why the drag layer clamps canvas surfaces flush instead of leaving a
+  margin. The quick-prayer book lives inside the widget buffer and is positioned from the
+  orbs, not dragged.
 - **The middle orb's rim overlaps the map's left edge** by a few px at the default size
   (and more at 28px). That is where OSRS's orbs sit too — they are mounted over the
   panel's inner edge — and the numbers are what force the column that far right.
@@ -408,9 +466,16 @@ Two traps found while wiring this up, both now fixed platform-wide:
   `lcmAnchor.reset('stat-orbs')` (and therefore the panel row) puts it back to the
   default box `[0, 34, 36, 120]`; the ghost box and the drawn orbs agree. Same for
   `lcmAnchor.reset('stat-orbs-spec')` and the spec orb's own default `[40, 128, 26, 26]`.
+- **The stone strip is NOT yet verified in-game** — everything below about it is headless
+  and static (the harness, the byte-compare, the bundle grep). What needs an eye in the
+  client: that the strip's stone matches the sidebar with no seam at canvas 516 or at the
+  widget's edge at 550, that an orb straddling the join is whole (not clipped or
+  doubled), that the numbers really can be pushed flush against the sidebar's edge and no
+  further, that dragging back out of the strip leaves no orb pixels behind on the stone,
+  and that switching the mod off with the orbs in the strip clears it.
 - The panel's mod view lists all fourteen rows with the right kinds, and the master switch
   gates them.
-- `bun run mods/stat-orbs/tools/stat_orbs_test.ts` — 142 checks over the shipped core:
+- `bun run mods/stat-orbs/tools/stat_orbs_test.ts` — 164 checks over the shipped core:
   the settings clamp table and the half-step ladder; the readout geometry at every scale
   (including the 1x expression being digit-for-digit the old one, and the ladder never
   shrinking); the font rasters (1x/2x/3x exactly the 3x5 table block for block, 1.5x/2.5x
@@ -425,9 +490,13 @@ Two traps found while wiring this up, both now fixed platform-wide:
   refusing uneven thresholds, a single segment, a non-pushvar segment, an `eq` bar, a
   missing tree, and a shorter decoy bar; the panel's box, its fifteen cells and its hit
   test; and the spec orb's box, its distance from the column and the wiki button, its disc
-  hit test and its inside-number scale.
+  hit test and its inside-number scale; and the stone strip's geometry against the
+  widget's (`ORB_STRIP_X + ORB_STRIP_W == ORB_ORIGIN_X`, the strip exactly the widget's
+  height) with the placement clamp around it — the shipped default spot untouched, the
+  strip's far edge reachable and the wall, the widget's right/bottom edges still walls,
+  and `statOrbsInStrip` deciding the strip's paint (checked at both boxes' positions).
 - `tsc -p tsconfig.json` clean on the applied tree, and the built `client.js` carries the
-  new keys and the bolt's digits.
+  new keys, the bolt's digits, and the two overhang registrations (`34,0,0,0`).
 - The overlay's acceptance harness (pristine clones at the pins, byte-compare against
   the live install, converge round-trip) and `tools/matrix.mjs` over every declared
   revision.

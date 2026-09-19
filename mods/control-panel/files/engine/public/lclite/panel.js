@@ -964,9 +964,16 @@
         // keys per frame. a[6] is OPTIONAL and selects the buffer the surface lives in:
         // [x, y, w, h, bufferW, bufferH] in the canvas's 765x503 logical space (see
         // regionRect) — omit it for the game viewport (areaGame), pass it for anything
-        // else (stat-orbs uses the minimap widget, areaMap at 550,4).
+        // else (stat-orbs uses the minimap widget, areaMap at 550,4). a[7] is OPTIONAL
+        // too: the OVERHANG [left, right, top, bottom] in the same buffer's px, as
+        // DISTANCES OUTWARD (34 on the left = the box may hang 34px out of the region),
+        // for a surface whose owner composites a buffer OUTSIDE the one it draws into
+        // (the stat orbs paint the sidebar's stone strip left of the minimap widget
+        // themselves, so the column may hang 34px out of the widget). It widens the
+        // drag's clamp and the snap points ONLY — the anchor points and the stored
+        // offsets stay the region's, so no saved placement shifts.
         registerCanvas(a) {
-            const s = { id: a[0], el: null, canvas: true, anchorKey: a[1], offsetKey: a[2], defA: a[3], defO: a[4], getBounds: a[5], region: a[6] || null };
+            const s = { id: a[0], el: null, canvas: true, anchorKey: a[1], offsetKey: a[2], defA: a[3], defO: a[4], getBounds: a[5], region: a[6] || null, overhang: a[7] || null };
             const i = SPECS.findIndex(x => x.id === s.id);
             if (i >= 0) SPECS[i] = s; else SPECS.push(s);
             return true;
@@ -1033,6 +1040,52 @@
             width: width, height: height, sx: width / g[4], sy: height / g[5]
         };
     }
+    // The DRAGGABLE rect: the region, grown by the surface's own overhang (a[7] of
+    // registerCanvas, in that buffer's px — DISTANCES OUTWARD, so 34 on the left means
+    // "the box may hang 34px left of the region"). A mod may paint OUTSIDE the buffer it
+    // draws into (stat-orbs composites the sidebar's stone strip left of the minimap
+    // widget itself), so its box is allowed that far past the region. The ANCHOR POINTS
+    // and the stored offsets stay the REGION's (see storePlacement) — this only widens
+    // the clamp and moves the snap targets, so no saved placement shifts meaning.
+    function dragRect(spec) {
+        const r = regionRect(spec);
+        const o = spec && spec.overhang;
+        if (!o) return r;
+        return {
+            left: r.left - o[0] * r.sx, top: r.top - o[2] * r.sy,
+            width: r.width + (o[0] + o[1]) * r.sx, height: r.height + (o[2] + o[3]) * r.sy,
+            sx: r.sx, sy: r.sy
+        };
+    }
+    // Store a placement from a box position. The ANCHOR is named against the draggable
+    // rect (so the outermost reach of an overhanging surface is itself a snap point)
+    // while the OFFSET is measured against the surface's own REGION — the owning mod
+    // mirrors exactly this maths from the same keys, so the two must not drift.
+    function storePlacement(spec, x, y, w, h, snap) {
+        const r = spec.canvas ? regionRect(spec) : gameRect();
+        const d = spec.canvas ? dragRect(spec) : r;
+        let a = snap;
+        if (!a) {   // free placement: anchor named by the box centre's drag rect
+            const cx = x + w / 2 - d.left, cy = y + h / 2 - d.top;
+            a = (cy < d.height / 3 ? 'T' : cy > d.height * 2 / 3 ? 'B' : 'M') +
+                (cx < d.width / 3 ? 'L' : cx > d.width * 2 / 3 ? 'R' : 'C');
+        }
+        const k = ANCH[a] || ANCH.TR;
+        const sx = spec.canvas ? r.sx : 1, sy = spec.canvas ? r.sy : 1;
+        // canvas: store offsets in buffer px (x/sx, y/sy per-axis)
+        LS.set(spec.anchorKey, a);
+        LS.set(spec.offsetKey, Math.round((x - (r.left + r.width * k[0])) / sx) + ',' + Math.round((y - (r.top + r.height * k[1])) / sy));
+        return a;
+    }
+    // Undo the live writes a cancelled drag made (Escape, window blur): a surface the
+    // user did not place must be exactly where it was, keys included — an unset key has
+    // to go back to UNSET, or the owner would read a placement nobody asked for.
+    function restorePlacement(spec, keys) {
+        if (!keys) return;
+        if (keys.a === null) localStorage.removeItem(spec.anchorKey); else LS.set(spec.anchorKey, keys.a);
+        if (keys.o === null) localStorage.removeItem(spec.offsetKey); else LS.set(spec.offsetKey, keys.o);
+        window.dispatchEvent(new CustomEvent('lcm-anchor-changed', { detail: spec.id }));
+    }
     function ghostBox() {
         let g = document.getElementById('lcm-ghost');
         if (!g) {
@@ -1084,21 +1137,27 @@
         if (spec.canvas) {                      // ghost only: real elements keep their CSS size
             box.style.width = Math.round(r.width) + 'px';
             box.style.height = Math.round(r.height) + 'px';
+            box.classList.add('hollow');        // the surface itself moves under it — outline only
             window.lcmHeld = spec.id;           // owner keeps drawing while held
         }
         ds = {
             spec, box, w: r.width, h: r.height, sx, sy, moved: false, snap: null,
             grabX: e.clientX - r.left, grabY: e.clientY - r.top, origX: e.clientX, origY: e.clientY,
+            // canvas surfaces are placed LIVE as the pointer moves (their owner draws from
+            // these keys every frame), so the values they had before the drag are kept to
+            // put back on a cancel — null = the key was UNSET.
+            keys: spec.canvas ? { a: localStorage.getItem(spec.anchorKey), o: localStorage.getItem(spec.offsetKey) } : null,
+            lastX: NaN, lastY: NaN,
             orig: { left: spec.el ? spec.el.style.left : '', top: spec.el ? spec.el.style.top : '', right: spec.el ? spec.el.style.right : '', bottom: spec.el ? spec.el.style.bottom : '' }
         };
-        showDots(spec.canvas ? regionRect(spec) : gameRect(), true);
+        showDots(spec.canvas ? dragRect(spec) : gameRect(), true);
         window.dispatchEvent(new CustomEvent('lcm-drag', { detail: spec.id }));
         try { (spec.el || box).setPointerCapture(e.pointerId); } catch (err) { /* window listeners still fire */ }
     }, true);
     window.addEventListener('pointermove', e => {
         if (!ds) return;
         if (Math.abs(e.clientX - ds.origX) + Math.abs(e.clientY - ds.origY) > 3) ds.moved = true;
-        const r = ds.spec.canvas ? regionRect(ds.spec) : gameRect();
+        const r = ds.spec.canvas ? dragRect(ds.spec) : gameRect();
         const [x, y] = clampInto(r, e.clientX - ds.grabX, e.clientY - ds.grabY, ds.w, ds.h, ds.spec.canvas ? 0 : 4);
         placeXY(ds.box, x, y);
         let best = null, bd = SNAP_HIT;
@@ -1109,6 +1168,14 @@
         }
         ds.snap = best;
         if (snapLayer) [...snapLayer.children].forEach(d => d.classList.toggle('hot', d.dataset.anch === best));
+        // LIVE placement for canvas surfaces: their owner draws itself from these keys
+        // every frame, so writing them as the pointer moves is what makes the orbs (and
+        // the xp tracker) FOLLOW the cursor instead of jumping into place on release.
+        // Written as-is (unsnapped): the snap lands on release, like it always has.
+        if (ds.moved && ds.spec.canvas && (x !== ds.lastX || y !== ds.lastY)) {
+            ds.lastX = x; ds.lastY = y;
+            storePlacement(ds.spec, x, y, ds.w, ds.h, null);
+        }
     });
     window.addEventListener('pointerup', e => {
         if (!ds) return;
@@ -1118,18 +1185,8 @@
         showDots(null, false);
         window.dispatchEvent(new CustomEvent('lcm-drag-end', { detail: spec.id }));
         if (ds.moved) {
-            const r = spec.canvas ? regionRect(spec) : gameRect();
             const x = parseFloat(box.style.left) || 0, y = parseFloat(box.style.top) || 0;
-            let a = ds.snap;
-            if (!a) {   // free placement: anchor named by the element centre's region
-                const cx = x + ds.w / 2 - r.left, cy = y + ds.h / 2 - r.top;
-                a = (cy < r.height / 3 ? 'T' : cy > r.height * 2 / 3 ? 'B' : 'M') +
-                    (cx < r.width / 3 ? 'L' : cx > r.width * 2 / 3 ? 'R' : 'C');
-            }
-            const k = ANCH[a] || ANCH.TR;
-            // canvas: store offsets in buffer px (x/sx, y/sy per-axis)
-            LS.set(spec.anchorKey, a);
-            LS.set(spec.offsetKey, Math.round((x - (r.left + r.width * k[0])) / ds.sx) + ',' + Math.round((y - (r.top + r.height * k[1])) / ds.sy));
+            const a = storePlacement(spec, x, y, ds.w, ds.h, ds.snap);
             if (!spec.canvas) applySpec(spec);
             suppressClick = performance.now() + 300;
             toast(`${spec.id === 'fab' ? 'FAB' : spec.id} → ${a}`);
@@ -1149,6 +1206,7 @@
         if (ds.spec.canvas) {
             if (ds.box.parentNode) ds.box.parentNode.removeChild(ds.box);
             window.lcmHeld = null;
+            restorePlacement(ds.spec, ds.keys);   // undo the live writes
         }
         if (ds.spec.el) {
             const el = ds.spec.el;
