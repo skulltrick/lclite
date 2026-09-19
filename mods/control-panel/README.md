@@ -53,7 +53,8 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
   the legacy dropdown in step (appending a `(custom)` option for odd values). The panel's
   **Canvas scale** slider and **Fit to window** toggle are the only UI for it, so that page
   code ships here.
-- `patches/web_ts.json` — one added local in the engine's `/rs2.cgi` render:
+- `patches/web_ts.json` — **two** hunks in the engine's web server.
+  (a) one added local in the engine's `/rs2.cgi` render:
   `revision: Environment.engine.revision`. The page `<title>` reads it as
   `LCLite - <rev>`, so a tab names the install it belongs to without the
   overlay templating anything at apply time, and the ejs script tag passes the same
@@ -67,6 +68,19 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
   web.ts anchor moves, while the guard renders `LCLite` and an empty `data-rev` (chip
   hidden) until someone reseats the anchor. Never "simplify" those back to a bare
   `<%= revision %>`.
+  (b) `startManagementWeb()` binds **loopback by default** instead of upstream's
+  `0.0.0.0`. Upstream's management server has **no authentication at all** and
+  `PUT /setup/config` rewrites the world's own `world.json` (ports, save profile,
+  login/members settings), so on a LAN address anyone who can reach the port can
+  rewrite the world's config. `MANAGEMENT_HOST=0.0.0.0` opts back in for a host who
+  really means to publish it. This is the only port that changes: `app.ts`'s web
+  server and `TcpServer` still bind `0.0.0.0`, so players are unaffected — verified
+  by booting a world and reading `netstat`: `:80` and `:43594` on `0.0.0.0`,
+  `:8898` on `127.0.0.1`. The launcher's Worlds panel refuses to list a world while
+  that page answers on a LAN address, and dials the real interface addresses to
+  decide (a bind probe lies on Windows — see the launcher README).
+  **274 inherits this hunk** (matrix verifies the anchor matches byte-for-byte
+  there); 254 has no control-panel corpus, so it is unaffected.
 - `tools/canvas_size_test.mjs` — harness for the above (legacy 1x/2x/3x unchanged,
   decimals, clamping, canonicalisation, dropdown sync). Mod-logic changes to sizing must
   keep it green:

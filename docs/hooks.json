@@ -806,6 +806,12 @@
     "note": "src/web.ts @ old line 152",
     "line": 152,
     "marker": true
+   },
+   {
+    "mod": "control-panel",
+    "note": "src/web.ts @ old line 347",
+    "line": 346,
+    "marker": true
    }
   ],
   "webclient/src/wordfilter/WordFilter.ts": [

@@ -136,6 +136,7 @@
 | engine/view/client.ejs | 392 | control-panel | `<!-- lclite:control-panel -->` |
 | engine/view/client.ejs | 401 | tcg | `<!-- lclite:tcg -->` |
 | engine/src/web.ts | 152 | control-panel | `// lclite:control-panel` |
+| engine/src/web.ts | 346 | control-panel | `// lclite:control-panel` |
 | webclient/src/wordfilter/WordFilter.ts | 48 | no-censor | `// lclite:no-censor` |
 | engine/src/cache/wordenc/WordEnc.ts | 34 | no-censor | `// lclite:no-censor` |
 | engine/src/cache/wordenc/WordEnc.ts | 72 | no-censor | `// lclite:no-censor` |

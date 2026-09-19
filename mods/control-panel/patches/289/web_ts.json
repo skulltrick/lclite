@@ -34,6 +34,38 @@
     149,
     153
    ]
+  },
+  {
+   "find": [
+    "",
+    "export async function startManagementWeb() {",
+    "    await management.listen({ port: Environment.web.managementPort, host: '0.0.0.0' });",
+    "}",
+    ""
+   ],
+   "replace": [
+    "",
+    "export async function startManagementWeb() {",
+    "    // lclite:control-panel",
+    "    // custom: the management page is a config editor with NO authentication —",
+    "    // PUT /setup/config rewrites this world's own world.json — and upstream binds",
+    "    // it to 0.0.0.0, so every machine that can reach the port can rewrite this",
+    "    // world's settings. Loopback by default; MANAGEMENT_HOST=0.0.0.0 opts back in",
+    "    // for a host who really means to publish it (the launcher refuses to list a",
+    "    // world while that page answers on a LAN address).",
+    "    const managementHost: string = process.env.MANAGEMENT_HOST || '127.0.0.1';",
+    "    await management.listen({ port: Environment.web.managementPort, host: managementHost });",
+    "}",
+    ""
+   ],
+   "note": "src/web.ts @ old line 347",
+   "occ": 1,
+   "pos": [
+    346,
+    1,
+    344,
+    348
+   ]
   }
  ]
 }
