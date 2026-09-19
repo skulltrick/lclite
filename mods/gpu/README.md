@@ -78,9 +78,28 @@ page asset):
   is no presentation variable at all. The trade-off is that a `#canvas`-only
   fullscreen needed a reparent (shipped in P7) — the software mode never had
   the problem.
-- GPU frames clear the game buffer to `SENTINEL_BLACK` (1) instead of 0, so
-  genuinely black HUD pixels (minimenu title bar, text shadows) survive the
-  overlay's "non-sentinel = HUD" rule.
+- GPU frames clear the game buffer to `SENTINEL` (`1 << 24`, in `GpuFormat.ts`)
+  instead of 0 or 1: the overlay paints every other pixel verbatim, so the
+  sentinel must be a value the software renderer cannot produce. 0 is
+  `Colour.BLACK` (minimenu bar, text shadows) and 1 is the engine's own black
+  for **sprites** — `Pix32.depack` bumps a palette entry of 0 up to 1 so it
+  stays distinct from transparent, and `ObjType` writes an item icon's outline
+  as a literal 1 — so both values punched holes in black pixels and let the
+  world show through them. `1 << 24` is unreachable: every writer packs 24 bits
+  (see "Sprite black vs the sentinel" below).
+- **Interface models stay software.** `TYPE_MODEL` components (the
+  character-design preview; any interface showing a 3D model) render through
+  `Pix3D` with the game buffer bound, which is indistinguishable from world
+  geometry to the capture layer — but they are drawn *into an interface* that
+  the overlay then repaints on top of, so a captured model ends up under its own
+  interface background and disappears. Capture is suspended around
+  `Model.objRender` (the interface/icon entry point — world geometry goes
+  through `worldRender`), so those triangles take the software raster in painter
+  order, exactly as they would with the mod off.
+- The overlay copies the page canvas's `image-rendering` instead of forcing
+  `pixelated`, so the game rect scales exactly like the sidebar, chatbox and
+  minimap beside it (the page's Auto/Pixel Scaling control writes that inline
+  style, and `auto` is its default).
 - Capture overflow past `MAX_TRIS` degrades honestly: the leftover triangles
   fall through to the software raster and ride up with the overlay, so the
   frame stays correct.
@@ -97,13 +116,47 @@ page asset):
   failure, the client is bit-identical to a build without the mod (that is what
   the corpus's byte-compare acceptance covers).
 
-## Known stale comments in this mod (fix at the next rebuild)
+## Sprite black vs the sentinel (why the interfaces looked "shiny")
 
-These are comment-only, so they do not change behavior — but they mislead:
+The engine has TWO blacks. `Colour.BLACK` is 0 and is what `Pix2D.fillRect` and
+font ink write; a **sprite's** black is 1, because `Pix32` stores resolved
+colours with 0 meaning "transparent" — so `Pix32.depack` bumps a palette entry
+of 0 up to 1, and `ObjType.getSprite` writes an item icon's outline as a literal
+1. `Pix32.plot` copies any non-zero source pixel verbatim.
 
-- `GpuRenderer.ts`'s header still describes "P2 scope (this build)" as textured
-  faces drawn as flat average colour, with "real texel sampling + hole discard
-  is P5". **P5 shipped 2026-09-11**: `captureTexTri` + the 50-layer r32uint
-  texel pool + the WGSL texel walk are all in this same file.
-- `GpuRenderer.ts` and `GpuFormat.ts` both point at `docs/gpu-v2-assessment.md`;
-  that file now lives at `docs/archive/gpu-v2-assessment.md`.
+v2 cleared the buffer to 1, so every one of those pixels equalled the sentinel
+and the overlay discarded it: the world showed through every black pixel of
+every sprite drawn into the game window — item icons in the shop (their 1px
+outline), the yellow/red click crosses (36 of a 10x10 cross's 100 pixels),
+headicons including the multi-combat sign, interface graphics, buttons,
+scrollbars. Measured on the click cross before the fix: 60 near-black pixels in
+the cross's box with the GPU off, 28 with it on. The same sprite in the sidebar
+inventory looked right, because the sidebar is a different `PixMap` and never
+goes through the overlay — which is why the shop is where it got noticed.
+
+Nothing else in the engine can collide with `1 << 24`: `Pix2D` primitives and
+font ink pack `(r << 16) + (g << 8) + b`, `Pix32`/`Pix8` blits store palette
+colours, the `Pix3D` rasters store `gammaCorrect`'d `0xRRGGBB` with each channel
+<= 255, and `PixMap.prepareCanvas` drops the top byte on the way to `ImageData` —
+so a leaked sentinel composites as black, never as garbage.
+
+## The logout freeze (fixed)
+
+With the GPU on, logging out left the last game frame frozen over the login
+screen until a page reload — the bug this mod has had since v1. The engine stops
+drawing the game buffer the moment the client leaves the world: the title screen
+draws only its `imageTitle*` buffers, and `prepareTitle` early-returns once those
+exist, so nothing ever called `onGameDraw` again and the overlay kept its last
+presented frame on top of the login screen. The patched `PixMap.draw` now
+notices a composite of any other buffer and hides the overlay when
+`window.lostcityClient.ingame === false` — the engine's own "not in a world"
+flag, read through the handle the camera and tcg mods use (bundled code reading a
+bundled field is mangle-consistent by construction, and importing Client here
+would be a load-order cycle). It fails open: anything other than an explicit
+false leaves the overlay alone.
+
+## Comment fixes from the earlier "stale comments" note
+
+Both are done: `GpuRenderer.ts`'s header now reads the phases as history
+("P2 capture -> P5 textures -> P7 HUD/perf") instead of claiming P2 scope, and
+the doc paths point at `docs/archive/gpu-v2-assessment.md`.

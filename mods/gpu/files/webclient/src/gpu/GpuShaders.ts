@@ -36,6 +36,8 @@
 // canvas against earlier scene pixels, so channel A here is only the
 // blend's dst-weight carrier.
 
+import { SENTINEL } from '#/gpu/GpuFormat.js';
+
 // P2+ scene pass: non-indexed triangles, attribute layout mirrors GpuFormat
 // (xy, shade, mode, seq, alpha, u, v, w, texId, texOpaque). Generated
 // function because the lowMem texel-pool variant (64px bands, w>>12 fixed
@@ -163,12 +165,13 @@ fn fs(in: VOut) -> @location(0) vec4f {
 
 // HUD overlay pass: the game buffer still holding CPU pixels (bubbles/hitbars/
 // orbs/tracker/in-viewport text). Texels are the raw 0xRRGGBB buffer ints as
-// r32uint; the overlay is cleared to SENTINEL(1) each frame, so only real HUD
-// pixels composite — black UI (minimenu bars, shadows) included. P7 uploads
-// only the dirty bounding box (uniform carries origin+size in buffer px; the
-// texture stays full-size and sampling uses ABSOLUTE coords, so sub-rect
-// uploads need no texture recreation). No depth interaction beyond compare
-// 'always': last-wins over the scene by construction.
+// r32uint; the overlay is cleared to SENTINEL each frame, so only real HUD
+// pixels composite — black UI (minimenu bars, shadows) included, AND sprite
+// black (the engine stores that as 1, not 0 — see GpuFormat.SENTINEL). P7
+// uploads only the dirty bounding box (uniform carries origin+size in buffer
+// px; the texture stays full-size and sampling uses ABSOLUTE coords, so
+// sub-rect uploads need no texture recreation). No depth interaction beyond
+// compare 'always': last-wins over the scene by construction.
 export const OVERLAY_WGSL = `
 struct Uni {
     origin: vec2f,   // rect top-left in game px
@@ -216,10 +219,12 @@ fn fs2(in: FIn) -> @location(0) vec4f {
     let ax: i32 = clamp(i32(u.origin.x + in.uv.x * u.size.x), 0, i32(dims.x) - 1);
     let ay: i32 = clamp(i32(u.origin.y + in.uv.y * u.size.y), 0, i32(dims.y) - 1);
     let c: u32 = u32(textureLoad(hud, vec2i(ax, ay), 0).x);
-    if (c == 1u) {
-        // sentinel: GpuRenderer clears the game buffer to 1 on GPU frames so
-        // real Colour.BLACK HUD pixels (0 — minimenu bars, text shadows)
-        // composite instead of punching holes. discard: let the scene show.
+    if (c == ${SENTINEL}u) {
+        // sentinel: GpuRenderer clears the game buffer to SENTINEL on GPU frames
+        // so real Colour.BLACK HUD pixels (0 — minimenu bars, text shadows) AND
+        // the engine's sprite-black (1 — item icon outlines, interface graphics,
+        // the click crosses) both composite instead of punching holes. discard:
+        // let the scene show.
         discard;
     }
     return unpack(c);

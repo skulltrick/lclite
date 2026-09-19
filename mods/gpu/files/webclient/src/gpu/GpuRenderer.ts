@@ -35,8 +35,9 @@
 //    in-viewport interface text — CPU Pix2D writes into the same Int32Array
 //    after world render) -> sentinel-scanned DIRTY-RECT upload (P7: scan the
 //    non-sentinel bbox, writeTexture that sub-rect, skip empty frames) + final
-//    quad pass, non-black replaces, black discards. v1 uploaded the whole
-//    512x334 buffer every frame.
+//    quad pass: every non-sentinel pixel replaces the scene pixel, the sentinel
+//    discards (SENTINEL is a value no engine pixel can hold — GpuFormat.ts).
+//    v1 uploaded the whole 512x334 buffer every frame.
 //  - capture overflow (frame > MAX_TRIS): extra triangles fall through to
 //    the software raster and ride up via the overlay — v1's documented
 //    degradation, unchanged.
@@ -75,13 +76,14 @@
 import Pix2D from '#/graphics/Pix2D.js';
 import PixMap from '#/graphics/PixMap.js';
 import Pix3D from '#/dash3d/Pix3D.js';
+import Model from '#/dash3d/Model.js';
 import GpuContext from '#/gpu/GpuContext.js';
 import { sceneWgsl, OVERLAY_WGSL, TRIANGLE_WGSL } from '#/gpu/GpuShaders.js';
 import {
     VS, MAX_TRIS, OXY, OSHADE, OMODE, OSEQ, OALPHA,
     OTU, OTV, OTW, OTEX, OTOPAQUE,
     MODE_GOURAUD, MODE_FLAT, MODE_TEX, TEX_COUNT, TEX_W, TEX_H,
-    SEQ_DEPTH_SCALE,
+    SEQ_DEPTH_SCALE, SENTINEL,
     USAGE_COPY_DST, USAGE_VERTEX, USAGE_UNIFORM,
     USAGE_TEXTURE_COPY_DST, USAGE_TEXTURE_BINDING, USAGE_RENDER_ATTACHMENT,
 } from '#/gpu/GpuFormat.js';
@@ -138,6 +140,9 @@ export class GpuRenderer {
     private static readonly capture = new Float32Array(MAX_TRIS * 3 * VS);
     private static nv = 0;   // captured vertices this frame (tris = nv/3)
     private static seq = 1;  // 1-based capture order within the frame
+    // set while geometry that belongs IN the game buffer (an interface model)
+    // is being rendered: capturing() goes false so it takes the software raster
+    private static suspendCapture = false;
 
     private static gameBuf: Int32Array | null = null;
     private static gameU32: Uint32Array | null = null;
@@ -479,7 +484,8 @@ export class GpuRenderer {
 
     /** true while triangles should be captured into the GPU batch */
     public static capturing(): boolean {
-        return this.wanted && this.ready && !this.failed && this.gameBuf !== null && Pix2D.pixels === this.gameBuf;
+        return this.wanted && this.ready && !this.failed && !this.suspendCapture
+            && this.gameBuf !== null && Pix2D.pixels === this.gameBuf;
     }
 
     /** append one triangle; false = capture full (caller runs software raster).
@@ -735,7 +741,7 @@ export class GpuRenderer {
             const row = y * W;
             let rowHit = false;
             for (let x = 0; x < W; x++) {
-                if (buf[row + x] !== 1) {
+                if (buf[row + x] !== SENTINEL) {
                     rowHit = true;
                     if (x < minX) {
                         minX = x;
@@ -781,7 +787,15 @@ export class GpuRenderer {
         const rect = base.getBoundingClientRect();
         const sx = rect.width / base.width;   // css px per backing-store px
         const sy = rect.height / base.height;
-        const want = 'position:fixed;z-index:3;pointer-events:none;image-rendering:pixelated;'
+        // The overlay REPLACES the game rect, so it has to scale exactly the way
+        // the page canvas does. The page's "Auto Scaling / Pixel Scaling" control
+        // writes #canvas's inline image-rendering (auto = smooth by default), and
+        // this used to hard-code 'pixelated' — so at any canvas size other than
+        // 1:1 the game window came out crisper than the sidebar, chatbox and
+        // minimap it sits beside. Fall back to pixelated, which is what the
+        // stylesheet gives #canvas on a host page that never sets it.
+        const filter = base.style.imageRendering !== '' ? base.style.imageRendering : 'pixelated';
+        const want = 'position:fixed;z-index:3;pointer-events:none;image-rendering:' + filter + ';'
             + 'left:' + (rect.left + x * sx).toFixed(2) + 'px;'
             + 'top:' + (rect.top + y * sy).toFixed(2) + 'px;'
             + 'width:' + (GAME_W * sx).toFixed(2) + 'px;'
@@ -801,6 +815,34 @@ export class GpuRenderer {
         if (c && this.overlayVisible) {
             this.overlayVisible = false;
             c.style.display = 'none';
+        }
+    }
+
+    /** A non-game PixMap composite happened: whatever this frame shows, it is
+     *  not the game buffer. The one state that needs acting on is "the client
+     *  left the world" — on logout the engine stops drawing the game buffer
+     *  entirely (the title screen only draws its imageTitle* buffers, and
+     *  prepareTitle early-returns once they exist), so nothing would ever call
+     *  onGameDraw again and the overlay kept its last presented frame glued
+     *  over the login screen until a page reload. That is the logout freeze the
+     *  mod has had since v1.
+     *
+     *  `ingame === false` is the engine's own "not in a world" state, read
+     *  through window.lostcityClient — the same handle the camera and tcg mods
+     *  use, and the only way in from here because Client imports THIS file (a
+     *  direct import would be a load-order cycle). Bundled code reading a
+     *  bundled field is mangle-consistent by construction.
+     *
+     *  Fail open: anything other than an explicit false leaves the overlay
+     *  alone, so a host whose Client has no such field (or a page that never
+     *  set the handle) behaves exactly as before. */
+    private static noteForeignDraw(): void {
+        if (!this.overlayVisible) {
+            return;
+        }
+        const client = WIN['lostcityClient'] as { ingame?: unknown } | undefined;
+        if (client !== undefined && client !== null && client.ingame === false) {
+            this.hideOverlay();
         }
     }
 
@@ -953,20 +995,22 @@ export class GpuRenderer {
         };
 
         // Pix2D.cls: per-frame settings refresh (also = new frame boundary).
-        // GPU frames clear to SENTINEL_BLACK=1 instead of 0: the software
-        // buffer's "empty" value (0) is INDISTINGUISHABLE from Colour.BLACK
-        // (0x0 — the minimenu title bar, text shadows), so an overlay that
-        // discards 0 punches holes in black UI (v1's documented artifact,
-        // now eliminated). With a GPU frame active the world never writes
-        // the buffer, so sentinel-1 means "nothing drawn here" exactly.
-        // putImageData is skipped for GPU frames so 1 never reaches screen;
-        // if the GPU dies mid-frame, 0x000001 reads as black anyway.
+        // GPU frames clear to SENTINEL instead of 0: 0 is the software buffer's
+        // "empty" value AND Colour.BLACK (minimenu title bar, text shadows), and
+        // 1 — v1's choice — is the engine's black for SPRITES (a Pix32 palette
+        // entry of 0 is bumped to 1, item-icon outlines are written as 1), so it
+        // made the world show through every black pixel of every interface
+        // sprite. SENTINEL is a value no engine pixel can hold: see
+        // GpuFormat.SENTINEL. With a GPU frame active the world never writes the
+        // buffer, so sentinel means "nothing drawn here" exactly. putImageData is
+        // skipped for GPU frames so it never reaches screen; if the GPU dies
+        // mid-frame the top byte is dropped by prepareCanvas and it reads black.
         const origCls = Pix2D.cls;
         Pix2D.cls = function (): void {
             gpu.refresh();
             if (gpu.wanted && gpu.ready && !gpu.failed && gpu.gameBuf !== null
                 && Pix2D.pixels === gpu.gameBuf && Pix2D.width === GAME_W && Pix2D.height === GAME_H) {
-                Pix2D.pixels.fill(1);
+                Pix2D.pixels.fill(SENTINEL);
                 return;
             }
             origCls.call(this);
@@ -974,11 +1018,16 @@ export class GpuRenderer {
 
         // PixMap.draw: game buffer composite point. When the GPU owns the
         // frame the overlay canvas REPLACES the game rect — putImageData is
-        // redundant (v1 semantics). Off/pending/failed: fall through.
+        // redundant (v1 semantics). Off/pending/failed: fall through. A draw of
+        // any OTHER buffer is the signal that this frame is not a game frame.
         const origDraw = PixMap.prototype.draw;
         PixMap.prototype.draw = function (x: number, y: number): void {
-            if (this.data === gpu.gameBuf && gpu.onGameDraw(x, y)) {
-                return;
+            if (this.data === gpu.gameBuf) {
+                if (gpu.onGameDraw(x, y)) {
+                    return;
+                }
+            } else {
+                gpu.noteForeignDraw();
             }
             origDraw.call(this, x, y);
         };
@@ -1059,6 +1108,35 @@ export class GpuRenderer {
             origUnpack.call(this, jag);
             gpu.texDirty.fill(1);
         };
+
+        // interface models (TYPE_MODEL: the character-design preview and every
+        // other interface that shows a 3D model) render through Pix3D with the
+        // game buffer bound — i.e. they look exactly like world geometry to the
+        // capture layer, while being drawn AFTER the world and INTO an interface
+        // the overlay pass then repaints on top of them. Captured, they end up
+        // under their own interface background and disappear (measured on the
+        // character-design modal: the model's silhouette showed the panel colour
+        // on a GPU frame and the model on a software one). objRender is the
+        // interface/icon entry point — world geometry goes through worldRender,
+        // and the icon generator calls objRender with the 32x32 icon buffer bound
+        // (capture already off there) — so suspending capture around it puts
+        // those triangles back through the software raster, into the buffer, in
+        // painter order: pixel-exact, and the overlay carries them like any other
+        // HUD pixel. Guarded so a revision whose Model lacks the method simply
+        // keeps the old behaviour instead of throwing at load.
+        const modelProto = Model.prototype as unknown as { objRender?: (...args: any[]) => void };
+        const origObjRender = modelProto.objRender;
+        if (typeof origObjRender === 'function') {
+            modelProto.objRender = function (this: unknown, ...args: any[]): void {
+                const prev = gpu.suspendCapture;
+                gpu.suspendCapture = true;
+                try {
+                    origObjRender.apply(this, args);
+                } finally {
+                    gpu.suspendCapture = prev;
+                }
+            };
+        }
     }
 }
 

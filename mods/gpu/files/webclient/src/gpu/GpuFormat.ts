@@ -51,6 +51,26 @@ export const VS = 12; // float slots per vertex
 
 export const MAX_TRIS = 65536; // 12.6 MB capture; a busy 289 scene runs 15-30k
 
+// THE SENTINEL — the value the game buffer is cleared to on a GPU frame, i.e.
+// "nothing was drawn here, the scene shows through". The overlay pass paints
+// every OTHER pixel verbatim, so this value has to be one the software renderer
+// can never produce:
+//   * 0 is out: it is also Colour.BLACK (minimenu bar, text shadows), so the
+//     overlay punched holes in black UI (v1's documented artifact);
+//   * 1 is out too, and it cost us the "shiny interfaces": 1 is the engine's own
+//     BLACK for sprites. Pix32.depack bumps a palette entry of 0 up to 1 (so it
+//     stays distinct from transparent), ObjType writes an item icon's outline as
+//     a literal 1, and Pix32.plotSprite copies any non-zero source pixel as-is —
+//     so every black pixel of every media sprite (item icons, interface
+//     graphics, the click crosses, headicons, buttons) landed on the sentinel
+//     and got discarded, letting the world show through where black belonged.
+// Bit 24 is unreachable: every writer packs 24 bits — Pix2D primitives and font
+// ink as (r<<16)+(g<<8)+b, Pix32/Pix8 blits as stored palette colours, the Pix3D
+// rasters through gammaCorrect (each channel <= 255) — and PixMap.prepareCanvas
+// drops the top byte, so even a leaked sentinel composites as black, never as
+// garbage. Hence SENTINEL = 1 << 24.
+export const SENTINEL = 0x01000000;
+
 // attribute offsets (float indices)
 export const OXY = 0;  // vec2f
 export const OSHADE = 2;
