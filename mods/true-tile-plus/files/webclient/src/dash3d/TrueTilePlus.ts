@@ -17,17 +17,18 @@
 //    flames read as ON the floor rather than pasted over the scene.
 //
 //    WHY PER-NEIGHBOUR, NOT PER-TILE: the blades are rooted on the true tile's border and
-//    reach OUTWARD, so each one lies over the tile NEXT DOOR. The scene is drawn
-//    front-to-back outward from the camera's own tile (World.renderAll walks out from
-//    World.gx/gz), so a neighbouring tile drawn after the true tile paints its ground
-//    straight over any blade that reached into it. A first version drew everything on the
-//    true tile's own turn and only ever showed 2-3 of the 4 edges — and WHICH edges
-//    survived changed with the camera angle, because the walk is axis-aligned around the
-//    camera's tile rather than a true radial sort. Drawing each edge's blades when the tile
-//    they lie over is drawn is order-proof: that tile's ground is already down (so it
-//    cannot cover the blade), its walls and sprites still come after it (so they can, and
-//    correctly, cover the blade), and no later tile overlaps the ground the blade sits on.
-//    The caller says which edges to draw with `mask`, one bit per edge.
+//    reach OUTWARD, so each one lies over the tile NEXT DOOR. renderAll draws the scene
+//    back-to-front, but as an axis-aligned square-ring walk around the CAMERA's own tile
+//    (dx/dz from -viewRadius to 0: the outermost ring first, the camera's own tile last) —
+//    not a sort by true depth. A neighbouring tile that comes later in that walk therefore
+//    paints its ground straight over any blade that reached into it, and WHICH neighbour
+//    that is changes with the camera's yaw. A first version drew everything on the true
+//    tile's own turn and only ever showed 2-3 of the 4 edges for exactly that reason.
+//    Drawing each edge's blades when the tile they lie over is drawn is order-proof: that
+//    tile's ground is already down (so it cannot cover the blade), its walls and sprites
+//    still come after it (so they can, and correctly, cover the blade), and no later tile
+//    overlaps the ground the blade sits on. The caller says which edges to draw with
+//    `mask`, one bit per edge.
 //
 // 2. Everything is computed from the tile's four PROJECTED corners plus one projected
 //    OUTWARD PROBE per edge (that edge's world midpoint pushed out by

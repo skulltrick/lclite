@@ -138,6 +138,19 @@ arms engine state and reads the result back (hover-tile: arm the pick before
 them ≥3 untouched lines apart so `-U0` gives them separate islands, and put the logic in
 methods parked in a pristine gap with only the two call lines in `gameDrawMain()`.
 
+**Ground geometry that reaches beyond its own tile must be drawn on the turn of the tile it
+LIES OVER, not on its own tile's turn.** `World.renderAll` draws back-to-front, but as an
+axis-aligned square-ring walk around the CAMERA's own tile (`dx`/`dz` from `-viewRadius` to
+`0`, outermost ring first, the camera's own tile last) — not a sort by true depth. So a
+neighbouring tile that comes later in that walk paints its ground over anything you drew into
+it earlier, and WHICH neighbour that is changes with the camera's yaw. `mods/true-tile-plus`
+shipped straight into this: a flame is rooted on the true tile's border and reaches outward,
+so it lies over the tile next door, and drawing all four edges on the true tile's own turn
+showed only 2-3 of them in game. The fix is a per-edge `mask` passed from `fill()`: call the
+draw for whichever tile is being painted and emit only the edge that reaches over it. Then the
+ground under the decal is already down, that tile's own walls and sprites still come after it
+(so they cover it, correctly), and no later tile overlaps the ground the decal sits on.
+
 ### 3. Snapshot your edit as hunks
 Add the file to `MODS` in `tools/regen.mjs` (new folder = new mod, e.g. `mods/xp-drops`),
 then, from the overlay repo:

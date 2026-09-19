@@ -65,10 +65,12 @@ mod's call sits between the ground and the walls. Three things fall out of that:
 A flame is rooted on the true tile's border and reaches OUTWARD, so **every blade lies over
 the tile next door**. The first version drew all four edges on the true tile's own turn, and
 in game only **2–3 of the 4 edges ever appeared** — and which edges survived changed with the
-camera angle. The cause is the walk order: `renderAll` expands outward from the *camera's*
-own tile (`World.gx/gz`, an axis-aligned ring walk, not a true radial sort), so a
-neighbouring tile drawn **after** the true tile paints its ground straight over any blade
-that reached into it.
+camera angle. The cause is the walk order: `renderAll` draws the scene back-to-front, but as
+an **axis-aligned square-ring walk around the *camera's* own tile** (`dx`/`dz` from
+`-viewRadius` to `0`: the outermost ring first, the camera's own tile last), not a sort by
+true depth. A neighbouring tile that comes later in that walk therefore paints its ground
+straight over any blade that had reached into it — and which neighbour that is changes with
+the camera's yaw.
 
 The fix is to draw each edge's blades when **the tile they lie over** is drawn: the caller
 passes a `mask` (one bit per edge, `TRUE_TILE_PLUS_EDGE_*`), and `World.ttpFacingEdge()`
