@@ -697,6 +697,8 @@
     "        this.orbsEnabled = localStorage.getItem('statOrbs') === 'true';",
     "        if (this.orbsWereOn && !this.orbsEnabled) {",
     "            this.orbsWereOn = false;",
+    "            this.orbsPanelOpen = false;     // the book goes with the orbs it hangs off",
+    "            this.orbsBookHover = -1;",
     "            this.mapback?.plotSprite(0, 0);",
     "        }",
     "",
