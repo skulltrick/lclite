@@ -38,7 +38,7 @@ eq(H.hotkeysKeyName('Enter'), 'Enter', 'Enter is unchanged');
 
 console.log('\ndefaults (empty store)');
 const d = S();
-eq([d.on, d.fkeys, d.escClose, d.wasd, d.lock], [true, true, true, false, true], 'master/F-keys/Esc on, WASD off, chat lock on');
+eq([d.on, d.fkeys, d.escClose, d.space, d.numbers, d.wasd, d.lock], [true, true, true, true, true, false, true], 'master/F-keys/Esc/Space/dialogues on, WASD off, chat lock on');
 eq(d.tabs, H.HOTKEYS_TAB_DEFAULTS, 'tab bindings = the OSRS default map');
 eq([d.camUp, d.camDown, d.camLeft, d.camRight], ['W', 'S', 'A', 'D'], 'camera keys default to WASD');
 eq(H.HOTKEYS_TABS.length, 14, '14 sidebar slots (0..13)');
@@ -64,10 +64,12 @@ const ctx = (key: string, over: any = {}) => ({
     modalOpen: over.modalOpen ?? false,
     textInputOpen: over.textInputOpen ?? false,
     inGame: over.inGame ?? true,
-    designScreen: over.designScreen ?? false
+    designScreen: over.designScreen ?? false,
+    dialogueContinue: over.dialogueContinue ?? false,
+    dialogueOptions: over.dialogueOptions ?? 0
 });
 const A = H; // action constants
-const name = (a: number) => ['PASS', 'CLAIM', 'TAB', 'CLOSE', 'CLEAR_CHAT', 'CAMERA'][a] ?? ('?' + a);
+const name = (a: number) => ['PASS', 'CLAIM', 'TAB', 'CLOSE', 'CLEAR_CHAT', 'CAMERA', 'CONTINUE', 'OPTION'][a] ?? ('?' + a);
 
 console.log('\ntab keys (defaults: F-keys on, WASD off)');
 for (const [key, tab] of [['F1', 0], ['F2', 1], ['F3', 2], ['F4', 4], ['F5', 5], ['F6', 6], ['F8', 8], ['F9', 10], ['F10', 11]] as [string, number][]) {
@@ -147,6 +149,131 @@ ok(locked({ hotkeysWasd: 'false' }) === false, 'WASD off → no prompt (the lock
 ok(locked({ hotkeysWasd: 'true', hotkeysChatLock: 'false' }) === false, 'lock off → no prompt');
 ok(locked({ hotkeysWasd: 'true', hotkeys: 'false' }) === false, 'mod off → no prompt');
 
+console.log('\noption rows + the continue button (the pure shape policy)');
+const OK = H.HOTKEYS_BUTTON_OK, CONT = H.HOTKEYS_BUTTON_CONTINUE;
+// Fixtures transcribed from this rev's own interfaces
+// (content/scripts/interface_chat/interfaces/*.if); the content-tree check at the
+// bottom of this file re-derives them from the real files when an install is present.
+const rowset = (rs: any[]) => rs.map((r, i) => ({ id: 900 + i, x: r[0], y: r[1], width: r[2], height: r[3], text: r[4], button: r[5] }));
+const MULTI3 = rowset([[0, 23, 480, 17, 'option1', OK], [0, 47, 480, 17, 'option2', OK], [0, 71, 480, 17, 'option3', OK]]);
+const MULTI5 = rowset([[0, 15, 480, 16, 'a', OK], [0, 31, 480, 16, 'b', OK], [0, 47, 480, 16, 'c', OK], [0, 63, 480, 16, 'd', OK], [0, 79, 480, 16, 'e', OK]]);
+const MULTIOBJ2 = rowset([[74, 16, 100, 93, 'Make X', OK], [305, 16, 100, 93, 'Make X', OK]]);
+const SKILL_MULTI3 = rowset([
+    [38, 16, 100, 93, 'Make X', OK], [38, 16, 100, 93, 'Make 10', OK], [38, 16, 100, 93, 'Make 5', OK], [38, 16, 100, 93, 'Make 1', OK],
+    [189, 16, 100, 93, 'Make X', OK], [189, 16, 100, 93, 'Make 10', OK], [189, 16, 100, 93, 'Make 5', OK], [189, 16, 100, 93, 'Make 1', OK],
+    [342, 16, 100, 93, 'Make X', OK], [342, 16, 100, 93, 'Make 10', OK], [342, 16, 100, 93, 'Make 5', OK], [342, 16, 100, 93, 'Make 1', OK]
+]);
+const NPCCHAT = rowset([[34, 34, 32, 32, '', 0], [111, 0, 350, 17, 'Name', 0], [111, 80, 350, 17, 'Click here to continue', CONT]]);
+
+eq(H.hotkeysOptionRows(MULTI3).map((r: any) => r.text), ['option1', 'option2', 'option3'], 'multi3: the three options, top to bottom');
+eq(H.hotkeysOptionRows(MULTI3)[2].id, 902, 'the option a key picks is the row\'s own component id');
+eq(H.hotkeysOptionRows(MULTI5).length, 5, 'multi5: five options');
+eq(H.hotkeysOptionRows([...MULTI3].reverse()).map((r: any) => r.text), ['option1', 'option2', 'option3'], 'the order is geometric, not the child order');
+eq(H.hotkeysOptionRows(MULTIOBJ2), [], 'multiobj2 (a row of equal-y item cells) is refused');
+eq(H.hotkeysOptionRows(SKILL_MULTI3), [], 'skill_multi3 (four buttons on ONE line per item) is refused');
+eq(H.hotkeysOptionRows(NPCCHAT), [], 'a chat box with no option rows is refused');
+eq(H.hotkeysOptionRows(MULTI3.slice(0, 1)), [], 'one button is not a numbered list');
+eq(H.hotkeysOptionRows(MULTI5.concat([{ id: 999, x: 0, y: 95, width: 480, height: 16, text: 'sixth', button: OK }])), [], 'six options is past the number row (1-5)');
+eq(H.hotkeysOptionRows(MULTI3.concat([{ id: 999, x: 0, y: 30, width: 480, height: 17, text: 'overlapping', button: OK }])), [], 'a row overlapping the one above is not a list');
+eq(H.hotkeysOptionRows(MULTI3.concat([{ id: 999, x: 200, y: 95, width: 100, height: 17, text: 'indented', button: OK }])), [], 'a row off the column\'s left edge is not a list');
+eq(H.hotkeysOptionRows(MULTI3.concat([{ id: 999, x: 0, y: 95, width: 480, height: 17, text: '', button: OK }])).map((r: any) => r.text), ['option1', 'option2', 'option3'], 'a button with no text is ignored (it cannot shift the numbering)');
+eq(H.hotkeysOptionRows(MULTI3.concat([{ id: 999, x: 0, y: 95, width: 480, height: 17, text: 'wait', button: CONT }])), ['option1', 'option2', 'option3'].map((t: string, i: number) => MULTI3[i]), 'a continue button is never an option');
+
+eq(H.hotkeysContinueRow(NPCCHAT)!.id, 902, 'the continue button is the pause-typed component');
+eq(H.hotkeysContinueRow(NPCCHAT)!.text, 'Click here to continue', 'and its own text comes along');
+eq(H.hotkeysContinueRow(MULTI3), null, 'a dialogue with options has no continue button (Space does nothing there)');
+eq(H.hotkeysContinueRow([{ id: 1, x: 0, y: 0, width: 1, height: 1, text: '', button: CONT }]), null, 'a continue button with no text is not one');
+eq(H.hotkeysContinueRow([{ id: 1, x: 0, y: 0, width: 1, height: 1, text: 'Ok', button: OK }]), null, 'a plain Ok button is not a continue button');
+
+console.log('\nSpace + the number row (the decision)');
+const r3 = { dialogueOptions: 3 };
+ok(H.hotkeysDecide(ctx(' ', { dialogueContinue: true })).action === A.HOTKEYS_CONTINUE, 'Space advances the open dialogue');
+ok(H.hotkeysDecide(ctx(' ', { dialogueContinue: true, store: wasd })).action === A.HOTKEYS_CONTINUE, 'Space beats the locked chatbox (a dialogue owns the key)');
+ok(H.hotkeysDecide(ctx(' ', { dialogueContinue: true, store: wasd })).typing === false, 'advancing a dialogue never unlocks the chatbox');
+ok(H.hotkeysDecide(ctx(' ', {})).action === A.HOTKEYS_PASS, 'no dialogue → Space still types a space');
+ok(H.hotkeysDecide(ctx(' ', { store: wasd })).action === A.HOTKEYS_CLAIM, 'no dialogue + locked chatbox → Space is swallowed as before');
+ok(H.hotkeysDecide(ctx(' ', { dialogueContinue: true, typing: true, store: wasd })).action === A.HOTKEYS_PASS, 'a live chat line keeps Space');
+ok(H.hotkeysDecide(ctx(' ', { dialogueContinue: true, store: { hotkeysSpace: 'false' } })).action === A.HOTKEYS_PASS, 'the Space toggle off → Space types again');
+ok(H.hotkeysDecide(ctx(' ', { dialogueContinue: true, store: { hotkeys: 'false' } })).action === A.HOTKEYS_PASS, 'mod off → nothing is claimed');
+ok(H.hotkeysDecide(ctx(' ', { dialogueContinue: true, modified: true })).action === A.HOTKEYS_PASS, 'Ctrl/Alt/Meta + Space is never claimed');
+ok(H.hotkeysDecide(ctx(' ', { dialogueContinue: true, inGame: false })).action === A.HOTKEYS_PASS, 'the login screen keeps Space');
+ok(H.hotkeysDecide(ctx(' ', { dialogueContinue: true, textInputOpen: true })).action === A.HOTKEYS_PASS, 'an enter-amount box keeps Space');
+
+for (const [key, option] of [['1', 1], ['2', 2], ['3', 3]] as [string, number][]) {
+    const r = H.hotkeysDecide(ctx(key, r3));
+    ok(r.action === A.HOTKEYS_OPTION && r.option === option, `${key} picks option ${option} of a 3-option dialogue`, name(r.action) + ':' + r.option);
+}
+ok(H.hotkeysDecide(ctx('4', r3)).action === A.HOTKEYS_PASS, 'a number past the dialogue\'s own count falls through');
+ok(H.hotkeysDecide(ctx('0', r3)).action === A.HOTKEYS_PASS, '0 is not an option key');
+ok(H.hotkeysDecide(ctx('6', r3)).action === A.HOTKEYS_PASS, '6 is past the number row');
+ok(H.hotkeysDecide(ctx('5', { dialogueOptions: 5 })).option === 5, 'a five-option dialogue reaches 5');
+ok(H.hotkeysDecide(ctx('1', {})).action === A.HOTKEYS_PASS, 'no dialogue → 1 is not claimed');
+ok(H.hotkeysDecide(ctx('1', r3)).action === A.HOTKEYS_OPTION, 'the digit is claimed while the dialogue is up');
+ok(H.hotkeysDecide(ctx('1', { ...r3, store: wasd })).action === A.HOTKEYS_OPTION, 'numbers beat the locked chatbox too');
+ok(H.hotkeysDecide(ctx('1', { ...r3, typing: true, store: wasd })).action === A.HOTKEYS_PASS, 'a live chat line keeps the digits');
+ok(H.hotkeysDecide(ctx('1', { ...r3, store: { hotkeysNumbers: 'false' } })).action === A.HOTKEYS_PASS, 'the numbers toggle off → the digits are free again');
+const tabOn1 = { hotkeysKeyInventory: '1' };
+ok(H.hotkeysDecide(ctx('1', { ...r3, store: tabOn1 })).action === A.HOTKEYS_OPTION, 'a digit bound to a tab picks the option while a dialogue is up');
+ok(H.hotkeysDecide(ctx('1', { store: tabOn1 })).action === A.HOTKEYS_TAB, 'and opens the tab once the dialogue is gone');
+ok(H.hotkeysDecide(ctx('1', { ...r3, store: { ...tabOn1, hotkeysNumbers: 'false' } })).action === A.HOTKEYS_TAB, 'numbers off → the tab binding gets the digit back, dialogue or not');
+ok(H.hotkeysDecide(ctx('1', { ...r3, store: { hotkeysFkeys: 'false' } })).action === A.HOTKEYS_OPTION, 'the option key does not depend on the tab keys');
+
+console.log('\nthe ButtonType mirror (the core spells the engine\'s enum out)');
+{
+    const contentRoot = process.env.LCLITE_ROOT || 'C:/Users/canno/AppData/Local/LCLite/installs/289';
+    const ifType = Bun.file(path.join(contentRoot, 'webclient/src/config/IfType.ts'));
+    if (await ifType.exists()) {
+        const src = await ifType.text();
+        const value = (n: string) => Number((src.match(new RegExp('\\b' + n + ' = (\\d+)')) ?? [])[1]);
+        eq(H.HOTKEYS_BUTTON_OK, value('BUTTON_OK'), 'HOTKEYS_BUTTON_OK === ButtonType.BUTTON_OK');
+        eq(H.HOTKEYS_BUTTON_CONTINUE, value('BUTTON_CONTINUE'), 'HOTKEYS_BUTTON_CONTINUE === ButtonType.BUTTON_CONTINUE');
+    } else {
+        console.log(`  · skipped: no webclient at ${contentRoot} (set LCLITE_ROOT to check)`);
+    }
+}
+
+console.log('\nthe policy against the rev\'s own interface files');
+{
+    const contentRoot = process.env.LCLITE_ROOT || 'C:/Users/canno/AppData/Local/LCLite/installs/289';
+    const dir = path.join(contentRoot, 'content/scripts/interface_chat/interfaces');
+    if (await Bun.file(path.join(dir, 'multi3.if')).exists()) {
+        // one .if block → one HotkeysRow, exactly as the client hands them over
+        const ifRows = (src: string) => {
+            const out: any[] = [];
+            for (const block of src.split(/\r?\n(?=\[)/)) {
+                if (!/^\[/.test(block)) continue;
+                const kv: Record<string, string> = {};
+                for (const line of block.split('\n').slice(1)) {
+                    const i = line.indexOf('=');
+                    if (i > 0) kv[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+                }
+                if (!kv.buttontype) continue;
+                const button = kv.buttontype === 'pause' ? H.HOTKEYS_BUTTON_CONTINUE : kv.buttontype === 'normal' ? H.HOTKEYS_BUTTON_OK : 0;
+                out.push({ id: out.length + 1, x: +(kv.x ?? 0), y: +(kv.y ?? 0), width: +(kv.width ?? 0), height: +(kv.height ?? 0), text: kv.text ?? kv.option ?? '', button });
+            }
+            return out;
+        };
+        const readIf = async (f: string) => ifRows(await Bun.file(path.join(dir, f)).text());
+        eq(H.hotkeysOptionRows(await readIf('multi2.if')).length, 2, 'multi2.if is a 2-option list');
+        eq(H.hotkeysOptionRows(await readIf('multi3.if')).length, 3, 'multi3.if is a 3-option list');
+        eq(H.hotkeysOptionRows(await readIf('multi4.if')).length, 4, 'multi4.if is a 4-option list');
+        eq(H.hotkeysOptionRows(await readIf('multi5.if')).length, 5, 'multi5.if is a 5-option list');
+        eq(H.hotkeysOptionRows(await readIf('multi5dupe.if')).length, 5, 'multi5dupe.if is a 5-option list');
+        eq(H.hotkeysOptionRows(await readIf('multiobj2.if')), [], 'multiobj2.if (item cells side by side) is refused');
+        eq(H.hotkeysOptionRows(await readIf('multiobj3.if')), [], 'multiobj3.if is refused');
+        eq(H.hotkeysOptionRows(await readIf('multiobj4.if')), [], 'multiobj4.if is refused');
+        eq(H.hotkeysOptionRows(await readIf('skill_multi3.if')), [], 'skill_multi3.if (Make-X) is refused');
+        eq(H.hotkeysOptionRows(await readIf('skill_multi5.if')), [], 'skill_multi5.if (Make-X) is refused');
+        eq(H.hotkeysOptionRows(await readIf('npcchat1.if')), [], 'npcchat1.if has no options');
+        ok(H.hotkeysContinueRow(await readIf('npcchat1.if')) !== null, 'npcchat1.if offers a continue button');
+        ok(H.hotkeysContinueRow(await readIf('message1.if')) !== null, 'message1.if offers a continue button');
+        ok(H.hotkeysContinueRow(await readIf('objbox1.if')) !== null, 'objbox1.if offers a continue button');
+        ok(H.hotkeysContinueRow(await readIf('multi3.if')) === null, 'multi3.if offers none (a dialogue with options)');
+    } else {
+        console.log(`  · skipped: no content tree at ${dir}`);
+    }
+}
+
 // ---- the panel's mirror of the core ----------------------------------------
 console.log('\npanel ↔ core mirror (panel.js duplicates the key list by hand)');
 const panelSrc = await Bun.file(PANEL).text();
@@ -163,7 +290,18 @@ if (keysBlock && tabsBlock) {
     for (const [id, key, def] of [['hk-cam-up', 'hotkeysKeyCamUp', 'W'], ['hk-cam-down', 'hotkeysKeyCamDown', 'S'], ['hk-cam-left', 'hotkeysKeyCamLeft', 'A'], ['hk-cam-right', 'hotkeysKeyCamRight', 'D']]) {
         ok(panelSrc.includes(`'${id}'`) && panelSrc.includes(`'${key}'`) && panelSrc.includes(`'${def}'`), `panel row ${id} → ${key} (default ${def})`);
     }
+    for (const [id, key] of [['hk-space', 'hotkeysSpace'], ['hk-numbers', 'hotkeysNumbers']]) {
+        ok(panelSrc.includes(`'${id}'`) && panelSrc.includes(`'${key}'`) && panelSrc.includes(`'${key}', kind: 'toggle', def: 'true'`), `panel row ${id} → ${key} (toggle, default on)`);
+    }
     ok(panelSrc.includes(`hotkeysBinding('F1')`), 'the panel yields F1 to the game while a tab is bound to it');
+
+    // the mod's one-line description is duplicated in tools/lib.mjs MOD_META and the
+    // panel's MOD_REGISTRY — doctor checks the pair, so catch a one-sided edit here
+    const libSrc = await Bun.file(path.join(LCLITE, 'tools/lib.mjs')).text();
+    const descOf = (src: string, re: RegExp) => (src.match(re) ?? [])[1];
+    const metaDesc = descOf(libSrc, /'hotkeys': \{\s*label: 'Hotkeys',\s*desc: '([^']*)'/);
+    const registryDesc = descOf(panelSrc, /\{ id: 'hotkeys', name: 'Hotkeys', desc: '([^']*)'/);
+    ok(!!metaDesc && !!registryDesc && metaDesc === registryDesc, 'the Hotkeys one-line description matches in tools/lib.mjs and panel.js', { metaDesc, registryDesc });
 }
 
 // ---- the payload the tree actually runs ------------------------------------

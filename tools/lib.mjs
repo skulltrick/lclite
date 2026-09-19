@@ -84,7 +84,7 @@ export const MOD_META = {
     },
     'hotkeys': {
         label: 'Hotkeys',
-        desc: 'F-key sidebar tabs, Esc closes interfaces, WASD camera with press-enter-to-chat.',
+        desc: 'F-key sidebar tabs, Esc closes interfaces, Space and 1-5 drive dialogues, WASD camera with press-enter-to-chat.',
     },
     'wiki-lookup': {
         label: 'Wiki lookup',

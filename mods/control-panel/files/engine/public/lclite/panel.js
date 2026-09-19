@@ -114,7 +114,7 @@
         { id: 'hide-roofs', name: 'Hide roofs', desc: 'Removes roofs everywhere, not only while you stand under them. Off: the game hides them itself as you walk in.', master: { key: 'hideRoofs', def: 'false' } },
         { id: 'low-detail', name: 'Low detail', desc: 'Untextured ground applies instantly; ground decorations and half-size textures need a client refresh (F5).', master: { key: 'lowDetail', def: 'false' } },
         { id: 'shift-drop', name: 'Shift-click drop', desc: 'Hold Shift and left-click an item to drop it straight away, skipping the menu.', master: { key: 'shiftDrop', def: 'true' } },
-        { id: 'hotkeys', name: 'Hotkeys', desc: 'F-key sidebar tabs, Esc closes interfaces, WASD camera with press-enter-to-chat.', master: { key: 'hotkeys', def: 'true' } },
+        { id: 'hotkeys', name: 'Hotkeys', desc: 'F-key sidebar tabs, Esc closes interfaces, Space and 1-5 drive dialogues, WASD camera with press-enter-to-chat.', master: { key: 'hotkeys', def: 'true' } },
         { id: 'wiki-lookup', name: 'Wiki lookup', desc: 'A wiki button on the minimap: click it, then click any NPC, object or item to open its OSRS wiki page. Optionally also a Wiki row in every right-click menu.', master: { key: 'wikiLookup', def: 'true' } },
         { id: 'ground-items', name: 'Ground item labels', desc: 'Labels on the items lying on the ground. Hold Alt to see every item and click the - / + boxes to hide or show one.', master: { key: 'groundItems', def: 'true' } },
         { id: 'control-panel', name: 'LCLite', desc: 'This panel and the page around it: canvas size, scaling, fullscreen, screenshots.', master: null }
@@ -258,6 +258,8 @@
     MODS.push(
         { id: 'hk-fkeys', mod: 'hotkeys', name: 'F-key tabs', desc: 'Bound keys open sidebar tabs. A bound letter is claimed from the chatbox unless "Press enter to chat" is on.', key: 'hotkeysFkeys', kind: 'toggle', def: 'true' },
         { id: 'hk-esc', mod: 'hotkeys', name: 'Esc closes interfaces', desc: 'Esc closes the open interface (bank, shop, dialogue) instead of only switching to the Inventory tab.', key: 'hotkeysEscClose', kind: 'toggle', def: 'true' },
+        { id: 'hk-space', mod: 'hotkeys', name: 'Space continues dialogue', desc: 'Space advances a dialogue — the same click its "Click here to continue" button sends — instead of typing a space. A live chat line still wins.', key: 'hotkeysSpace', kind: 'toggle', def: 'true' },
+        { id: 'hk-numbers', mod: 'hotkeys', name: 'Number keys pick options', desc: 'With a "Select an Option" dialogue open, 1-5 choose that option, exactly as clicking it would. Numbers stay free for sidebar-tab bindings while no dialogue is up.', key: 'hotkeysNumbers', kind: 'toggle', def: 'true' },
         { id: 'hk-wasd', mod: 'hotkeys', name: 'WASD camera', desc: 'W/A/S/D rotate and pitch the camera, exactly like the arrow keys. Off by default.', key: 'hotkeysWasd', kind: 'toggle', def: 'false' },
         { id: 'hk-lock', mod: 'hotkeys', name: 'Press enter to chat', desc: 'The chatbox stays locked ("Press Enter to Chat...") so W/A/S/D cannot type into it; Enter opens it. Only applies while WASD camera is on.', key: 'hotkeysChatLock', kind: 'toggle', def: 'true' }
     );

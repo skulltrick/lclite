@@ -1,20 +1,22 @@
 # mods/hotkeys — OSRS/RuneLite-style keybinds
 
-F-key sidebar tabs, Esc closes interfaces, WASD camera. RuneLite's **Key
-Remapping** plugin (WASD + "Press Enter to Chat") plus the F-key/Esc behaviour
-OSRS itself ships, ported onto this client's own input path.
+F-key sidebar tabs, Esc closes interfaces, Space and 1-5 drive dialogues, WASD
+camera. RuneLite's **Key Remapping** plugin (WASD + "Press Enter to Chat") plus
+the F-key/Esc/Space/dialogue-number behaviour OSRS itself ships, ported onto this
+client's own input path.
 
 A player notices it as: press **F1** and the Combat tab opens, **Esc** and the
-bank closes, and (if they turn it on) **W/A/S/D** rotate the camera without ever
-reaching the chatbox.
+bank closes, **Space** advances an NPC's dialogue and **1**–**5** pick an option
+in a "Select an Option" menu, and (if they turn it on) **W/A/S/D** rotate the
+camera without ever reaching the chatbox.
 
 ## What's in the box
 
 | Piece | Where | Why there |
 |---|---|---|
-| `Hotkeys.ts` (pure core: key tables, settings reader, the claim decision) | `files/webclient/src/client/Hotkeys.ts` → `webclient/src/client/Hotkeys.ts` | a files/ payload (the gpu pattern): the mod's logic is testable without a client |
+| `Hotkeys.ts` (pure core: key tables, the settings reader, the claim decision, and the dialogue's option-row shape) | `files/webclient/src/client/Hotkeys.ts` → `webclient/src/client/Hotkeys.ts` | a files/ payload (the gpu pattern): the mod's logic is testable without a client |
 | two key hooks (`hotkeyKeyDown`/`hotkeyKeyUp`, both no-ops) | hunks into `webclient/src/client/GameShell.ts` | the engine's `onkeydown`/`onkeyup` are private, so the mod claims keys from a hook that runs *before* the engine's key queue |
-| the keybind block + the chatbox prompt | hunks into `webclient/src/client/Client.ts` | one isolated fields+methods slot before `drawChat()` (the stat-orbs/true-tile pattern), plus one line in `drawChat()` |
+| the keybind block, the dialogue keys + the chatbox prompt | hunks into `webclient/src/client/Client.ts` | one isolated fields+methods slot before `drawChat()` (the stat-orbs/true-tile pattern), plus one line in `drawChat()` |
 | panel rows, the F1 yield | `mods/control-panel/files/engine/public/lclite/panel.js` (TYPE A, no rebuild) | the panel is the settings UI for every mod |
 
 No terser reserves: nothing crosses the bundle↔page boundary (the panel only
@@ -66,6 +68,42 @@ chat line is live — that is the only sane compromise without the lock.
 
 Turning the toggle off leaves step 4 only, which is OSRS's older default.
 
+**Space continues a dialogue, 1–5 pick an option** (`hotkeysSpace` and
+`hotkeysNumbers`, both on). With a dialogue open — an NPC chat, a message box, a
+"Select an Option" menu — Space and the number row become the dialogue's own keys:
+
+- **Space** presses "Click here to continue". It runs the client's own
+  `PAUSE_BUTTON` action, which is exactly what that button sends:
+  `RESUME_PAUSEBUTTON`, plus the client's one-click guard (`resumedPauseButton`,
+  the flag that makes the button read "Please wait..."), so holding Space cannot
+  skip two pages. The tutorial's plain "Click to continue" line — no interface,
+  just `tutComMessage` — is cleared the same way the engine's own left-click
+  clears it.
+- **1**–**5** choose that option in a numbered list. The click is the client's own
+  `IF_BUTTON` action for the option's component id, which is precisely what the
+  server reads: `IfButtonHandler` sets `player.lastCom` and resumes the paused
+  script, and the dialogue procs `switch_component (last_com)` on it
+  (`content/scripts/interface_chat/scripts/chat.rs2` — the same
+  `if_addresumebutton`/`p_pausebutton` handshake a mouse click uses). An option
+  key and a mouse click are the same packet.
+
+Both are claimed (swallowed), so the key can never also type into the chatbox.
+
+**What counts as a numbered list is decided by shape, not by an interface id.**
+`hotkeysOptionRows` wants 2–5 plain buttons, one per line (distinct y, boxes that
+do not overlap the row above), all sharing a width and left edge. That is what
+keeps the number row off this rev's lookalikes: the smithing/crafting menus
+(`skill_multi*`) stack four buttons on ONE line per item and put the items side by
+side, and the item-select menus (`multiobj*`) are a row of equal-y cells. Both are
+refused by the per-line rule, so a digit there is left to the chatbox. A dialogue
+with options has no continue button, so Space does nothing on it — as in OSRS.
+
+A live chat line always wins: while you are typing, Space types a space and the
+digits type digits. And a digit bound to a sidebar tab keeps both jobs — it picks
+the option while a dialogue is up, and opens the tab once the dialogue is gone
+(the dialogue keys are checked before the tab bindings, so the two can never
+fight).
+
 **Nothing is claimed outside the game.** The whole mod stands down while
 `Client.ingame` is false, so the login screen's username/password fields keep
 every key (RuneLite gates on the chatbox widget for the same reason) — otherwise
@@ -101,6 +139,8 @@ shared with another mod and no hub exists.
 | `hotkeys` | `true` | keydown (per key) + per frame for the prompt |
 | `hotkeysFkeys` | `true` | keydown |
 | `hotkeysEscClose` | `true` | keydown |
+| `hotkeysSpace` | `true` | keydown |
+| `hotkeysNumbers` | `true` | keydown |
 | `hotkeysWasd` | `false` | keydown |
 | `hotkeysChatLock` | `true` | keydown + per frame for the prompt |
 | `hotkeysKeyCombat` / `Skills` / `Quests` / `Inventory` / `Worn` / `Prayer` / `Magic` / `Friends` / `Ignore` / `Logout` / `Options` / `Controls` / `Music` | see the table above | keydown |
@@ -135,19 +175,29 @@ panel's `hotkeysBinding('F1')` reads only its own rendered rows.
   `/` is LCLite's panel-search shortcut.
 - **A tab key closes an open side interface** where a plain icon click would leave
   the bank up and the key would look dead.
-- **F12 unbound by default** (see above) and no number-row remap toggle: the
-  number row is offered per tab instead, because this rev's dialogues do not take
-  number keys (`handleInputKey` only reads digits for an input dialogue, where the
-  mod claims nothing).
+- **F12 unbound by default** (see above). The number row is offered per tab *and*
+  claimed by an open dialogue — the dialogue wins while it is up, which is what
+  makes the two features unable to fight. An input dialogue ("Enter amount:")
+  still owns its digits, because the mod claims nothing while one is up.
+- **Space is claimed only while a dialogue is up.** With nothing to advance it is
+  left alone entirely (it types into the chatbox, and the chat lock swallows it
+  when WASD is on) — the mod never takes a key it has no job for.
+- **The "Make X" and item-select menus do not take numbers.** They are not
+  numbered lists (see above); their own buttons are the way in, and the number row
+  stays with the chatbox there.
 - **No keys are claimed while an input modal is up** (enter-amount, add/delete
   friend, report abuse): those forms own the keyboard.
 
 ## Testing
 
 ```
-bun run mods/hotkeys/tools/hotkeys_test.ts      # 94 checks: key names, defaults,
-                                                # the whole claim table, the
-                                                # panel↔core mirror, payload==tree
+bun run mods/hotkeys/tools/hotkeys_test.ts      # 159 checks: key names, defaults,
+                                                # the whole claim table (dialogue
+                                                # keys included), the option-row
+                                                # shape policy re-derived from the
+                                                # rev's own .if files, the
+                                                # ButtonType mirror, the panel↔core
+                                                # mirror, payload==tree
 LCLITE_ROOT=<install> node tools/regen.mjs      # 6 hunks (3 GameShell, 3 Client)
 LCLITE_ROOT=<install> node tools/lclite.mjs apply --check   # ✗0
 LCLITE_ROOT=<install> node tools/doctor.mjs     # exit 0
@@ -164,7 +214,17 @@ Live checks that needed a browser (CDP, dev bundle): F2 switches the sidebar
 off returns the key to the queue; W latches `keyHeld[3]` and releases to 0; a
 letter is swallowed while locked, Enter unlocks and then it types; Esc clears a
 half-typed line, closes a main modal, and leaves 3559 alone; the panel renders all
-21 rows and writes `hotkeysWasd` / `hotkeysKeyInventory`.
+23 rows and writes `hotkeysWasd` / `hotkeysKeyInventory`.
+
+**The dialogue keys are not provable in the harness** (they end in a packet, not a
+pixel). The live recipe, which needs no walking: on a `production=false` world
+every account is staff, so type `::help` in the chatbox. That opens this rev's own
+5-option `p_choice5_header` menu — press **5** ("Client & Engine commands") and the
+first `mesbox` page should appear (one `IF_BUTTON` round trip), then press **Space**
+and the next page should (one `RESUME_PAUSEBUTTON` round trip), and keep pressing
+it to walk the list. `1` on the same menu should open the account-commands pages
+instead, and `Esc` should still close the menu. Turn `hotkeysNumbers` off and the
+digits should go back to the chatbox.
 
 ## Not done (on purpose)
 
