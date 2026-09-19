@@ -4,9 +4,12 @@
 //
 //   bun run mods/hotkeys/tools/hotkeys_test.ts        (from anywhere)
 //
-// Covers: key-name normalisation, the settings defaults, and the whole claim
-// decision table (tab keys, Esc's three jobs, the chat lock's Enter/Backspace
-// transitions, printable-key yielding, camera keys with and without the lock).
+// Covers: key-name normalisation, the settings defaults, the whole claim decision
+// table (tab keys, Esc's three jobs, the chat lock's Enter/Backspace transitions,
+// printable-key yielding, camera keys with and without the lock), the dialogue row
+// extraction (a row's offset is the PARENT's childX/childY — the packed shape the
+// client actually receives), the option-row shape policy against this rev's own .if
+// files, the ButtonType mirror, and the panel↔core key-list mirror.
 import path from 'node:path';
 
 const LCLITE = path.resolve(import.meta.dir, '../../..');
@@ -165,6 +168,38 @@ const SKILL_MULTI3 = rowset([
 ]);
 const NPCCHAT = rowset([[34, 34, 32, 32, '', 0], [111, 0, 350, 17, 'Name', 0], [111, 80, 350, 17, 'Click here to continue', CONT]]);
 
+// A .if file → the component tree the CLIENT receives: the child's x=/y= become the
+// PARENT's childX[]/childY[] and no component's own x/y is ever sent (the row-extraction
+// section below proves both halves of that). Direct children only — a `layer=` block is
+// nested and is not a child of the root.
+const ifComponents = (src: string) => {
+    const root: any = { id: 1, type: 0, hide: false, buttonType: 0, buttonText: null, width: 512, height: 334, x: 0, y: 0, children: [], childX: [], childY: [] };
+    const byId = new Map<number, any>();
+
+    for (const block of src.split(/\r?\n(?=\[)/)) {
+        if (!/^\[/.test(block)) continue;
+        const kv: Record<string, string> = {};
+        for (const line of block.split(/\r?\n/).slice(1)) {
+            const i = line.indexOf('=');
+            if (i > 0) kv[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+        }
+        if (kv.layer) continue;
+
+        const child: any = {
+            id: byId.size + 2, type: 0, hide: kv.hide === 'yes',
+            buttonType: kv.buttontype === 'pause' ? H.HOTKEYS_BUTTON_CONTINUE : kv.buttontype === 'normal' ? H.HOTKEYS_BUTTON_OK : 0,
+            buttonText: kv.text ?? '', width: +(kv.width ?? 0), height: +(kv.height ?? 0),
+            x: 0, y: 0, children: null, childX: null, childY: null
+        };
+        byId.set(child.id, child);
+        root.children.push(child.id);
+        root.childX.push(+(kv.x ?? 0));
+        root.childY.push(+(kv.y ?? 0));
+    }
+
+    return { root, lookup: (id: number) => byId.get(id) ?? null };
+};
+
 eq(H.hotkeysOptionRows(MULTI3).map((r: any) => r.text), ['option1', 'option2', 'option3'], 'multi3: the three options, top to bottom');
 eq(H.hotkeysOptionRows(MULTI3)[2].id, 902, 'the option a key picks is the row\'s own component id');
 eq(H.hotkeysOptionRows(MULTI5).length, 5, 'multi5: five options');
@@ -232,28 +267,54 @@ console.log('\nthe ButtonType mirror (the core spells the engine\'s enum out)');
     }
 }
 
+console.log('\nthe row extraction: .if text → what the client actually receives');
+{
+    // A .if block's x=/y= do NOT travel with the component: the packer writes them into
+    // the PARENT's childX[]/childY[] (engine tools/pack/interface/PackShared.ts) and never
+    // sends a component's own x/y, so the client's IfType.x / IfType.y stay 0 — the engine
+    // lays a child out at parent.childX[i] + parent.x + child.x (drawInterface,
+    // addComponentOptions). A fixture that reads x=/y= straight into the row is a fiction,
+    // and it is exactly how the option policy stayed green while the live digits did nothing.
+    const ifRows = (src: string) => { const { root, lookup } = ifComponents(src); return H.hotkeysRows(root, lookup); };
+    // the same interface read the OLD way — the child's own x/y, which are always 0
+    const naiveRows = (src: string) => { const { root, lookup } = ifComponents(src); return root.children.map((id: number) => lookup(id)); };
+
+    const multi5Src = [
+        '[com_0]', 'type=text', 'x=0', 'y=-1', 'width=480', 'height=17', 'text=Select an Option',
+        '[com_1]', 'type=text', 'x=0', 'y=15', 'buttontype=normal', 'width=480', 'height=16', 'text=option1',
+        '[com_2]', 'type=text', 'x=0', 'y=31', 'buttontype=normal', 'width=480', 'height=16', 'text=option2',
+        '[com_3]', 'type=text', 'x=0', 'y=47', 'buttontype=normal', 'width=480', 'height=16', 'text=option3',
+        '[com_4]', 'type=text', 'x=0', 'y=63', 'buttontype=normal', 'width=480', 'height=16', 'text=option4',
+        '[com_5]', 'type=text', 'x=0', 'y=79', 'buttontype=normal', 'width=480', 'height=16', 'text=option5'
+    ].join('\n');
+
+    const rows = ifRows(multi5Src);
+    eq(rows.map((r: any) => r.y), [-1, 15, 31, 47, 63, 79], 'a row\'s y comes from the PARENT\'s childY[] (the header sits at -1)');
+    eq(rows.map((r: any) => r.x), [0, 0, 0, 0, 0, 0], 'and its x from childX[]');
+    eq(rows.map((r: any) => r.text), ['Select an Option', 'option1', 'option2', 'option3', 'option4', 'option5'], 'text and order come from the children');
+    eq(H.hotkeysOptionRows(rows).length, 5, 'multi5, read the way the client hands it over: five options');
+    eq(H.hotkeysOptionRows(naiveRows(multi5Src)), [], 'the SAME interface read from child.x/child.y collapses to one point and is refused — the live bug');
+    eq(ifRows(''), [], 'an .if with no blocks is an empty row set');
+    eq(H.hotkeysOptionRows(ifRows('[com_0]\ntype=text\nx=0\ny=0\nwidth=1\nheight=1\nbuttontype=normal\ntext=only\n')), [], 'one button is still not a numbered list');
+    eq(H.hotkeysRows(null, () => null), [], 'no open interface → no rows');
+    eq(H.hotkeysRows({ id: 1, type: 0, hide: true, buttonType: 0, buttonText: null, width: 1, height: 1, x: 0, y: 0, children: [2], childX: [0], childY: [0] }, () => null), [], 'a hidden root has no rows');
+    eq(H.hotkeysRows({ id: 1, type: 0, hide: false, buttonType: 0, buttonText: null, width: 1, height: 1, x: 0, y: 0, children: [7], childX: null, childY: null }, () => null), [], 'a child id the lookup cannot resolve is skipped, not a crash');
+    const noOffsets = H.hotkeysRows({ id: 1, type: 0, hide: false, buttonType: 0, buttonText: null, width: 1, height: 1, x: 0, y: 0, children: [2, 3], childX: null, childY: null },
+        (id: number) => ({ id, type: 4, hide: false, buttonType: H.HOTKEYS_BUTTON_OK, buttonText: 'opt', width: 480, height: 16, x: 0, y: 0, children: null, childX: null, childY: null }));
+    eq(noOffsets.map((r: any) => r.y), [0, 0], 'a parent with no childX/childY array falls back to the child offsets (here: none)');
+    eq(H.hotkeysOptionRows(noOffsets), [], 'and stacked-on-one-point rows are refused, so a broken extraction claims nothing rather than guessing');
+}
+
 console.log('\nthe policy against the rev\'s own interface files');
 {
     const contentRoot = process.env.LCLITE_ROOT || 'C:/Users/canno/AppData/Local/LCLite/installs/289';
     const dir = path.join(contentRoot, 'content/scripts/interface_chat/interfaces');
     if (await Bun.file(path.join(dir, 'multi3.if')).exists()) {
-        // one .if block → one HotkeysRow, exactly as the client hands them over
-        const ifRows = (src: string) => {
-            const out: any[] = [];
-            for (const block of src.split(/\r?\n(?=\[)/)) {
-                if (!/^\[/.test(block)) continue;
-                const kv: Record<string, string> = {};
-                for (const line of block.split('\n').slice(1)) {
-                    const i = line.indexOf('=');
-                    if (i > 0) kv[line.slice(0, i).trim()] = line.slice(i + 1).trim();
-                }
-                if (!kv.buttontype) continue;
-                const button = kv.buttontype === 'pause' ? H.HOTKEYS_BUTTON_CONTINUE : kv.buttontype === 'normal' ? H.HOTKEYS_BUTTON_OK : 0;
-                out.push({ id: out.length + 1, x: +(kv.x ?? 0), y: +(kv.y ?? 0), width: +(kv.width ?? 0), height: +(kv.height ?? 0), text: kv.text ?? kv.option ?? '', button });
-            }
-            return out;
+        // one .if file → the rows the client would hand over (the packed shape)
+        const readIf = async (f: string) => {
+            const { root, lookup } = ifComponents(await Bun.file(path.join(dir, f)).text());
+            return H.hotkeysRows(root, lookup);
         };
-        const readIf = async (f: string) => ifRows(await Bun.file(path.join(dir, f)).text());
         eq(H.hotkeysOptionRows(await readIf('multi2.if')).length, 2, 'multi2.if is a 2-option list');
         eq(H.hotkeysOptionRows(await readIf('multi3.if')).length, 3, 'multi3.if is a 3-option list');
         eq(H.hotkeysOptionRows(await readIf('multi4.if')).length, 4, 'multi4.if is a 4-option list');

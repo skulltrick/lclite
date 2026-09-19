@@ -95,6 +95,63 @@ export type HotkeysRow = {
     button: number;
 };
 
+/** One interface component, as much of it as the row extraction needs. The client's
+ *  IfType satisfies this structurally, so this core still imports nothing. */
+export type HotkeysComponent = {
+    id: number;
+    type: number;
+    hide: boolean;
+    buttonType: number;
+    /** the component's own text (null when it is not a button) */
+    buttonText: string | null;
+    width: number;
+    height: number;
+    /** the component's OWN offset — always 0 in this rev, see hotkeysRows() */
+    x: number;
+    y: number;
+    /** the direct children, as component ids */
+    children: number[] | null;
+    /** the offsets the PARENT carries for each child — a child's .if x=/y= land HERE */
+    childX: number[] | null;
+    childY: number[] | null;
+};
+
+/** The direct children of an open interface, as the plain rows the policies below judge.
+ *
+ *  Geometry comes from the PARENT, never from the child: the engine lays a child out at
+ *  `parent.childX[i] + parent.x + child.x` (drawInterface, addComponentOptions), and the
+ *  interface stream carries no per-component x/y at all — the packer moves a child's
+ *  `.if` `x=`/`y=` into the PARENT's `childX[]`/`childY[]`
+ *  (engine `tools/pack/interface/PackShared.ts`), leaving the child's own x/y at 0.
+ *  Reading `child.x`/`child.y` alone therefore collapses every row onto one point, and
+ *  hotkeysOptionRows' "one per line" rule then refuses the list — which is exactly how
+ *  the number row went dead while Space (which needs no geometry) kept working. */
+export function hotkeysRows(com: HotkeysComponent | null, lookup: (id: number) => HotkeysComponent | null): HotkeysRow[] {
+    const rows: HotkeysRow[] = [];
+
+    if (!com || com.hide || !com.children) {
+        return rows;
+    }
+
+    for (let i: number = 0; i < com.children.length; i++) {
+        const child: HotkeysComponent | null = lookup(com.children[i]);
+        if (!child) {
+            continue;
+        }
+        rows.push({
+            id: child.id,
+            x: (com.childX ? com.childX[i] : 0) + child.x,
+            y: (com.childY ? com.childY[i] : 0) + child.y,
+            width: child.width,
+            height: child.height,
+            text: child.buttonText ?? '',
+            button: child.buttonType
+        });
+    }
+
+    return rows;
+}
+
 /** The open dialogue's "Click here to continue" button, or null.
  *
  *  The client stops offering this row once the click is in flight (`resumedPauseButton`

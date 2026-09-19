@@ -14,7 +14,7 @@ camera without ever reaching the chatbox.
 
 | Piece | Where | Why there |
 |---|---|---|
-| `Hotkeys.ts` (pure core: key tables, the settings reader, the claim decision, and the dialogue's option-row shape) | `files/webclient/src/client/Hotkeys.ts` → `webclient/src/client/Hotkeys.ts` | a files/ payload (the gpu pattern): the mod's logic is testable without a client |
+| `Hotkeys.ts` (pure core: key tables, the settings reader, the claim decision, the dialogue's row extraction and its option-row shape) | `files/webclient/src/client/Hotkeys.ts` → `webclient/src/client/Hotkeys.ts` | a files/ payload (the gpu pattern): the mod's logic is testable without a client |
 | two key hooks (`hotkeyKeyDown`/`hotkeyKeyUp`, both no-ops) | hunks into `webclient/src/client/GameShell.ts` | the engine's `onkeydown`/`onkeyup` are private, so the mod claims keys from a hook that runs *before* the engine's key queue |
 | the keybind block, the dialogue keys + the chatbox prompt | hunks into `webclient/src/client/Client.ts` | one isolated fields+methods slot before `drawChat()` (the stat-orbs/true-tile pattern), plus one line in `drawChat()` |
 | panel rows, the F1 yield | `mods/control-panel/files/engine/public/lclite/panel.js` (TYPE A, no rebuild) | the panel is the settings UI for every mod |
@@ -97,6 +97,18 @@ keeps the number row off this rev's lookalikes: the smithing/crafting menus
 side, and the item-select menus (`multiobj*`) are a row of equal-y cells. Both are
 refused by the per-line rule, so a digit there is left to the chatbox. A dialogue
 with options has no continue button, so Space does nothing on it — as in OSRS.
+
+**The row geometry comes from the PARENT, and that is not optional.** A row's x/y is
+`parent.childX[i] + child.x`, never `child.x` alone: the interface stream carries no
+per-component x/y at all — the engine's packer moves a child's `.if` `x=`/`y=` into
+the PARENT's `childX[]`/`childY[]` (`engine tools/pack/interface/PackShared.ts`) and
+leaves the child's own x/y at 0, which is also how the engine itself lays out and
+hit-tests a child (`drawInterface`, `addComponentOptions`). Reading `child.x`/`child.y`
+collapses every row onto one point, the per-line rule then correctly refuses the list,
+and the number row goes silent while Space (which needs no geometry) keeps working —
+which is exactly what happened, and why the extraction now lives in `Hotkeys.ts`
+(`hotkeysRows`) where the harness can hold the packed shape against the policy instead
+of against a fixture that reads the `.if` text directly.
 
 A live chat line always wins: while you are typing, Space types a space and the
 digits type digits. And a digit bound to a sidebar tab keeps both jobs — it picks
@@ -191,13 +203,17 @@ panel's `hotkeysBinding('F1')` reads only its own rendered rows.
 ## Testing
 
 ```
-bun run mods/hotkeys/tools/hotkeys_test.ts      # 159 checks: key names, defaults,
+bun run mods/hotkeys/tools/hotkeys_test.ts      # 171 checks: key names, defaults,
                                                 # the whole claim table (dialogue
-                                                # keys included), the option-row
-                                                # shape policy re-derived from the
-                                                # rev's own .if files, the
-                                                # ButtonType mirror, the panel↔core
-                                                # mirror, payload==tree
+                                                # keys included), the row extraction
+                                                # (the packed shape: a row's offset is
+                                                # the parent's childX/childY, and the
+                                                # same .if read from child.x/child.y
+                                                # collapses and is refused — the live
+                                                # number-row bug), the option-row shape
+                                                # policy re-derived from the rev's own
+                                                # .if files, the ButtonType mirror, the
+                                                # panel↔core mirror, payload==tree
 LCLITE_ROOT=<install> node tools/regen.mjs      # 6 hunks (3 GameShell, 3 Client)
 LCLITE_ROOT=<install> node tools/lclite.mjs apply --check   # ✗0
 LCLITE_ROOT=<install> node tools/doctor.mjs     # exit 0
@@ -216,8 +232,10 @@ letter is swallowed while locked, Enter unlocks and then it types; Esc clears a
 half-typed line, closes a main modal, and leaves 3559 alone; the panel renders all
 23 rows and writes `hotkeysWasd` / `hotkeysKeyInventory`.
 
-**The dialogue keys are not provable in the harness** (they end in a packet, not a
-pixel). The live recipe, which needs no walking: on a `production=false` world
+**The dialogue keys' round trip is not provable in the harness** — a keypress ends in a
+packet, not a pixel. What IS proven headlessly is the decision and the rows it is made
+from: that a live `multi5` menu yields five option rows and that the digit turns into
+`HOTKEYS_OPTION`. The live recipe, which needs no walking: on a `production=false` world
 every account is staff, so type `::help` in the chatbox. That opens this rev's own
 5-option `p_choice5_header` menu — press **5** ("Client & Engine commands") and the
 first `mesbox` page should appear (one `IF_BUTTON` round trip), then press **Space**
