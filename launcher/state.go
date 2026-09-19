@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/ed25519"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -63,14 +64,40 @@ type Remote struct {
 	LocalClient bool   `json:"local_client"`
 }
 
+// World is one entry in the local world list: somebody's signed description of their
+// server, plus what this launcher knows about it. There is no directory service, so
+// the list is built by pasting invite codes and is kept locally.
+type World struct {
+	Manifest WorldManifest `json:"manifest"`
+	// Favorite pins a world to the top AND keeps it in the list while it is offline.
+	// Everything else offline folds away, so a dead world stops taking up room
+	// without being forgotten.
+	Favorite bool      `json:"favorite,omitempty"`
+	AddedAt  time.Time `json:"added_at"`
+	// LastSeen/LastStatus are what the last probe saw, so an offline world can say
+	// when it was last up instead of just vanishing.
+	LastSeen   time.Time `json:"last_seen,omitempty"`
+	LastStatus string    `json:"last_status,omitempty"`
+	// Note is the player's own reminder ("Bob's test world, wipes on Sundays").
+	Note string `json:"note,omitempty"`
+}
+
 type Config struct {
 	DataDir   string     `json:"data_dir"`
 	Installs  []*Install `json:"installs"`
 	Remotes   []*Remote  `json:"remotes"`
+	Worlds    []*World   `json:"worlds"`
 	Revs      []Rev      `json:"revs"`
 	RevsAt    time.Time  `json:"revs_at"`
 	ProxyPort int        `json:"proxy_port"`
 	LastRev   string     `json:"last_rev"`
+
+	// HostKey is this launcher's world-signing identity, created on first publish.
+	// One key for the whole launcher, so a host's worlds all verify under one
+	// fingerprint a player can learn.
+	HostKey HostKey `json:"host_key,omitempty"`
+	// MyWorld is the host's own editable description of the world this machine runs.
+	MyWorld LocalWorld `json:"my_world,omitempty"`
 
 	// RecommendedRev pins the revision the UI leads with. Empty = work it out
 	// from the branch lists (see pickRecommended).
@@ -134,6 +161,9 @@ func openStore(dataDir string) (*Store, error) {
 	if s.cfg.Remotes == nil {
 		s.cfg.Remotes = []*Remote{}
 	}
+	if s.cfg.Worlds == nil {
+		s.cfg.Worlds = []*World{}
+	}
 	if s.cfg.Revs == nil {
 		s.cfg.Revs = []Rev{}
 	}
@@ -161,6 +191,7 @@ func (s *Store) snapshot() Config {
 	cp := s.cfg
 	cp.Installs = append([]*Install(nil), s.cfg.Installs...)
 	cp.Remotes = append([]*Remote(nil), s.cfg.Remotes...)
+	cp.Worlds = append([]*World(nil), s.cfg.Worlds...)
 	cp.Revs = append([]Rev(nil), s.cfg.Revs...)
 	return cp
 }
@@ -264,6 +295,7 @@ func (s *Store) setCollapsed(keys []string) {
 // sectionKeys are the dashboard panels the UI can collapse.
 var sectionKeys = map[string]bool{
 	"revs": true, "installs": true, "mods": true, "server": true, "join": true,
+	"worlds": true,
 }
 
 func (s *Store) setLastRev(rev string) {
@@ -304,6 +336,88 @@ func (s *Store) installDir(rev string) string {
 	return filepath.Join(s.cfg.DataDir, "installs", safeName(rev))
 }
 
+// ---- worlds ---------------------------------------------------------------
+
+// addWorld stores a world, keyed by its manifest ID (which is derived from the
+// host's key). Re-adding a world the player already has UPDATES it rather than
+// duplicating it — that is what makes forwarding a fresh code work as "this world
+// changed" instead of "here is a second copy".
+func (s *Store) addWorld(w World) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, ex := range s.cfg.Worlds {
+		if ex.Manifest.ID != "" && ex.Manifest.ID == w.Manifest.ID {
+			// Keep the player's own state; take the host's new description.
+			w.AddedAt = ex.AddedAt
+			w.Favorite = ex.Favorite
+			w.Note = ex.Note
+			w.LastSeen = ex.LastSeen
+			w.LastStatus = ex.LastStatus
+			s.cfg.Worlds[i] = &w
+			_ = s.save()
+			return true
+		}
+	}
+	s.cfg.Worlds = append(s.cfg.Worlds, &w)
+	_ = s.save()
+	return false
+}
+
+func (s *Store) removeWorld(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := s.cfg.Worlds[:0]
+	for _, w := range s.cfg.Worlds {
+		if !strings.EqualFold(w.Manifest.ID, id) {
+			out = append(out, w)
+		}
+	}
+	s.cfg.Worlds = out
+	_ = s.save()
+}
+
+// updateWorld applies fn to one world under the lock. Returns false if it is gone.
+func (s *Store) updateWorld(id string, fn func(*World)) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, w := range s.cfg.Worlds {
+		if strings.EqualFold(w.Manifest.ID, id) {
+			fn(w)
+			_ = s.save()
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Store) setMyWorld(lw LocalWorld) {
+	s.mu.Lock()
+	s.cfg.MyWorld = lw
+	s.mu.Unlock()
+	_ = s.save()
+}
+
+// hostKey returns this launcher's signing key, creating and persisting it on first
+// use. The key is the world's identity, so it must never be silently regenerated.
+func (s *Store) hostKey() (ed25519.PrivateKey, error) {
+	s.mu.Lock()
+	key := s.cfg.HostKey
+	s.mu.Unlock()
+
+	priv, err := key.EnsureHostKey()
+	if err != nil {
+		return nil, err
+	}
+	// Only a key that did not exist yet needs persisting.
+	if key.Private != s.cfg.HostKey.Private {
+		s.mu.Lock()
+		s.cfg.HostKey = key
+		s.mu.Unlock()
+		_ = s.save()
+	}
+	return priv, nil
+}
+
 func safeName(s string) string {
 	out := make([]rune, 0, len(s))
 	for _, r := range s {
@@ -333,6 +447,15 @@ func (c Config) findRemote(url string) *Remote {
 	for _, r := range c.Remotes {
 		if r.URL == url {
 			return r
+		}
+	}
+	return nil
+}
+
+func (c Config) worldByID(id string) *World {
+	for _, w := range c.Worlds {
+		if strings.EqualFold(w.Manifest.ID, id) {
+			return w
 		}
 	}
 	return nil

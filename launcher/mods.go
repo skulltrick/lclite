@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -191,6 +193,39 @@ func modCorpusRev(overlay, mod, rev string, m revManifest) string {
 		return info.Inherits
 	}
 	return ""
+}
+
+// appliedMods reads the mods ACTUALLY applied to an install, out of the manifest the
+// overlay writes when it patches the tree (engine/public/lclite/installed.json).
+//
+// This is the honest source for a mod-rule check. Install.Mods is only what the
+// launcher last recorded, which lags a hand-edited or externally-patched tree; the
+// file in the built tree is what the world would really be served.
+func appliedMods(in *Install) []string {
+	raw, err := os.ReadFile(filepath.Join(in.publicDir(), "lclite", "installed.json"))
+	if err != nil {
+		return nil
+	}
+	var m struct {
+		Mods []string `json:"mods"`
+	}
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil
+	}
+	return normMods(m.Mods)
+}
+
+// bundleDigest identifies the exact client build an install would serve, so a player
+// can read it out and a host can compare it against what they expect. It is a
+// fingerprint of the shipped bundle, not a signature — it says "this is the build I
+// have", which is only as trustworthy as the launcher reporting it.
+func bundleDigest(in *Install) string {
+	raw, err := os.ReadFile(filepath.Join(in.publicDir(), "client", "client.js"))
+	if err != nil {
+		return ""
+	}
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])[:16]
 }
 
 // listMods reads the mods of a HOST root (lclite/ inside it).

@@ -73,7 +73,8 @@ automatic.
 The dashboard is two columns and one rule: **set up on the left, run it on the
 right.** Left: *Lost City revisions* → *Installs* (with the selected install's
 card — path, ready/needs-setup, *Update from GitHub*, *Rebuild client*) →
-*LCLite mods*. Right: *Server*, then *Join server*. Anything that is real but not
+*LCLite mods*. Right: *Server*, then *Join server*, then *Worlds* (the list of
+user-hosted worlds — see 7 below). Anything that is real but not
 first-run — an existing folder instead of a fresh install, reset-to-pristine, the
 bridge port, the three-socket port story, the tree's internals — sits behind a
 disclosure with a plain-language label, so the everyday path stays two buttons
@@ -213,6 +214,63 @@ own bun on that process's PATH so a world doesn't die with
    socket may come from. A bridged socket arrives as `localhost:<port>`, so a
    server that sets `allowedOrigin` can refuse it. *Open directly* always works;
    it just uses the server's own client.
+7. **Worlds** — user-hosted worlds, listed below *Join server*. A "world" is
+   somebody's Lost City server plus a small **signed description** of it: a name, a
+   one-line description, an address, the revision, and which mods it wants or
+   forbids. There is **no directory service** — a world travels as an *invite code*
+   you paste, and the list lives entirely in your own `launcher.json`. Nothing is
+   uploaded anywhere.
+
+   The list leads with **this machine** (start/stop it right there), then your
+   **favorites**, then whatever is online, then the rest. A favorite is pinned: it
+   stays visible while it is offline, because a world you care about going down is
+   exactly when you want to see it. Offline non-favorites fold away behind one
+   line rather than disappearing.
+
+   **Listing your own world** (*List my world*) fills in a name, a description, an
+   address and its mod rules, then hands back a signed code to share. The signature
+   is what makes a code worth trusting: a code edited on its way to you is
+   **refused**, not trusted (verified — editing the address in a real code and
+   re-submitting it fails with `signature does not match this manifest`). Your
+   launcher's key is created once and its fingerprint is shown, so the same world
+   keeps the same identity across re-listings, and re-adding a code you already
+   have **updates** it in place instead of duplicating it.
+
+   **Mod rules are a gate, not enforcement** — and the UI says so. The client is
+   JavaScript the host serves, so a determined player can always lie about what
+   they are running. What the launcher *can* do honestly:
+
+   - **forbidden + present → refused.** You are told which mods, and offered a
+     one-click *turn them off & rebuild*.
+   - **wanted + missing → warned, and you may still join.**
+   - The check reads **what the tree actually has** (`engine/public/lclite/installed.json`),
+     not what the mods panel had ticked, and reports the **digest of the client
+     build** you would serve.
+
+   **Your character is a file on the host's disk** — the client never sees it, so
+   "bring your save" is a file operation the launcher performs, not a game
+   feature. *Your characters* lists the saves in the selected install and copies one
+   into a **vault** under the launcher's own data folder, named after the world it
+   came from. Importing checks the file against the engine's own rule (magic
+   `0x2004`, version, CRC-32) and refuses a corrupt or foreign file before it can
+   reach a world; if the world already has a **newer** character of that name it
+   stops and asks rather than going backwards. Import also requires that world
+   stopped, because a running login server rewrites the save on logout.
+
+   **What is provable, and what is not.** Provable: a code was not edited after the
+   host signed it; a save file is intact; the digest identifies the build you have.
+   Not provable: that a player is not cheating, or that a character was earned — a
+   save carries a checksum, not a signature. The launcher stops **accidents**
+   (the wrong mod set, a wiped or corrupt save, tampered metadata), which is the
+   case that actually happens, and does not pretend to stop an adversary.
+
+   **The management port is the one real security finding here.** The engine's
+   `/setup` server has **no authentication** and `PUT /setup/config` rewrites the
+   world's own config. Upstream binds it to `0.0.0.0`; LCLite's overlay now binds it
+   to **loopback by default** (see `mods/control-panel`), and the launcher
+   additionally **refuses to list a world** while that page answers on a LAN
+   address (dialling the real interface addresses — a bind probe lies on Windows).
+   `MANAGEMENT_HOST=0.0.0.0` opts back in deliberately.
 
 ## Building
 
@@ -269,9 +327,15 @@ installation.
 
 | Path | What |
 | --- | --- |
-| `%LOCALAPPDATA%\LCLite\launcher.json` | installs, saved servers, cached branch list, folded sections |
+| `%LOCALAPPDATA%\LCLite\launcher.json` | installs, saved servers, **worlds + the host's own draft + its signing key**, cached branch list, folded sections |
 | `%LOCALAPPDATA%\LCLite\installs\<rev>\` | managed revision checkouts |
+| `%LOCALAPPDATA%\LCLite\saves\<worldID>\` | the save vault: `<user>.sav` plus the `world.json` of the world it came from |
 | `%LOCALAPPDATA%\LCLite\tools\bun\bun.exe` | bun fetched on demand |
+
+A world's signing key lives in `launcher.json` and is created on first *List my
+world*. It is the world's identity — re-listing under a new key would make every
+shared code point at a world nobody has, so a damaged key is reported rather than
+silently replaced.
 
 `--data <folder>` moves the whole tree above (the way to test the launcher without
 touching real installs).
@@ -299,6 +363,22 @@ deletes the folder and is refused for a hand-added install or one outside
 `browse`, `bun`, `proxy/start`, `proxy/stop`, `job`, `log`, `quit`. Long tasks return a job id; poll
 `job?id=&since=` for incremental log lines.
 
+Worlds and saves:
+
+| Endpoint | What |
+| --- | --- |
+| `worlds` | the list: this machine first, then favorites, then online, then the rest. Never probes — the panel's 2.5s poll must stay cheap |
+| `worlds/add` | `{code}` — import an invite code. A signed code that fails verification is refused; an unsigned one is accepted with a warning |
+| `worlds/remove` `worlds/favorite` `worlds/note` | `{id}` (and `{favorite}` / `{note}`) |
+| `worlds/refresh` | probes every world (TCP dial, then read the page, so "something answered" is not mistaken for "a Lost City world") |
+| `worlds/check` | `{id, install}` → the mod-rule verdict, the build digest, and whether the revisions match |
+| `world/publish` | `{name, description, host_name, address, mods_required, mods_forbidden, allow_save_import}` → a signed manifest + invite code. Refused while the management page answers on a LAN address unless `{allow_exposed:true}` |
+| `world/unpublish` | drops the host's own listing flag |
+| `saves` | `?install=` — the characters in an install, each checked for integrity |
+| `saves/import` `saves/export` | `{install, path, username, force, world_allows}` / `{install, username, dest, vault}` |
+| `saves/browse` | `?dir=` — lists `.sav` files so the import field is usable without typing a path |
+| `vault` | every character the vault holds, with the world it came from |
+
 ## Verified
 
 `go test ./...` covers the two config styles (JSON + dotenv, including "don't
@@ -311,6 +391,39 @@ deployed) boots and serves a working client socket; a fresh **274** install gets
 12 mods from the *inherited* corpus, boots and serves a modded page (`LCLite - 274`);
 a fresh **254** install gets the 7 mods it has a corpus for and serves them; the
 bridge serves a local build over a remote one and tunnels the socket both ways.
+
+The Worlds work added its own coverage, and the parts that *can* be proven are proven
+against real bytes rather than mocks:
+
+- **Signing** — every field of a manifest is covered by the signature (a per-field
+  tamper test fails each one in turn); a manifest re-labelled under another host's key
+  fails; re-listing under the same key keeps the world's id; a newline in a name
+  cannot forge an extra signed field. Invite codes round-trip, and a gzip bomb is
+  rejected by the bounded inflate.
+- **Saves** — the integrity rule was derived from the engine's reader and then
+  **checked against every save in the live installs (19/19 pass)**; edited, truncated,
+  wrong-magic, future-version and corrupted-trailer files are each refused; importing an
+  older file over newer progress stops and asks, and a forced replace keeps the file it
+  displaced.
+- **The management-port detector** is tested against a **real listener** on a real
+  interface address, not a mocked one — and the loopback default itself was proven by
+  booting a world and reading `netstat`: `:80` and `:43594` on `0.0.0.0`, `:8898` on
+  `127.0.0.1`.
+- **The Go↔JS contract** is pinned: the JSON keys the page reads are asserted, because
+  a rename there does not fail loudly. That test exists because it already caught one —
+  `bridgeToWorld` read `address` while the manifest shipped `addr`, so a world showed
+  its address on its card and then refused to join it.
+- End to end through the real UI in a browser: cards render and sort (self → favorites →
+  online → rest), an offline non-favorite folds away, a star re-pins it, a world that
+  bans an applied mod **blocks** with a one-click repair, a world that merely wants a
+  missing mod **warns and still joins**, publishing signs and returns a code, and the
+  vault lists characters with their integrity and provenance. Every `onclick` in the
+  rendered panel was swept and checked to name a real function.
+
+The overlay gate for the new `web.ts` hunk was the full one: `apply --check` ✗0,
+`regen` twice byte-identical, `doctor` 0, **only `control-panel`'s patch JSON changed**,
+`matrix` green on all three revisions (274's `inherits` claim survives), and
+`acceptance.sh` byte-identical with a stable converge round-trip.
 
 ## Known limits
 
@@ -330,3 +443,25 @@ bridge serves a local build over a remote one and tunnels the socket both ways.
 - No auto-update yet; the launcher is small enough to just replace.
 - Rev switching on an install with mods applied is refused until you *Reset to
   pristine* — by design, since the overlay's convergence assumes a clean tree.
+- **Mod rules cannot be enforced, only checked.** The client is JavaScript served by
+  the host, so a player can lie about their mod set; nothing here can stop that. The
+  gate stops accidents, which is the case that happens. See *Worlds* above.
+- **There is no world directory.** A world is shared by handing somebody an invite
+  code; there is no public list, no server, and no discovery. The manifest format is
+  versioned (`v:1`) and signed so a hosted directory can be added later without
+  invalidating codes already shared.
+- **A save is bound to a username and to a revision.** Importing one means playing
+  that character's name on that world, and item ids/varps can differ between
+  revisions — so a save is only really portable between compatible worlds. The
+  launcher warns when a world's revision differs from your install, but it cannot read
+  a save's contents to check compatibility.
+- **The launcher compares save timestamps, not playtime.** The engine's own guard
+  (`wouldResetSaveFile`) refuses a save whose playtime went backwards; reading playtime
+  in Go would mean reimplementing a revision-specific binary layout upstream is free to
+  change. So the launcher stops an *older file* from silently replacing a newer one and
+  says so, which is a weaker rule than the engine's.
+- **One install carries one mod set**, so two worlds with different rules can mean a
+  full apply-and-rebuild between them. The bridge already chooses which bundle to serve
+  (`/client/*`), so per-world built bundles are the obvious next step; a mod that
+  patches the *engine* (LCLite's own panel) can never be swapped that way, because the
+  host's server has to have it too.

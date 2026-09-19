@@ -82,6 +82,7 @@ type EngineServer struct {
 	installID string
 	port      int
 	gamePort  int
+	mgmtPort  int
 	state     string
 	lastErr   string
 	started   time.Time
@@ -315,6 +316,24 @@ func (s *EngineServer) State() string {
 	return s.state
 }
 
+// InstallID is the install the running world belongs to ("" when nothing runs).
+// The save vault needs it: importing into the world that is currently serving
+// would be overwritten by that world's own autosave.
+func (s *EngineServer) InstallID() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.installID
+}
+
+// MgmtPort is the running world's /setup port (0 when nothing runs). The Worlds
+// panel asks for it because that port has no authentication upstream, so it is the
+// one a host must not advertise.
+func (s *EngineServer) MgmtPort() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.mgmtPort
+}
+
 func (s *EngineServer) Status() map[string]any {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -328,6 +347,7 @@ func (s *EngineServer) Status() map[string]any {
 		"starting":  state == "starting",
 		"port":      s.port,
 		"game_port": s.gamePort,
+		"mgmt_port": s.mgmtPort,
 		"install":   s.installID,
 		"error":     s.lastErr,
 	}
@@ -423,6 +443,7 @@ func (l *Launcher) StartServer(in *Install, port int, openWhenReady bool) error 
 	l.engine.installID = in.ID
 	l.engine.port = port
 	l.engine.gamePort = gamePort
+	l.engine.mgmtPort = mgmtPort
 	l.engine.state = "starting"
 	l.engine.lastErr = ""
 	l.engine.started = time.Now()
