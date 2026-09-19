@@ -68,7 +68,11 @@ const MODS = {
         'webclient/src/client/Client.ts'
     ],
     'true-tile': [
-        'webclient/src/client/Client.ts'
+        // the decal is drawn by World.fill(), on the true tile's own turn in the
+        // back-to-front ground pass, so this mod touches World.ts as well as Client.ts
+        // (Client only arms the tile; the draw and its settings live World-side).
+        'webclient/src/client/Client.ts',
+        'webclient/src/dash3d/World.ts'
     ],
     'hover-tile': [
         // the hover pick is resolved by the engine's own ground rasterizer, so this

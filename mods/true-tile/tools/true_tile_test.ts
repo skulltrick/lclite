@@ -1,7 +1,7 @@
-// lclite:hover-tile functional test — runs the REAL core (files/webclient/src/client/
-// HoverTile.ts, the same file `apply` copies into the tree) headlessly:
+// lclite:true-tile functional test — runs the REAL core (files/webclient/src/dash3d/
+// TrueTile.ts, the same file `apply` copies into the tree) headlessly:
 //
-//   bun run mods/hover-tile/tools/hover_tile_test.ts        (from anywhere)
+//   bun run mods/true-tile/tools/true_tile_test.ts        (from anywhere)
 //
 // Set LCLITE_ROOT=<install> to test the copy inside an applied tree; it prints which
 // file it loaded either way.
@@ -26,20 +26,16 @@
 // the parity checks assert (a) no pixel is more than 1px from the other set, and
 // (b) every pixel more than 1px away from the ring's boundary is in the same class in
 // both. Nothing is asserted "approximately".
-//
-// The rasterizer no longer takes a clip rect: Pix3D clips scene geometry itself (the
-// x clamp under Pix3D.hclip, the y clamp at Pix2D.clipMaxY), which is the same
-// convention every ground triangle in the scene is drawn under.
 import path from 'node:path';
 
 const LCLITE = path.resolve(import.meta.dir, '../../..');
-const PAYLOAD = path.join(LCLITE, 'mods/hover-tile/files/webclient/src/client/HoverTile.ts');
+const PAYLOAD = path.join(LCLITE, 'mods/true-tile/files/webclient/src/dash3d/TrueTile.ts');
 const CORE = process.env.LCLITE_ROOT
-    ? path.join(process.env.LCLITE_ROOT, 'webclient/src/client/HoverTile.ts')
+    ? path.join(process.env.LCLITE_ROOT, 'webclient/src/dash3d/TrueTile.ts')
     : PAYLOAD;
 
-console.log('\nhover-tile test — core: ' + CORE);
-const H: any = await import(new URL('file://' + CORE.replace(/\\/g, '/')).href);
+console.log('\ntrue-tile test — core: ' + CORE);
+const T: any = await import(new URL('file://' + CORE.replace(/\\/g, '/')).href);
 
 let pass = 0, fail = 0;
 function ok(cond: boolean, msg: string, extra?: any) {
@@ -50,50 +46,51 @@ function eq(got: any, want: any, msg: string) { ok(JSON.stringify(got) === JSON.
 
 // ---- settings ---------------------------------------------------------------
 const store = (kv: Record<string, string>) => (key: string) => (key in kv ? kv[key] : null);
-const S = (kv: Record<string, string> = {}) => H.hoverTileSettings(store(kv));
-const look = (s: any) => [s.enabled, s.rgb, s.thick, s.fillA];
+const S = (kv: Record<string, string> = {}) => T.trueTileSettings(store(kv));
+const look = (s: any) => [s.enabled, s.rgb, s.thick, s.fillA, s.onlyDesync];
 
 console.log('\nsettings defaults (empty store = a fresh install)');
-eq(look(S()), [true, 0xffffff, 2, 20], 'defaults: on, white, 2px, 20% fill');
-eq(Object.keys(S()).sort(), ['enabled', 'fillA', 'rgb', 'thick'], 'the settings object has exactly the documented fields');
-eq(H.HOVER_TILE_DEFAULT_COLOR, '#ffffff', 'documented default colour is the panel default');
-eq([H.HOVER_TILE_DEFAULT_OUTLINE, H.HOVER_TILE_DEFAULT_FILL], [2, 20], 'documented default px/% match the panel rows');
+eq(look(S()), [true, 0x00ff00, 1, 0, false], 'defaults: on, green, 1px, no fill, always visible');
+eq(Object.keys(S()).sort(), ['enabled', 'fillA', 'onlyDesync', 'rgb', 'thick'], 'the settings object has exactly the documented fields');
+eq(T.TRUE_TILE_DEFAULT_COLOR, '#00ff00', 'documented default colour is the panel default');
+eq([T.TRUE_TILE_DEFAULT_OUTLINE, T.TRUE_TILE_DEFAULT_FILL], [1, 0], 'documented default px/% match the panel rows');
 
 console.log('\nmaster key');
-eq(S({ hoverTile: 'true' }).enabled, true, "'true' → on");
-eq(S({ hoverTile: 'false' }).enabled, false, "'false' → off");
-eq(S({ hoverTile: 'TRUE' }).enabled, true, 'anything else → on (only the literal false disables)');
-eq(S({ hoverTile: '' }).enabled, true, 'empty string → on');
+eq(S({ trueTile: 'true' }).enabled, true, "'true' → on");
+eq(S({ trueTile: 'false' }).enabled, false, "'false' → off");
+eq(S({ trueTile: 'TRUE' }).enabled, true, 'anything else → on (only the literal false disables)');
+eq(S({ trueTile: '' }).enabled, true, 'empty string → on');
 
 console.log('\ncolour: only a 7-char #rrggbb is accepted');
-eq(S({ hoverTileColor: '#00ff00' }).rgb, 0x00ff00, "'#00ff00' → 0x00ff00");
-eq(S({ hoverTileColor: '#FFFFFF' }).rgb, 0xffffff, "'#FFFFFF' parses (case-insensitive)");
-eq(S({ hoverTileColor: '#0a0B0c' }).rgb, 0x0a0b0c, "'#0a0B0c' mixed case parses");
-eq(S({ hoverTileColor: 'red' }).rgb, 0xffffff, "'red' → default");
-eq(S({ hoverTileColor: '#fff' }).rgb, 0xffffff, 'short hex → default');
-eq(S({ hoverTileColor: '#gggggg' }).rgb, 0xffffff, 'non-hex digits → default');
-eq(S({ hoverTileColor: '#1234567' }).rgb, 0xffffff, '8 chars → default');
-eq(S({ hoverTileColor: '#12345' }).rgb, 0xffffff, '6 chars → default');
-eq(S({ hoverTileColor: '#000000' }).rgb, 0x000000, 'black is a legal colour, not a falsy default');
+eq(S({ trueTileColor: '#00ff00' }).rgb, 0x00ff00, "'#00ff00' → 0x00ff00");
+eq(S({ trueTileColor: '#FF00FF' }).rgb, 0xff00ff, "'#FF00FF' parses (case-insensitive)");
+eq(S({ trueTileColor: 'red' }).rgb, 0x00ff00, "'red' → default green");
+eq(S({ trueTileColor: '#fff' }).rgb, 0x00ff00, 'short hex → default');
+eq(S({ trueTileColor: '#gggggg' }).rgb, 0x00ff00, 'non-hex digits → default');
+eq(S({ trueTileColor: '#000000' }).rgb, 0x000000, 'black is a legal colour, not a falsy default');
 
 console.log('\nborder px: clamped to 1..8, NaN/garbage → 1');
-eq(S({ hoverTileOutline: '1' }).thick, 1, "'1' → 1");
-eq(S({ hoverTileOutline: '8' }).thick, 8, "'8' → 8 (max)");
-eq(S({ hoverTileOutline: '0' }).thick, 1, "'0' → 1 (a zero-width border would be invisible)");
-eq(S({ hoverTileOutline: '-4' }).thick, 1, 'negative → 1');
-eq(S({ hoverTileOutline: '99' }).thick, 8, 'over max → 8');
-eq(S({ hoverTileOutline: 'abc' }).thick, 1, 'non-numeric → 1');
-eq(S({ hoverTileOutline: '' }).thick, 1, 'empty string → 1');
-eq(S({ hoverTileOutline: '3.9' }).thick, 3, 'parseInt truncates 3.9 → 3');
+eq(S({ trueTileOutline: '1' }).thick, 1, "'1' → 1");
+eq(S({ trueTileOutline: '8' }).thick, 8, "'8' → 8 (max)");
+eq(S({ trueTileOutline: '0' }).thick, 1, "'0' → 1 (a zero-width border would be invisible)");
+eq(S({ trueTileOutline: '-4' }).thick, 1, 'negative → 1');
+eq(S({ trueTileOutline: '99' }).thick, 8, 'over max → 8');
+eq(S({ trueTileOutline: 'abc' }).thick, 1, 'non-numeric → 1');
+eq(S({ trueTileOutline: '3.9' }).thick, 3, 'parseInt truncates 3.9 → 3');
 
 console.log('\nfill %: clamped to 0..100, NaN/negative → 0');
-eq(S({ hoverTileFill: '0' }).fillA, 0, "'0' → 0 (outline only)");
-eq(S({ hoverTileFill: '55' }).fillA, 55, "'55' → 55");
-eq(S({ hoverTileFill: '100' }).fillA, 100, "'100' → 100");
-eq(S({ hoverTileFill: '150' }).fillA, 100, 'over 100 → 100');
-eq(S({ hoverTileFill: '-5' }).fillA, 0, 'negative → 0');
-eq(S({ hoverTileFill: 'x' }).fillA, 0, 'non-numeric → 0');
-eq(S({ hoverTileFill: '' }).fillA, 0, 'empty string → 0');
+eq(S({ trueTileFill: '0' }).fillA, 0, "'0' → 0 (outline only)");
+eq(S({ trueTileFill: '55' }).fillA, 55, "'55' → 55");
+eq(S({ trueTileFill: '100' }).fillA, 100, "'100' → 100");
+eq(S({ trueTileFill: '150' }).fillA, 100, 'over 100 → 100');
+eq(S({ trueTileFill: '-5' }).fillA, 0, 'negative → 0');
+eq(S({ trueTileFill: 'x' }).fillA, 0, 'non-numeric → 0');
+
+console.log('\nonlyDesync (RuneLite\'s "hidden" behaviour)');
+eq(S({ trueTileOnlyDesync: 'true' }).onlyDesync, true, "'true' → hide while the model tile matches the server tile");
+eq(S({ trueTileOnlyDesync: 'false' }).onlyDesync, false, "'false' → always visible");
+eq(S({}).onlyDesync, false, 'unset → always visible (the default the mod shipped with)');
+eq(S({ trueTileOnlyDesync: '1' }).onlyDesync, false, 'anything else → off (only the literal true hides)');
 
 // ---- decal geometry ---------------------------------------------------------
 const W = 96, HG = 96;
@@ -106,7 +103,7 @@ type Tri = { xA: number; xB: number; xC: number; yA: number; yB: number; yC: num
 function emit(q: Quad, rgb: number, thick: number, fillA: number): Tri[] {
     const out: Tri[] = [];
     let n = 0;
-    H.hoverTileDecal((xA: number, xB: number, xC: number, yA: number, yB: number, yC: number, colour: number, trans: number) => {
+    T.trueTileDecal((xA: number, xB: number, xC: number, yA: number, yB: number, yC: number, colour: number, trans: number) => {
         out.push({ xA, xB, xC, yA, yB, yC, colour, trans, fill: fillA > 0 && n < 2 });
         n++;
     }, q.px, q.py, rgb, thick, fillA);
@@ -255,20 +252,20 @@ const sq = (x0: number, y0: number, x1: number, y1: number): Quad => ({ px: [x0,
 
 console.log('\ndecal: triangle budget and the trans contract');
 {
-    const plain = emit(sq(10, 10, 50, 50), 0xffffff, 2, 0);
+    const plain = emit(sq(10, 10, 50, 50), 0x00ff00, 2, 0);
     eq(plain.length, 8, 'outline only → the 4 ring quads (8 triangles)');
     eq(plain.every((t: Tri) => t.trans === 0), true, 'the ring is opaque (trans 0) in every triangle');
-    const filled = emit(sq(10, 10, 50, 50), 0xffffff, 2, 20);
+    const filled = emit(sq(10, 10, 50, 50), 0x00ff00, 2, 20);
     eq(filled.length, 10, 'with a fill → the 2 wash triangles + the ring');
-    eq(filled.slice(0, 2).every((t: Tri) => t.trans === 205), true, 'the default 20% fill → trans 205 (256 - round(20*256/100)) — the destination weight');
-    eq(emit(sq(10, 10, 50, 50), 0xffffff, 2, 100).slice(0, 2).map((t: Tri) => t.trans), [0, 0], 'fill 100% → trans 0, an exact overwrite');
-    eq(emit(sq(10, 10, 50, 50), 0xffffff, 2, 5).slice(0, 2).map((t: Tri) => t.trans), [243, 243], 'fill 5% → trans 243');
+    eq(filled.slice(0, 2).every((t: Tri) => t.trans === 205), true, 'fill 20% → trans 205 (256 - round(20*256/100)) — the destination weight');
+    eq(emit(sq(10, 10, 50, 50), 0x00ff00, 2, 100).slice(0, 2).map((t: Tri) => t.trans), [0, 0], 'fill 100% → trans 0, an exact overwrite');
+    eq(emit(sq(10, 10, 50, 50), 0x00ff00, 2, 5).slice(0, 2).map((t: Tri) => t.trans), [243, 243], 'fill 5% → trans 243');
 }
 
 console.log('\ndecal: axis-aligned quad');
 {
     const q = sq(10, 10, 50, 50), thick = 2, side = 40;
-    const tris = parity(q, 0xffffff, thick, 0, 'outline only');
+    const tris = parity(q, 0x00ff00, thick, 0, 'outline only');
     const { border, fill } = paint(tris);
     eq(fill.size, 0, 'no fill pixels at fill 0');
     eq(border.size, side * side - (side - 2 * thick) * (side - 2 * thick), 'border area = the quad minus its inner quad, T=2 → 304px');
@@ -358,13 +355,13 @@ console.log('\ndecal: degenerate input draws nothing and never throws');
 
 console.log('\ndecal: settings → decal integration');
 {
-    const s = S({ hoverTileColor: '#ff8800', hoverTileOutline: '4', hoverTileFill: '60' });
+    const s = S({ trueTileColor: '#ff8800', trueTileOutline: '4', trueTileFill: '60' });
     const tris = emit(sq(20, 20, 60, 60), s.rgb, s.thick, s.fillA);
     eq(tris.every((t: Tri) => t.colour === 0xff8800), true, 'the parsed colour reaches every triangle');
     eq(tris.slice(0, 2).map((t: Tri) => t.trans), [102, 102], 'the parsed 60% fill becomes trans 102');
     parity(sq(20, 20, 60, 60), s.rgb, s.thick, s.fillA, 'parsed settings');
-    const junk = S({ hoverTileColor: 'nope', hoverTileOutline: 'oops', hoverTileFill: '-1' });
-    eq([junk.rgb, junk.thick, junk.fillA], [0xffffff, 1, 0], 'a garbage store clamps to white / 1px / no fill');
+    const junk = S({ trueTileColor: 'nope', trueTileOutline: 'oops', trueTileFill: '-1' });
+    eq([junk.rgb, junk.thick, junk.fillA], [0x00ff00, 1, 0], 'a garbage store clamps to green / 1px / no fill');
     parity(sq(20, 20, 60, 60), junk.rgb, junk.thick, junk.fillA, 'clamped garbage');
 }
 

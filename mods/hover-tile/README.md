@@ -14,7 +14,7 @@ applies on the next frame — nothing here needs a rebuild or a reload.
 ## What's in the box
 
 - `files/webclient/src/client/HoverTile.ts` — the mod's **pure core** (settings parse +
-  the projected-quad rasterizer). It touches no client state, so the harness below runs
+  the projected-quad decal geometry). It touches no client state, so the harness below runs
   the real shipped logic headlessly. `apply` copies it verbatim; one import hunk in
   `Client.ts` pulls it into the bundle.
 - `patches/289/Client_ts.json` — FOUR hunks into `webclient/src/client/Client.ts`:
@@ -24,7 +24,7 @@ applies on the next frame — nothing here needs a rebuild or a reload.
      and **before** `world.renderAll()` — the pick has to be armed before the ground is
      rasterized;
   3. `this.hoverTileDraw()` right after `this.coordArrow()` — after `renderAll`, before
-     `areaGame.draw(4, 4)` (the true-tile ride);
+     `areaGame.draw(4, 4)`;
   4. the two methods, parked in the pristine gap after `getAvH()`.
 - `patches/289/World_ts.json` — FOUR hunks into `webclient/src/dash3d/World.ts`:
   1. the `hoverArmed`/`hoverMouseX`/`hoverMouseY`/`hoverX`/`hoverZ`/`hoverLevel` fields,
@@ -33,7 +33,7 @@ applies on the next frame — nothing here needs a rebuild or a reload.
      `renderGround()` (the legacy face path).
 - Panel rows: `MOD_REGISTRY` + three `MODS[]` rows for `hover-tile` in
   `mods/control-panel/files/engine/public/lclite/panel.js` (colour, border px, fill %).
-- `tools/hover_tile_test.ts` — 72-check bun harness (see *Verified*).
+- `tools/hover_tile_test.ts` — 104-check bun harness (see *Verified*).
 
 ## How the hovered tile is resolved (the design decision)
 
@@ -69,10 +69,13 @@ read at arm time, before any of it.
 
 ## Where it draws, and the level question
 
-`hoverTileDraw()` projects the hovered tile's four corners and rasterizes the square into
-the **game buffer** (`areaGame`, 512×334, composited at canvas 4,4) at the same stage
-true-tile draws: interfaces composite over it, and the gpu mod's HUD upload picks it up
-like hitbars/chat.
+`hoverTileDraw()` projects the hovered tile's four corners and draws the square **over the
+scene**, at the same stage it always did — after `World.renderAll`, before
+`areaGame.draw(4, 4)`. Interfaces composite over it (in software via `otherOverlays`, on a
+gpu frame because the HUD overlay is the last pass), and it is deliberately **not**
+occluded by the player: a hovered tile is a cursor highlight, so it should read on top.
+That is the one place this mod and `true-tile` differ — true-tile is ground geometry on
+the tile's own turn in the fill order and IS occluded.
 
 - **Projection.** `getOverlayPos()` measures the ground from the *player's* level. Rather
   than duplicating its camera math, the mod hands it the **per-corner height difference**:
@@ -86,6 +89,24 @@ like hitbars/chat.
   no level in scope, so it records `-1` and the client falls back to the player's own
   level; on such a tile the outline is the full tile square at the average ground height,
   which is also what RuneLite draws there.
+
+## The 2026-09-18 rework: Pix3D triangles, and why
+
+The square used to be rasterized per pixel straight into the game buffer. That is fine in
+software, but on a **gpu frame the buffer holds no world pixels** — it is sentinel-cleared
+and the world is drawn on the GPU — so the fill's in-place blend ran against black, and the
+HUD overlay then painted the result opaque. The visible symptom was a fill that "went from
+a darker colour to a lighter colour" as you raised the opacity, instead of washing the
+ground beneath it. Both tile mods had it; it was reported on this one.
+
+The fix is to stop writing pixels and emit **Pix3D triangles** carrying `Pix3D.trans`:
+that single value is BOTH the destination weight the software raster mixes with AND the
+per-triangle alpha the gpu mod captures, so the wash blends with the ground in either
+renderer. The tile is ten triangles at most (a two-triangle wash plus four mitred ring
+quads), whatever the skew; the border stays a screen-space `thick` px, and the geometry is
+one mod-owned copy of `true-tile`'s — neither mod calls the other's code, so either can
+fail on a revision without breaking the other. `mods/gpu/README.md` has the overlay
+contract this leans on.
 
 ## Settings contract
 
@@ -128,30 +149,32 @@ stale, hand-typed or half-written key clamps (colour → default unless it is a 
   while the rasterizer draws `groundh[level]`. On such a tile — bridge/dungeon-entrance
   ground, rare — the outline is drawn at the linked height, one level above the ground it
   covers. Every other tile is exact.
-- **A pixel on an edge counts as inside**, so a projected tile covers one pixel more than
-  its exact span on the far edges. Inherited from true-tile's proven rasterizer (the two
-  share this math deliberately, one mod-owned copy each — neither mod calls the other's
-  code, so either can fail on a rev without breaking the other).
+- **Clipping is Pix3D's now**, not the mod's own rect test: the raster clamps x under
+  `Pix3D.hclip` (which this mod sets, as every ground draw does) and y at
+  `Pix2D.clipMaxY`, exactly like every other triangle in the scene. On the two edges a
+  pixel of the projected quad lands differently than the old per-pixel pass did; the
+  harness measures that as ≤1px, in the parity checks.
 - **289 and 274 only.** `274` inherits the 289 corpus; `254` has its own corpus and this
   mod is not ported to it (same as camera, control-panel, hotkeys, stat-orbs and
   xp-drops). `node tools/port.mjs 254` is the one command that changes that.
 
 ## Verified
 
-- `tools/hover_tile_test.ts` — 72 checks, all green, run against both the `files/` payload
-  and the copy inside an applied tree. It covers the settings table (defaults, every
-  clamp, a garbage store) and the rasterizer against an **independent** float geometry
-  implementation (point-in-quad + perpendicular distance to the nearest edge): exact
-  pixel counts for axis-aligned quads, a uniform border on a 20°-rotated quad, vertex
-  order / winding independence, the in-place fill mix (0 %, 5 %, 20 %, 50 %, 100 %),
-  clip-rect respect (inside-the-quad boxes, half-cut boxes, off-screen quads) and
-  degenerate (zero-area, collinear, full-buffer) quads not throwing.
+- `tools/hover_tile_test.ts` — 104 checks, all green, run against both the `files/` payload
+  and the copy inside an applied tree. It covers the settings table (defaults, every clamp,
+  a garbage store) and the decal geometry against the mod's **own previous per-pixel
+  rasterizer**, kept in the harness as the parity oracle: for an axis-aligned quad, a
+  20°-rotated quad and a sheared one, in every vertex order and winding, no painted pixel
+  is more than 1px from the old implementation's set and every pixel clear of the ring's
+  boundary lands in the same class. Plus the exact triangle budget (8 without a fill, 10
+  with), the `trans` values (the default 20 % → 205, 100 % → 0), the thin-tile fallback,
+  and degenerate quads (zero-area, collinear) emitting nothing.
 - `tsc --noEmit` clean on the full tree, and clean with `apply --mods hover-tile` alone
   (the mod depends on no other mod).
 - `regen` twice byte-identical · `apply --check` ✗0 · `doctor` exit 0 · `matrix` green on
-  every declared revision (274 inherits all 112 hunks exactly) · `tools/acceptance.sh`
-  byte-compares a pristine clone at the pinned revs against the live install (22 files,
-  this mod's payload included) and proves the converge round-trip byte-stable.
+  every declared revision (274 inherits all 128 hunks exactly) · `tools/acceptance.sh`
+  byte-compares a pristine clone at the pinned revs against the live install (this mod's
+  payload included) and proves the converge round-trip byte-stable.
 - The shipped bundle carries the payload's key literals (`hoverTile`, `hoverTileColor`,
   `hoverTileOutline`, `hoverTileFill`) — the terser property mangler renames the mod's
   function names, never these strings, so the panel and the engine agree in prod.
