@@ -19,7 +19,10 @@
     "    </script>",
     "    <!-- lclite:tcg -->",
     "    <!-- lclite tcg mod (DOM layer; the engine side is bundled into client.js) -->",
-    "    <script src=\"/lclite/tcg/ui.js?v=8\" defer data-lctcg-ui=\"8\"></script>",
+    "    <!-- data-rev carries the engine's revision local (Environment.engine.revision,",
+    "         the same one the title/panel chip use) so the bundled core can gate the",
+    "         card catalog to this build; guarded, an empty value just means \"no gate\". -->",
+    "    <script src=\"/lclite/tcg/ui.js?v=9\" defer data-lctcg-ui=\"9\" data-rev=\"<%= typeof revision === 'number' ? revision : '' %>\"></script>",
     "",
     "</body>",
     ""

@@ -30,7 +30,17 @@
      returned to the page arrive with mangled keys;
    - the persisted save is likewise POSITIONAL ARRAYS + dynamic-key maps
      (numeric stat ids, card-name keys): fixed quoted keys would be mangled
-     per-build and orphan everyone's collections on the next rebuild. */
+     per-build and orphan everyone's collections on the next rebuild.
+
+   CARDS ARE REVISION-GATED. cards.json carries a release date on every card
+   plus the Lost City roadmap's revision -> release-date map (289 = 2005-01-17);
+   the core reads the ENGINE'S OWN revision off the page (the `revision` local
+   the engine renders client.ejs with, stamped on our script tag as data-rev —
+   see pageRevision below) and only ever shows or rolls cards released on or
+   before that build's date. A 289 install therefore cannot pull a Slayer card
+   (2005-01-26) while a future 291 install picks it up with no code change at
+   all. Dates and the map come from mods/tcg/tools/catalog_dates.mjs; cards the
+   wikis do not date are treated as unavailable and reported in the album. */
 (function (): void {
     const W: any = window as any;
     if (W['tcgInfo']) {
@@ -67,9 +77,9 @@
     const KEY_MASTER = 'tcg';           // this mod's master switch (its OWN key, rule 5)
     // ?v= cache key: 'force-cache' happily serves a STALE catalog forever (Brave
     // bit us exactly this way) — bump v with any cards.json format change.
-    const CAT_URL = '/lclite/tcg/cards.json?v=7';
-    const UI_SRC = '/lclite/tcg/ui.js?v=8';
-    const UI_VER = 8;                   // ui.js stamps window.__lctcgUi; stale UI is re-fetched+replaced
+    const CAT_URL = '/lclite/tcg/cards.json?v=8';
+    const UI_SRC = '/lclite/tcg/ui.js?v=9';
+    const UI_VER = 9;                   // ui.js stamps window.__lctcgUi; stale UI is re-fetched+replaced
 
     const TIER_LABELS = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Godly'];
 
@@ -141,14 +151,30 @@
 
     // ── catalog (fetched once; tiers derived at load, RarityMath parity) ─────
     // cards.json wire shape is POSITIONAL (terser-proof, see header):
-    //   top: [version, cards[]]   card: [0]name [1]tags[] [2]imageUrl [3]value [4]level
+    //   top: [version, cards[], revDates{ "289": 20050117, ... }]
+    //   card: [0]name [1]tags[] [2]imageUrl [3]value [4]level [5]released YYYYMMDD (0 = undated)
     // decorated at load (.k/.s/.r are internal-only, mangle consistently):
     //   .k name-key, .s score, .r tier 0..6
     let CAT: any = null;
-    let CAT_BY_KEY: Record<string, any> = {};
+    let CAT_BY_KEY: Record<string, any> = {};      // the REVISION-GATED catalog
+    let ALL_BY_KEY: Record<string, any> = {};      // every card, ungated — killLevel only
     let fetching = false;
     let failedAt = -1e12;   // "never failed" — must not be 0: early in page life
                             // performance.now() < the 20s backoff window itself
+
+    // The engine renders client.ejs with `revision` (Environment.engine.revision)
+    // — the same local the control panel's header chip reads — and our own ejs
+    // hunk stamps it on the ui.js tag, so any script[data-rev] carries it. An
+    // empty/absent value (stale engine, stripped hunk, a future rev the map does
+    // not know) means NO cutoff: the whole catalog stays live, exactly the
+    // pre-filter behaviour, instead of silently emptying the album.
+    function pageRevision(): number {
+        try {
+            const el = document.querySelector('script[data-rev]');
+            const v = el ? parseInt(el.getAttribute('data-rev') || '', 10) : 0;
+            return v > 0 ? v : 0;
+        } catch (e) { return 0; }
+    }
 
     function lowValue(v: any): boolean { return !v || v <= 1; }   // beta isLowValueTierExempt
     function isMonster(c: any): boolean { return !!(c[1] && c[1].indexOf('Monster') >= 0); }
@@ -213,13 +239,31 @@
     }
 
     function decodeCatalog(arr: any[]): any[] {
-        const cards: any[] = arr[1];
-        for (const c of cards) {
+        const all: any[] = arr[1];
+        const revDates: Record<string, number> = arr[2] || {};
+        for (const c of all) {
             c.k = c[0].toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
             c.s = scoreOf(c);
         }
-        assignTiers(cards);
-        return cards;
+        ALL_BY_KEY = {};
+        for (const c of all) { ALL_BY_KEY[c.k] = c; }
+        // revision gate: keep the cards this build could actually have
+        const rev = pageRevision();
+        const cutoff = revDates[rev] || 0;
+        const keep = cutoff ? all.filter((c: any) => c[5] > 0 && c[5] <= cutoff) : all;
+        const datedOut = cutoff ? all.filter((c: any) => c[5] > cutoff).length : 0;
+        const undatedOut = cutoff ? all.filter((c: any) => !(c[5] > 0)).length : 0;
+        // Tiers are percentiles WITHIN each category, so they are assigned over
+        // the gated pool: a 289 card's rarity is its rarity among 289 cards.
+        assignTiers(keep);
+        CAT = { version: arr[0], cards: keep, rev, cutoff, total: all.length, datedOut, undatedOut };
+        if (!cutoff) {
+            log('revision ' + (rev || '?') + ' has no cutoff in the catalog map — showing all ' + all.length + ' cards');
+        } else {
+            log('catalog v' + arr[0] + ' @ rev ' + rev + ' (' + cutoff + '): ' + keep.length + ' of ' + all.length +
+                ' cards (' + datedOut + ' released later, ' + undatedOut + ' undated)');
+        }
+        return keep;
     }
     function ensureCatalog(cb?: () => void): void {
         if (CAT) { if (cb) { cb(); } return; }
@@ -229,11 +273,9 @@
         fetch(CAT_URL, { cache: 'no-cache' })   // revalidate (304 keeps it cheap)
             .then(r => (r.ok ? r.json() : Promise.reject(new Error('http ' + r['status']))))
             .then((arr: any) => {
-                CAT = { version: arr[0], cards: decodeCatalog(arr) };
                 CAT_BY_KEY = {};
-                for (const c of CAT.cards) { CAT_BY_KEY[c.k] = c; }
+                for (const c of decodeCatalog(arr)) { CAT_BY_KEY[c.k] = c; }
                 fetching = false;
-                log('catalog v' + CAT.version + ': ' + CAT.cards.length + ' cards');
                 if (cb) { cb(); }
             })
             .catch((e: any) => {
@@ -387,8 +429,11 @@
 
     function killLevel(vislevel: number, typeName: string, totalHp: number): number {
         if (vislevel > 0 && vislevel < 32768) { return vislevel; }
-        if (CAT && typeName) {
-            const c = CAT_BY_KEY[typeName.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()];
+        // the UNGATED table: a monster the revision gate drops from the album
+        // (undated, or dated by a later wiki page for the same name) is still a
+        // monster this build can kill, and it must not start paying 1 credit.
+        if (typeName) {
+            const c = ALL_BY_KEY[typeName.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()];
             if (c && c[4] > 0) { return c[4]; }
         }
         if (totalHp >= 20 && totalHp <= 32700) { return totalHp; } // last resort: full hp as level
@@ -541,6 +586,70 @@
         });
         return true;
     }
+    // ── duplicate selling (shared by the reveal's pull-back offer and the album) ─
+    // One rule everywhere: the LAST copy of a card is never sellable, and foils
+    // are never sold (the reveal offer and the album both only ever decrement the
+    // non-foil count). Price is the beta's round(score)/200, floor 10.
+    function sellPrice(key: string): number {
+        const card = CAT_BY_KEY[key] || ALL_BY_KEY[key];
+        return Math.max(DUP_SELL_MIN, Math.round(card ? card.s : 0) / DUP_SELL_DIVISOR | 0);
+    }
+    // how many copies of `key` the album may sell right now (0 or 1 copy => none)
+    function sellableDupes(key: string): number {
+        const e = S && S[4][key];
+        return e && e[0] > 1 ? e[0] - 1 : 0;
+    }
+    // sell `n` duplicates of ONE card; returns credits gained (0 = nothing sold)
+    function sellCard(key: string, n: number): number {
+        load();
+        const e = S[4][key];
+        const count = Math.min(Math.max(0, Math.floor(n || 0)), sellableDupes(key));
+        if (!e || count <= 0) { return 0; }
+        const total = sellPrice(key) * count;
+        e[0] -= count;
+        S[0] += total;
+        S[5][2] += total;
+        markDirty();
+        flush();
+        W['tcgHudDirty'] = true;
+        return total;
+    }
+    // sell every duplicate of every card in one go; returns credits gained
+    function sellAllDuplicates(): number {
+        load();
+        let total = 0, sold = 0, kinds = 0;
+        for (const k in S[4]) {
+            const count = sellableDupes(k);
+            if (count <= 0) { continue; }
+            const got = sellPrice(k) * count;
+            S[4][k][0] -= count;
+            total += got;
+            sold += count;
+            kinds++;
+        }
+        if (total > 0) {
+            S[0] += total;
+            S[5][2] += total;
+            markDirty();
+            flush();
+            W['tcgHudDirty'] = true;
+            log('album: sold ' + sold + ' duplicates across ' + kinds + ' cards for ' + total + ' credits');
+        }
+        return total;
+    }
+    // album header: [credits available, cards sellable, distinct cards]
+    function sellSummary(): any {
+        load();
+        let credits = 0, cards = 0, kinds = 0;
+        for (const k in S[4]) {
+            const count = sellableDupes(k);
+            if (count <= 0) { continue; }
+            credits += sellPrice(k) * count;
+            cards += count;
+            kinds++;
+        }
+        return [credits, cards, kinds];
+    }
     function sellDuplicates(sell: Record<string, number>): number {
         load();
         let total = 0;
@@ -556,6 +665,7 @@
             S[5][2] += total;
             markDirty();
             flush();
+            W['tcgHudDirty'] = true;
         }
         return total;
     }
@@ -571,7 +681,14 @@
             openPack();
         } else if (sub === 'info') {
             const i = info();
-            toast('◈ ' + fmt(i[0]) + ' · packs ' + i[3] + ' · cards ' + i[11] + '/' + (i[13] ? fmt(i[13]) : '?') + ' · kills ' + fmt(i[16]) + ' · xp pool ' + i[1]);
+            const m = catalogMeta();
+            toast('◈ ' + fmt(i[0]) + ' · packs ' + i[3] + ' · cards ' + i[11] + '/' + (i[13] ? fmt(i[13]) : '?') +
+                ' · kills ' + fmt(i[16]) + ' · xp pool ' + i[1] + (m && m[6] ? ' · rev ' + m[5] : ''));
+        } else if (sub === 'sell') {
+            const s = sellSummary();
+            if (!s[0]) { toast('No duplicate cards to sell (one copy of every card is kept)'); return; }
+            const got = sellAllDuplicates();
+            toast('Sold ' + fmt(s[1]) + ' duplicates for +' + fmt(got) + ' credits');
         } else if (sub === 'give' && staff >= 2) {
             const n = clamp(parseInt(parts[1]) || 0, 1, 1000000);
             addCredits(n, 3, 'granted ' + fmt(n) + ' credits');
@@ -585,7 +702,7 @@
             load();
             toast('TCG collection reset for this account');
         } else if (sub === 'help') {
-            toast('::tcg [album|open|info|reset] · staff: give <n>, roll <seed>');
+            toast('::tcg [album|open|info|sell|reset] · staff: give <n>, roll <seed>');
         } else {
             toast('::tcg ' + sub + '? try ::tcg help');
         }
@@ -596,18 +713,28 @@
     //   [5]spent [6]earnedXp [7]earnedLvl [8]earnedDup [9]earnedGive [10]since
     //   [11]uniqueCards [12]catalogVersion|0 [13]catalogSize|0 [14]account
     //   [15]earnedKills [16]killCount
+    // [11] counts only cards THIS revision can hold — a collection saved before
+    // the gate (or on another revision) keeps its out-of-revision entries in
+    // localStorage but must not report them as discovered.
     function info(): any {
         load();
+        let unique = 0;
+        for (const k in S[4]) {
+            const e = S[4][k];
+            if (e && (e[0] > 0 || e[1] > 0) && CAT_BY_KEY[k]) { unique++; }
+        }
         return [
             S[0], S[1], PACK_PRICE, S[5][4], S[5][5], S[5][6],
             S[5][0], S[5][1], S[5][2], S[5][3] || 0, S[6],
-            Object.keys(S[4]).length,
+            unique,
             CAT ? CAT.version : 0, CAT ? CAT.cards.length : 0,
             ACCOUNT,
             S[5][7] || 0, S[5][8] || 0
         ];
     }
-    // albumRows() -> rows of [key, name, tier, tagsCsv, imageUrl, owned, foils]
+    // albumRows() -> rows of
+    //   [0]key [1]name [2]tier [3]tagsCsv [4]imageUrl [5]owned [6]foils
+    //   [7]unit sell price [8]sellable duplicates (0 unless owned > 1)
     function albumRows(search: string, tier: number, cat: string, ownedOnly: boolean): any[] {
         if (!CAT) { return []; }
         load();
@@ -620,7 +747,8 @@
         }
         const out = pool.map(c => {
             const e = S[4][c.k] || null;
-            return [c.k, c[0], c.r, (c[1] || []).join(','), c[2], e ? e[0] : 0, e ? e[1] : 0];
+            return [c.k, c[0], c.r, (c[1] || []).join(','), c[2], e ? e[0] : 0, e ? e[1] : 0,
+                sellPrice(c.k), sellableDupes(c.k)];
         });
         if (ownedOnly) {
             const owned = out.filter(o => o[5] > 0 || o[6] > 0);
@@ -632,6 +760,8 @@
         return out;
     }
     // catalogMeta() -> [version, cardCount, labels[], cats[[name,count]], tiers[[label,total,owned]]]
+    //   + [5]rev [6]cutoff(YYYYMMDD, 0 = ungated) [7]cards before the gate
+    //     [8]released after the cutoff [9]undated (also gated out)
     function catalogMeta(): any {
         if (!CAT) { return null; }
         load();
@@ -647,7 +777,8 @@
         }
         return [CAT.version, CAT.cards.length, TIER_LABELS.slice(),
             Object.keys(cats).sort().map(k => [k, cats[k]]),
-            TIER_LABELS.map((label, i) => [label, tiers[i], ownedTiers[i]])];
+            TIER_LABELS.map((label, i) => [label, tiers[i], ownedTiers[i]]),
+            CAT.rev, CAT.cutoff, CAT.total, CAT.datedOut, CAT.undatedOut];
     }
 
     // ── window surface (string keys: survive terser via bundle.ts reserves) ──
@@ -682,6 +813,9 @@
     W['tcgOpenPack'] = openPack;
     W['tcgRevealClosed'] = function (): void { OPENING = false; };
     W['tcgSellDuplicates'] = sellDuplicates;
+    W['tcgSellCard'] = sellCard;
+    W['tcgSellAllDupes'] = sellAllDuplicates;
+    W['tcgSellSummary'] = sellSummary;
     W['tcgCommand'] = command;
     W['tcgInfo'] = info;
     W['tcgAlbum'] = albumRows;

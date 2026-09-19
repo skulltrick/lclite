@@ -14,13 +14,28 @@
    read it) -> 'tcgHud' (the box itself) -> 'tcgHudCredits'/'tcgHudRate'/
    'tcgHudProgress' (each line of it; all three off hides the empty box). The
    control panel owns the switches; the album/pack actions there are the way in
-   when the box is hidden. */
+   when the box is hidden.
+
+   The ALBUM also SELLS DUPLICATES: every card with a spare copy gets a
+   `⇄ sell 1` button (one delegated listener on the grid — 600 cells re-render
+   on every keystroke, so per-cell listeners would leak), and the header carries
+   a "Sell all duplicates" action behind a confirm(). Both go through the core's
+   tcgSellCard/tcgSellAllDupes, which keep the last copy and never sell foils —
+   the same rule the pack reveal's pull-back offer has always used. The header
+   also prints the REVISION GATE the core applied ("rev 289 · cards released on
+   or before 2005-01-17") so a card that is missing because it postdates this
+   build reads as intended rather than as a bug. */
 (() => {
     'use strict';
 
     const TIER_COLORS = ['#f5f5f5', '#2ecc71', '#3498db', '#9b59b6', '#e74c3c', '#ff6ec7', '#f2c94c'];
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const fmt = n => Math.floor(n || 0).toLocaleString('en-US');
+    // album cell bits: the owned badge and the per-card duplicate sell button
+    const ownLabel = (own, foils) => `${own}${foils ? ' ✦' + foils : ''}`;
+    const sellBtnText = (dupes, price) => `⇄ sell 1 (+${fmt(price)})` + (dupes > 1 ? ` · ${dupes} spare` : '');
+    const sellBtn = (dupes, price) =>
+        `<button class="lctcg-sellbtn" title="Sell one duplicate copy for ${fmt(price)} credits — the last copy is kept and foils are never sold">${sellBtnText(dupes, price)}</button>`;
     const masterOn = () => (localStorage.getItem('tcg') || 'true') === 'true';
     // The control panel's HUD switches (panel.js writes them; this layer reads its
     // OWN keys at its own tick — rule 5, no hub). Absent key => the default below.
@@ -37,8 +52,11 @@
         I_SINCE = 10, I_UNIQUE = 11, I_CATSIZ = 13, I_ACCT = 14, I_EARN_KILL = 15, I_KILLS = 16;
     // pull[] indices: [key, name, tier, foil]
     const P_KEY = 0, P_NAME = 1, P_TIER = 2, P_FOIL = 3;
-    // album row[] indices: [key, name, tier, tags, img, owned, foils]
-    const A_NAME = 1, A_TIER = 2, A_IMG = 4, A_OWNED = 5, A_FOILS = 6;
+    // album row[] indices: [key, name, tier, tags, img, owned, foils, unit price, sellable dupes]
+    const A_NAME = 1, A_TIER = 2, A_IMG = 4, A_OWNED = 5, A_FOILS = 6, A_PRICE = 7, A_DUPES = 8;
+    // catalogMeta() indices: [version, cards, labels, cats, tiers, rev, cutoff, totalBefore, datedOut, undatedOut]
+    const M_VER = 0, M_CARDS = 1, M_LABELS = 2, M_CATS = 3, M_TIERS = 4,
+        M_REV = 5, M_CUTOFF = 6, M_TOTAL = 7, M_DATED = 8, M_UNDATED = 9;
 
     let root, hud, toastEl, scrim, albumEl;
     let hudCoins, hudRate, hudProg;
@@ -103,18 +121,24 @@
 .lctcg-cell .nm { font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px; }
 .lctcg-cell .tr { font-size: 8.5px; text-transform: uppercase; letter-spacing: .4px; color: var(--tc,#b8a67e); }
 .lctcg-cell .own { position: absolute; top: 3px; right: 5px; font-size: 10px; color: #ffe7a8; background: rgba(0,0,0,.65); border-radius: 4px; padding: 0 4px; }
+.lctcg-sellbtn { display: block; width: 100%; margin-top: 4px; background: #241d10; color: #cbb27f; border: 1px solid #4e3f27;
+    border-radius: 5px; padding: 2px 4px; font-size: 9.5px; cursor: pointer; }
+.lctcg-sellbtn:hover { background: #3a3120; color: #ffe7a8; }
+.lctcg-sellall { margin: 0; padding: 5px 12px; font-size: 12px; }
+.lctcg-sellall:disabled { opacity: .45; cursor: default; }
+.lctcg-gate { font-size: 10px; color: #6b5a3a; }
 .lctcg-tierbar { display: flex; gap: 10px; padding: 7px 14px; border-top: 1px solid #2c2517; font-size: 10.5px; flex-wrap: wrap; }
 `;
     document.head.appendChild(style);
 
     function build() {
-        window.__lctcgUi = 8;           // stamp the core checks (replace stale cached copies)
+        window.__lctcgUi = 9;           // stamp the core checks (replace stale cached copies)
         // stamp OUR script tag too (currentScript is live at defer execution; the
         // ejs tag also ships the attribute, and dynamic injection sets it at
         // create time) — without a tagged script the core's self-heal can't see
-        // us and injects a second copy (double HUD boot, console v8 twice)
+        // us and injects a second copy (double HUD boot, console v9 twice)
         try { if (document.currentScript) document.currentScript.setAttribute('data-lctcg-ui', String(window.__lctcgUi)); } catch (e) { /* empty */ }
-        console.log('[lclite:tcg] ui v8');
+        console.log('[lclite:tcg] ui v9');
         root = document.createElement('div');
         root.id = 'lctcg-root';
         root.innerHTML = `
@@ -306,9 +330,22 @@
     }
     function closeAlbum() { if (albumEl) { albumEl.classList.remove('open'); } }
 
+    // "289 · released on or before 2005-01-17" — the gate the core applied, so a
+    // missing card reads as "not in this build" rather than a bug.
+    function gateLabel(meta) {
+        const cut = meta[M_CUTOFF];
+        if (!cut) { return ''; }
+        const s = String(cut);
+        return 'rev ' + meta[M_REV] + ' · cards released on or before ' + s.slice(0, 4) + '-' + s.slice(4, 6) + '-' + s.slice(6, 8);
+    }
+    function gateTitle(meta) {
+        if (!meta[M_CUTOFF]) { return 'No revision cutoff for this build — every card is in play.'; }
+        return meta[M_DATED] + ' cards released after this build and ' + meta[M_UNDATED] + ' cards with no release date\n' +
+            'are not in this revision (catalog of ' + fmt(meta[M_TOTAL]) + ' cards).';
+    }
+
     function renderAlbum() {
-        const meta = window.tcgCatalogMeta();   // [version, cards, labels, cats, tiers]
-        const i = window.tcgInfo();
+        const meta = window.tcgCatalogMeta();   // [version, cards, labels, cats, tiers, rev, cutoff, ...]
         if (!meta) {
             albumEl.innerHTML = `<header><h3>Collection Album</h3><div class="stats">catalog unavailable — run <code>node tools/lclite.mjs apply</code></div></header>`;
             albumEl.classList.add('open');
@@ -318,32 +355,97 @@
         <header>
             <h3>Collection Album</h3>
             <input id="lctcg-q" placeholder="Search…" value="${esc(F.search)}">
-            <select id="lctcg-tier"><option value="-1">All rarities</option>${meta[2].map((l, t) => `<option value="${t}" ${F.tier === t ? 'selected' : ''}>${l}</option>`).join('')}</select>
-            <select id="lctcg-cat"><option value="">All categories</option>${meta[3].map(c => `<option value="${esc(c[0])}" ${F.cat === c[0] ? 'selected' : ''}>${esc(c[0])} (${fmt(c[1])})</option>`).join('')}</select>
+            <select id="lctcg-tier"><option value="-1">All rarities</option>${meta[M_LABELS].map((l, t) => `<option value="${t}" ${F.tier === t ? 'selected' : ''}>${l}</option>`).join('')}</select>
+            <select id="lctcg-cat"><option value="">All categories</option>${meta[M_CATS].map(c => `<option value="${esc(c[0])}" ${F.cat === c[0] ? 'selected' : ''}>${esc(c[0])} (${fmt(c[1])})</option>`).join('')}</select>
             <label style="font-size:11px;color:#b8a67e"><input type="checkbox" id="lctcg-owned" ${F.owned ? 'checked' : ''}> owned only</label>
+            <button class="lctcg-btn lctcg-sellall" id="lctcg-sellall"></button>
             <button class="lctcg-btn" id="lctcg-close">✕ Close</button>
-            <div class="stats">◈ ${fmt(i[I_CREDITS])} · ${fmt(i[I_UNIQUE])} / ${fmt(meta[1])} discovered · packs ${fmt(i[I_PACKS])}<br>
-            <span style="color:#6b5a3a">catalog v${esc(String(meta[0]))} · art © OSRS Wiki</span></div>
+            <div class="stats"><span id="lctcg-album-credits"></span><span id="lctcg-album-owned"></span><br>
+            <span class="lctcg-gate" id="lctcg-gate" title="${esc(gateTitle(meta))}">${esc(gateLabel(meta))}</span><br>
+            <span style="color:#6b5a3a">catalog v${esc(String(meta[M_VER]))} · art © OSRS Wiki</span></div>
         </header>
         <div class="lctcg-grid" id="lctcg-grid"></div>
-        <div class="lctcg-tierbar">${meta[4].map((t, idx) =>
-            `<span style="color:${TIER_COLORS[idx]}">${t[0]}: <b>${fmt(t[2])}/${fmt(t[1])}</b></span>`).join('')}</div>`;
+        <div class="lctcg-tierbar" id="lctcg-tierbar"></div>`;
         const grid = albumEl.querySelector('#lctcg-grid');
+        const sellAllBtn = albumEl.querySelector('#lctcg-sellall');
         let fillT = 0;
+        // header numbers (credits, discovered, per-tier progress) move with every
+        // sale, so they are re-derived rather than patched field by field.
+        function updateHeaderStats() {
+            const m = window.tcgCatalogMeta();
+            const i = window.tcgInfo();
+            if (!m || !i) { return; }
+            albumEl.querySelector('#lctcg-album-credits').textContent = '◈ ' + fmt(i[I_CREDITS]);
+            albumEl.querySelector('#lctcg-album-owned').textContent =
+                ' · ' + fmt(i[I_UNIQUE]) + ' / ' + fmt(m[M_CARDS]) + ' discovered · packs ' + fmt(i[I_PACKS]);
+            albumEl.querySelector('#lctcg-tierbar').innerHTML = m[M_TIERS].map((t, idx) =>
+                `<span style="color:${TIER_COLORS[idx]}">${t[0]}: <b>${fmt(t[2])}/${fmt(t[1])}</b></span>`).join('');
+        }
         function fill() {
             clearTimeout(fillT);
             fillT = setTimeout(() => {
                 const rows = window.tcgAlbum(F.search, F.tier, F.cat, F.owned);
+                const scroll = grid.scrollTop;      // innerHTML re-render must not jump the list
                 grid.innerHTML = rows.slice(0, 600).map(c => {
                     const owned = c[A_OWNED] + c[A_FOILS] > 0;
                     return `<div class="lctcg-cell ${owned ? 'disc' : 'undis'}" style="--tc:${TIER_COLORS[c[A_TIER]]}"
+                        data-k="${esc(c[0])}" data-own="${c[A_OWNED]}" data-foil="${c[A_FOILS]}" data-price="${c[A_PRICE]}"
                         title="${esc(c[A_NAME])}${owned ? ' — ' + c[A_OWNED] + '×' + (c[A_FOILS] ? ' +' + c[A_FOILS] + ' foil' : '') : ' — not discovered'}">
                         <div class="face"><img loading="lazy" src="${esc(c[A_IMG])}" alt="" onerror="this.style.display='none'"></div>
                         <div class="nm">${esc(c[A_NAME])}</div><div class="tr">${esc(window.tcgTierLabel(c[A_TIER]))}</div>
-                        ${owned ? `<div class="own">${c[A_OWNED]}${c[A_FOILS] ? ' ✦' + c[A_FOILS] : ''}</div>` : ''}</div>`;
+                        ${owned ? `<div class="own">${ownLabel(c[A_OWNED], c[A_FOILS])}</div>` : ''}
+                        ${c[A_DUPES] > 0 ? sellBtn(c[A_DUPES], c[A_PRICE]) : ''}</div>`;
                 }).join('') + (rows.length > 600 ? `<div style="color:#6b5a3a;padding:8px">… ${fmt(rows.length - 600)} more — refine the search</div>` : '');
+                grid.scrollTop = scroll;
+                updateSellAll();
+                updateHeaderStats();
             }, 120);
         }
+        function updateSellAll() {
+            const s = window.tcgSellSummary ? window.tcgSellSummary() : [0, 0, 0];
+            sellAllBtn.disabled = !s[0];
+            sellAllBtn.textContent = s[0]
+                ? `Sell all duplicates (+${fmt(s[0])} ◈)`
+                : 'No duplicates to sell';
+            sellAllBtn.title = s[0]
+                ? `Sell ${fmt(s[1])} duplicate card${s[1] > 1 ? 's' : ''} across ${fmt(s[2])} card${s[2] > 1 ? 's' : ''}.\nOne copy of every card is kept, and foils are never sold.`
+                : 'You have no spare copies right now.';
+        }
+        // one delegated handler: the grid holds up to 600 cells and re-renders
+        // wholesale, so per-cell listeners would leak with every search keystroke.
+        grid.addEventListener('click', e => {
+            const btn = e.target.closest('.lctcg-sellbtn');
+            if (!btn) { return; }
+            e.stopPropagation();
+            const cell = btn.closest('.lctcg-cell');
+            const key = cell.dataset.k;
+            const got = window.tcgSellCard ? window.tcgSellCard(key, 1) : 0;
+            if (!got) { bumpToast('Nothing to sell there'); return; }
+            const own = Math.max(0, (parseInt(cell.dataset.own, 10) || 0) - 1);
+            const foils = parseInt(cell.dataset.foil, 10) || 0;
+            const price = parseInt(cell.dataset.price, 10) || 0;
+            cell.dataset.own = String(own);
+            const badge = cell.querySelector('.own');
+            if (badge) { badge.textContent = ownLabel(own, foils); }
+            const dupes = Math.max(0, own - 1);
+            if (dupes > 0) { btn.textContent = sellBtnText(dupes, price); }
+            else { btn.remove(); }
+            updateHeaderStats();
+            updateSellAll();
+            bumpToast('Sold a duplicate for +' + fmt(got) + ' credits');
+        });
+        sellAllBtn.addEventListener('click', () => {
+            const s = window.tcgSellSummary();
+            if (!s[0]) { return; }
+            const ok = confirm('Sell ' + fmt(s[1]) + ' duplicate card' + (s[1] > 1 ? 's' : '') + ' for ' + fmt(s[0]) +
+                ' credits?\n\nOne copy of every card is kept, and foils are never sold.');
+            if (!ok) { return; }
+            const got = window.tcgSellAllDupes();
+            bumpToast('Sold ' + fmt(s[1]) + ' duplicates for +' + fmt(got) + ' credits');
+            updateHeaderStats();
+            fill();
+        });
+        updateHeaderStats();
         fill();
         albumEl.classList.add('open');
         albumEl.querySelector('#lctcg-close').addEventListener('click', closeAlbum);

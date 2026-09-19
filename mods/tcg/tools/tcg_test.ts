@@ -15,6 +15,16 @@ import fs from 'node:fs';
     removeItem: (k: string) => { delete LS[k]; }
 };
 (globalThis as any).performance = { now: () => Date.now() };
+// The revision gate reads the ENGINE'S revision off the page: any
+// script[data-rev] (our ejs tag carries it, and so does the control panel's).
+// Stub it here so the gate is exercised for real — TCG_TEST_REV=none simulates a
+// page that never got the tag (stale engine), which must leave the catalog whole.
+const TEST_REV = process.env.TCG_TEST_REV === 'none' ? 0 : parseInt(process.env.TCG_TEST_REV || '289', 10);
+(globalThis as any).document = {
+    querySelector: (sel: string) => (sel === 'script[data-rev]' && TEST_REV
+        ? { getAttribute: () => String(TEST_REV) }
+        : null)
+};
 (globalThis as any).crypto = { getRandomValues: (a: any) => { for (let i = 0; i < a.length; i++) a[i] = (Math.random() * 0xffffffff) >>> 0; return a; } };
 (globalThis as any).setInterval = () => 0;
 (globalThis as any).msCrypto = undefined;
@@ -66,13 +76,34 @@ await Bun.sleep(5200);   // outlast the login settle window
 W.tcgEnsureCatalog(() => {});
 await Bun.sleep(50);   // let the awaited fetch resolve + assignTiers run
 
-// ── catalog integrity ────────────────────────────────────────────────────────
+// ── catalog integrity + the revision gate ────────────────────────────────────
+const catJson: any = JSON.parse(catRaw);
+const allCards: any[] = catJson[1];
+const revDates: any = catJson[2] || {};
 const meta = W.tcgCatalogMeta();
-console.log('catalog v' + meta[0] + ' · ' + meta[1] + ' cards');
-ok(meta[1] > 6000, 'catalog loaded (' + meta[1] + ' cards)');
+const cutoff = TEST_REV ? (revDates[String(TEST_REV)] || 0) : 0;
+const expected = cutoff ? allCards.filter(c => c[5] > 0 && c[5] <= cutoff).length : allCards.length;
+console.log('catalog v' + meta[0] + ' · ' + meta[1] + ' cards · rev ' + (meta[5] || 'none') + ' · cutoff ' + (meta[6] || 'none'));
+ok(meta[1] === expected, 'catalog gated to rev ' + (TEST_REV || 'none') + ' (' + meta[1] + ' of ' + allCards.length + ')', meta[1]);
+ok(meta[7] === allCards.length, 'catalogMeta reports the ungated size', meta[7]);
+if (cutoff) {
+    ok(meta[8] === allCards.filter(c => c[5] > cutoff).length, 'catalogMeta counts cards released later', meta[8]);
+    ok(meta[9] === allCards.filter(c => !(c[5] > 0)).length, 'catalogMeta counts undated cards', meta[9]);
+    const rows = W.tcgAlbum('', -1, '', false);
+    ok(rows.length === expected, 'album lists exactly the gated cards', rows.length);
+    ok(!rows.some((r: any) => r[0] === 'abyssal demon'), 'post-cutoff card (abyssal demon, 2005-01-26) is gated out');
+    ok(rows.some((r: any) => r[0] === 'rune scimitar'), 'pre-cutoff card (rune scimitar) survives the gate');
+    ok(!rows.some((r: any) => r[0] === 'axe handle'), 'undated card (axe handle) is gated out');
+    const newest = allCards.filter(c => c[5] > 0 && c[5] <= cutoff).reduce((m, c) => Math.max(m, c[5]), 0);
+    ok(newest === cutoff, 'the newest kept card is dated exactly the cutoff (' + cutoff + ')', newest);
+} else {
+    ok(meta[1] === allCards.length && meta[6] === 0, 'no revision on the page → catalog left whole');
+    ok(W.tcgAlbum('', -1, '', false).length === allCards.length, 'album shows every card when ungated');
+}
 const tierTotals = meta[4].map((t: any) => t[1]);
 ok(tierTotals.every(n => n > 0), 'every rarity tier populated', tierTotals);
 ok(meta[4][6][1] < meta[4][0][1], 'Godly pool smaller than Common', { g: meta[4][6][1], c: meta[4][0][1] });
+ok(tierTotals.reduce((a, b) => a + b, 0) === meta[1], 'tier counts sum to the gated catalog', tierTotals.reduce((a, b) => a + b, 0));
 
 // ── xp → credits: 1,000 xp = 100 credits, remainder carries ───────────────────
 // pick a base xp where +2500 does NOT cross a level threshold, so the level-up
@@ -259,6 +290,72 @@ const disk = JSON.parse(LS['lcliteTcg']);
 ok(!!disk['roller'] && Object.keys(disk['roller'][4]).length > 0, 'collection persisted to localStorage', disk['roller'] ? Object.keys(disk['roller'][4]).length : 'none');
 const anyKey = Object.keys(disk['roller'][4])[0];
 ok(Array.isArray(disk['roller'][4][anyKey]), 'collection entry has [nonfoil,foil] counts', disk['roller'][4][anyKey]);
+
+// ── album duplicate selling ──────────────────────────────────────────────────
+// A hand-built save: 3 copies of one card (2 sellable), 1 copy + 2 foils of
+// another (nothing sellable — the last copy is kept and foils never sell).
+const SELL_A = 'rune scimitar', SELL_B = 'lobster', SELL_C = 'bones';
+LS['lcliteTcg'] = JSON.stringify({
+    seller: [0, 0, {}, {}, { [SELL_A]: [3, 0], [SELL_B]: [1, 2], [SELL_C]: [1, 0] }, [0, 0, 0, 0, 0, 0, 0], Date.now(), 0]
+});
+W.tcgSetAccount('seller');
+await Bun.sleep(50);
+{
+    const rows = W.tcgAlbum('', -1, '', false);
+    const rowA = rows.find((r: any) => r[0] === SELL_A);
+    const rowB = rows.find((r: any) => r[0] === SELL_B);
+    ok(!!rowA && rowA.length === 9, 'album row carries key..foils + price + sellable dupes', rowA && rowA.length);
+    ok(rowA[8] === 2, 'a 3-copy card offers 2 duplicates for sale', rowA[8]);
+    ok(rowA[7] > 0, 'sell price is a positive credit amount', rowA[7]);
+    ok(rowB[8] === 0, 'a 1-copy card with 2 foils offers nothing (foils are never sold)', rowB[8]);
+    const price = rowA[7];
+
+    const sum0 = W.tcgSellSummary();
+    ok(sum0[0] === price * 2 && sum0[1] === 2 && sum0[2] === 1, 'sell summary quotes 2 duplicates across 1 card', sum0);
+
+    const creditsBefore = W.tcgInfo()[0];
+    const dupBefore = W.tcgInfo()[8];
+    ok(W.tcgSellCard(SELL_A, 1) === price, 'selling one duplicate pays the quote', price);
+    ok(W.tcgInfo()[0] === creditsBefore + price, 'credits rose by exactly one sale', W.tcgInfo()[0] - creditsBefore);
+    ok(W.tcgSellCard(SELL_A, 99) === price, 'selling "all" of a card only takes its spares');
+    ok(W.tcgSellCard(SELL_A, 1) === 0, 'the last copy is never sellable', 0);
+    const after = W.tcgAlbum('rune scimitar', -1, '', false).find((r: any) => r[0] === SELL_A);
+    ok(after[5] === 1 && after[8] === 0, 'the card survives with exactly one copy', [after[5], after[8]]);
+    ok(W.tcgInfo()[8] === dupBefore + price * 2, 'dup-sale earnings track both sales', W.tcgInfo()[8] - dupBefore);
+
+    // a second sellable card, then the bulk action (same account: rewrite the
+    // save and let tcgSetAccount force a reload)
+    const all = JSON.parse(LS['lcliteTcg']);
+    all.seller[4][SELL_C] = [4, 0];
+    LS['lcliteTcg'] = JSON.stringify(all);
+    W.tcgSetAccount('seller');
+    await Bun.sleep(50);
+    const bulkSum = W.tcgSellSummary();
+    ok(bulkSum[1] === 3, 'sell summary sees the newly added spares', bulkSum);
+    const bulkCredits = W.tcgInfo()[0];
+    const got = W.tcgSellAllDupes();
+    ok(got === bulkSum[0] && got > 0, 'sell-all pays exactly the quoted total', [got, bulkSum[0]]);
+    ok(W.tcgInfo()[0] === bulkCredits + got, 'sell-all credits land on the balance', W.tcgInfo()[0] - bulkCredits);
+    ok(W.tcgSellSummary()[0] === 0, 'nothing is left to sell afterwards');
+    const kept = W.tcgAlbum('', -1, '', false).filter((r: any) => r[5] > 0 || r[6] > 0);
+    ok(kept.every((r: any) => r[5] >= 1 || r[6] > 0), 'every owned card keeps at least one copy', kept.length);
+    ok(W.tcgSellAllDupes() === 0, 'a second sell-all is a no-op');
+}
+
+// ── kill credits survive the gate (the ungated name→level table) ─────────────
+{
+    const gatedOut = cutoff ? allCards.find((c: any) => c[5] > cutoff && c[4] > 0 && /goblin|demon|guard/i.test(String(c[0]))) : null;
+    if (gatedOut) {
+        W.tcgSetAccount('gatekill');
+        await Bun.sleep(5200);       // outlast the login settle window (kills there pay nothing)
+        const b = W.tcgInfo()[0];
+        W.tcgEngageNpc(90, 8000);
+        W.tcgNpcHit(90, 0, 999, 8005, -1, gatedOut[0]);
+        ok(W.tcgInfo()[0] === b + gatedOut[4], 'a gated-out monster still pays its card level', [gatedOut[0], gatedOut[4]]);
+    } else {
+        ok(true, 'no gated-out monster card to check (ungated run or none in catalog)');
+    }
+}
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
