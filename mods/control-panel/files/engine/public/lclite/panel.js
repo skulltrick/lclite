@@ -87,7 +87,7 @@
               return s.tris + '△ · ' + s.batches + ' calls · ' + s.ms + 'ms';
           } },
         { id: 'xp-drops', name: 'XP drops', desc: 'Customizable XP drops.', master: { key: 'xpDrops', def: 'true' } },
-        { id: 'stat-orbs', name: 'Stat orbs', desc: 'HP/Prayer/Run data orbs on the minimap panel. Alt+drag to move them.', master: { key: 'statOrbs', def: 'false' } },
+        { id: 'stat-orbs', name: 'Stat orbs', desc: 'HP/Prayer/Run data orbs on the minimap panel. Click the run orb to toggle run, the prayer orb for the prayer book. Alt+drag to move them.', master: { key: 'statOrbs', def: 'false' } },
         { id: 'true-tile', name: 'True tile', desc: "Highlights player's true server tile. Customizable.", master: { key: 'trueTile', def: 'true' } },
         { id: 'true-tile-plus', name: 'True tile+', desc: 'Ground effects on your true tile: flat flames licking off its border, or a ripple wave sweeping out of it.', master: { key: 'trueTilePlus', def: 'true' } },
         { id: 'hover-tile', name: 'Hover tile', desc: 'Highlights the tile your mouse is over. Customizable.', master: { key: 'hoverTile', def: 'true' } },
@@ -159,9 +159,12 @@
         // them apply live, size included. The placement keys (lcmStatOrbs*) belong to the
         // drag layer, so the reset row below asks IT to clear them (never a 2nd writer).
         { id: 'orbs-size', mod: 'stat-orbs', name: 'Orb size', desc: 'Diameter of each data orb. The column re-spreads to fill the panel strip.', key: 'statOrbsSize', kind: 'slider', min: 20, max: 28, step: 2, def: '22', unit: 'px' },
+        { id: 'orbs-number-size', mod: 'stat-orbs', name: 'Number size', desc: 'How large the HP/Prayer/Run readouts are drawn. Bigger digits need more of the panel strip, so the orb column shifts further right, over the map.', key: 'statOrbsNumberScale', kind: 'slider', min: 1, max: 3, step: 1, def: '1', unit: 'x' },
         { id: 'orbs-numbers', mod: 'stat-orbs', name: 'Orb numbers', desc: 'Where the HP/Prayer/Run readouts go: to the left of each orb (OSRS), inside the orb, or hidden.', kind: 'select', key: 'statOrbsNumbers', def: 'left', options: [['left', 'Left of orb'], ['inside', 'Inside orb'], ['hidden', 'Hidden']], apply(v) { LS.set('statOrbsNumbers', v); } },
         { id: 'orbs-fill', mod: 'stat-orbs', name: 'Fill style', desc: 'Liquid level (OSRS: drains downward as the stat falls) or a clockwise pie sweep from the top.', kind: 'select', key: 'statOrbsFill', def: 'liquid', options: [['liquid', 'Liquid level'], ['pie', 'Pie sweep']], apply(v) { LS.set('statOrbsFill', v); } },
         { id: 'orbs-pulse', mod: 'stat-orbs', name: 'Low HP warning', desc: 'Flash the Hitpoints orb while you are below a quarter health (OSRS behaviour).', key: 'statOrbsPulse', kind: 'toggle', def: 'true' },
+        { id: 'orbs-run-click', mod: 'stat-orbs', name: 'Run orb toggles run', desc: 'Click the Run energy orb to turn run on or off — the same click the options tab sends. The orb glass lightens while run is on.', key: 'statOrbsRunClick', kind: 'toggle', def: 'true' },
+        { id: 'orbs-prayer-panel', mod: 'stat-orbs', name: 'Prayer book on the orb', desc: 'Click the Prayer orb to open the prayer book over the minimap: all fifteen prayers, drawn with the icons the game already has. Click a prayer to toggle it; click the orb or the panel again to close.', key: 'statOrbsPrayerPanel', kind: 'toggle', def: 'true' },
         { id: 'orbs-hp-color', mod: 'stat-orbs', name: 'Hitpoints color', desc: 'Liquid color of the Hitpoints orb.', kind: 'color', key: 'statOrbsHpColor', def: '#e82623' },
         { id: 'orbs-prayer-color', mod: 'stat-orbs', name: 'Prayer color', desc: 'Liquid color of the Prayer orb.', kind: 'color', key: 'statOrbsPrayerColor', def: '#d9a318' },
         { id: 'orbs-run-color', mod: 'stat-orbs', name: 'Run energy color', desc: 'Liquid color of the Run energy orb.', kind: 'color', key: 'statOrbsRunColor', def: '#71c8e8' },
@@ -194,7 +197,7 @@
             if (typeof hideControls === 'function') hideControls(); else toast('No legacy bar present');
         } },
         { id: 'reset-all', mod: 'control-panel', name: 'Reset all lclite settings', desc: 'Clears every toggle/zoom/placement and reloads.', kind: 'action', run() {
-            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'antiCheat', 'gpu', 'statOrbs', 'statOrbsSize', 'statOrbsNumbers', 'statOrbsFill', 'statOrbsPulse', 'statOrbsHpColor', 'statOrbsPrayerColor', 'statOrbsRunColor', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'hoverTile', 'hoverTileColor', 'hoverTileOutline', 'hoverTileFill', 'lcliteLegacyBar', 'tcg', 'tcgHud', 'tcgHudCredits', 'tcgHudRate', 'tcgHudProgress', 'lclitePanelMod', 'lclitePanelPinned',
+            ['camera', 'wheelZoom', 'middleRotate', 'wheelScrollChat', 'cameraZoom', 'antiCheat', 'gpu', 'statOrbs', 'statOrbsSize', 'statOrbsNumberScale', 'statOrbsNumbers', 'statOrbsFill', 'statOrbsPulse', 'statOrbsRunClick', 'statOrbsPrayerPanel', 'statOrbsHpColor', 'statOrbsPrayerColor', 'statOrbsRunColor', 'xpDrops', 'trueTile', 'trueTileColor', 'trueTileOutline', 'trueTileFill', 'trueTileOnlyDesync', 'hoverTile', 'hoverTileColor', 'hoverTileOutline', 'hoverTileFill', 'lcliteLegacyBar', 'tcg', 'tcgHud', 'tcgHudCredits', 'tcgHudRate', 'tcgHudProgress', 'lclitePanelMod', 'lclitePanelPinned',
                 'canvasSize', 'canvasScale', 'canvasAutoFit', 'filtering', 'hideRoofs', 'lowDetail', 'shiftDrop', 'wikiLookup', 'wikiLookupButton', 'wikiLookupMenu', 'wikiLookupStyle', 'noCensor'].forEach(k => localStorage.removeItem(k));
             // ground-items: wiped by prefix so its two free-text name lists go too
             Object.keys(localStorage).filter(k => k.indexOf('groundItems') === 0).forEach(k => localStorage.removeItem(k));

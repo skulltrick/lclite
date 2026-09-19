@@ -94,6 +94,12 @@
     "marker": true
    },
    {
+    "mod": "stat-orbs",
+    "note": "src/client/Client.ts @ old line 23",
+    "line": 23,
+    "marker": true
+   },
+   {
     "mod": "ground-items",
     "note": "src/client/Client.ts @ old line 28",
     "line": 28,
@@ -241,6 +247,12 @@
     "mod": "wiki-lookup",
     "note": "src/client/Client.ts @ old line 2598",
     "line": 2598,
+    "marker": true
+   },
+   {
+    "mod": "stat-orbs",
+    "note": "src/client/Client.ts @ old line 2743",
+    "line": 2743,
     "marker": true
    },
    {

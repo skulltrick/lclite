@@ -19,6 +19,7 @@
 | webclient/src/client/Client.ts | 4 | tcg | `// lclite:tcg` |
 | webclient/src/client/Client.ts | 11 | hotkeys | `// lclite:hotkeys` |
 | webclient/src/client/Client.ts | 19 | wiki-lookup | `` |
+| webclient/src/client/Client.ts | 23 | stat-orbs | `// lclite:stat-orbs` |
 | webclient/src/client/Client.ts | 28 | ground-items | `` |
 | webclient/src/client/Client.ts | 71 | hover-tile | `// lclite:hover-tile` |
 | webclient/src/client/Client.ts | 87 | xp-drops | `/* ─── custom (lclite "xp-drops" mod) tunables ──────────────────────────────── ` |
@@ -44,6 +45,7 @@
 | webclient/src/client/Client.ts | 2513 | wiki-lookup | `// lclite:wiki-lookup` |
 | webclient/src/client/Client.ts | 2568 | wiki-lookup | `// lclite:wiki-lookup` |
 | webclient/src/client/Client.ts | 2598 | wiki-lookup | `// lclite:wiki-lookup` |
+| webclient/src/client/Client.ts | 2743 | stat-orbs | `// custom (lclite "stat-orbs" mod): the orb column and its prayer book sit ON th` |
 | webclient/src/client/Client.ts | 2942 | anti-cheat | `// lclite:anti-cheat` |
 | webclient/src/client/Client.ts | 3091 | tcg | `// lclite:tcg — ::tcg opens the album; staff subcommands (give/roll)` |
 | webclient/src/client/Client.ts | 3227 | camera | `// custom: smooth the wheel zoom toward its target (OSRS-style easing) lclite:ca` |
