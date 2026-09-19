@@ -89,6 +89,7 @@
         { id: 'xp-drops', name: 'XP drops', desc: 'Customizable XP drops.', master: { key: 'xpDrops', def: 'true' } },
         { id: 'stat-orbs', name: 'Stat orbs', desc: 'HP/Prayer/Run data orbs on the minimap panel. Alt+drag to move them.', master: { key: 'statOrbs', def: 'false' } },
         { id: 'true-tile', name: 'True tile', desc: "Highlights player's true server tile. Customizable.", master: { key: 'trueTile', def: 'true' } },
+        { id: 'true-tile-plus', name: 'True tile+', desc: 'Ground effects on your true tile: flat flames licking off its border.', master: { key: 'trueTilePlus', def: 'true' } },
         { id: 'hover-tile', name: 'Hover tile', desc: 'Highlights the tile your mouse is over. Customizable.', master: { key: 'hoverTile', def: 'true' } },
         { id: 'tcg', name: 'TCG', desc: 'Left click opens pack, right click opens album. 1k exp = 100 credits, level ups = 1k-25k credits, kills = 1 credit per cb lvl.', master: { key: 'tcg', def: 'true' },
           status() {
@@ -137,6 +138,11 @@
         { id: 'true-tile-outline', mod: 'true-tile', name: 'Border thickness', desc: 'Width of the true-tile outline, in pixels.', key: 'trueTileOutline', kind: 'slider', min: 1, max: 8, step: 1, def: '1', unit: 'px' },
         { id: 'true-tile-fill', mod: 'true-tile', name: 'Fill opacity', desc: 'Translucent color wash inside the tile (OSRS fill style). 0 = outline only.', key: 'trueTileFill', kind: 'slider', min: 0, max: 100, step: 5, def: '0', unit: '%' },
         { id: 'true-tile-desync', mod: 'true-tile', name: 'Only when out of sync', desc: 'Hide the tile while your model stands on the server tile — pops up only when the tick is visibly delayed.', key: 'trueTileOnlyDesync', kind: 'toggle', def: 'false' },
+        // true-tile-plus: ground effects on the same true tile, with its OWN keys (rule 5 —
+        // it never reads true-tile's). Both rows are re-read by the engine every frame at
+        // its own hook, so a change lands on the next frame.
+        { id: 'true-tile-plus-effect', mod: 'true-tile-plus', name: 'Ground effect', desc: 'Which effect rides your true tile. More effects land in this list as they ship.', kind: 'select', key: 'trueTilePlusEffect', def: 'flames', options: [['flames', 'Flames'], ['none', 'None']], apply(v) { LS.set('trueTilePlusEffect', v); } },
+        { id: 'true-tile-plus-color', mod: 'true-tile-plus', name: 'Effect color', desc: 'Color of the ground effect (flames). Black reads as black fire on most ground.', kind: 'color', key: 'trueTilePlusColor', def: '#000000' },
         // hover-tile: the same contract as true-tile's rows — the engine re-reads its
         // own keys every frame at its own hook, so all three apply live.
         { id: 'hover-tile-color', mod: 'hover-tile', name: 'Outline color', desc: 'Color of the hover-tile border.', kind: 'color', key: 'hoverTileColor', def: '#ffffff' },
@@ -188,6 +194,8 @@
             Object.keys(localStorage).filter(k => k.indexOf('groundItems') === 0).forEach(k => localStorage.removeItem(k));
             // hotkeys: wiped by prefix so every current AND future keybind resets too
             Object.keys(localStorage).filter(k => k.indexOf('hotkeys') === 0).forEach(k => localStorage.removeItem(k));
+            // true-tile-plus: wiped by prefix so every current AND future effect key resets too
+            Object.keys(localStorage).filter(k => k.indexOf('trueTilePlus') === 0).forEach(k => localStorage.removeItem(k));
             // placement keys are namespaced lcm* (drag layer + owners): wipe by
             // prefix so every current AND future movable surface resets too
             Object.keys(localStorage).filter(k => k.startsWith('lcm')).forEach(k => localStorage.removeItem(k));

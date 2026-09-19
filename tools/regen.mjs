@@ -74,6 +74,14 @@ const MODS = {
         'webclient/src/client/Client.ts',
         'webclient/src/dash3d/World.ts'
     ],
+    'true-tile-plus': [
+        // the ground effects ride the true tile the same way true-tile's square does:
+        // Client.ts arms the tile once per frame, World.fill() draws the effect on that
+        // tile's own turn (World.trueTilePlusDraw). The effect geometry + settings ship
+        // as the files/ payload dash3d/TrueTilePlus.ts, pulled in by the import hunk.
+        'webclient/src/client/Client.ts',
+        'webclient/src/dash3d/World.ts'
+    ],
     'hover-tile': [
         // the hover pick is resolved by the engine's own ground rasterizer, so this
         // mod is the second one to touch World.ts (camera is the other) — the pick

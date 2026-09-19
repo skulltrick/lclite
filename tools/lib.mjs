@@ -96,6 +96,11 @@ export const MOD_META = {
         // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this)
         desc: 'Labels on the items lying on the ground. Hold Alt to see every item and click the - / + boxes to hide or show one.',
     },
+    'true-tile-plus': {
+        label: 'True tile+',
+        // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this)
+        desc: 'Ground effects on your true tile: flat flames licking off its border.',
+    },
 };
 
 export const meta = name => MOD_META[name] || { label: name, desc: '', required: false };

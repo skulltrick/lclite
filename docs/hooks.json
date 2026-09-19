@@ -286,6 +286,12 @@
     "marker": true
    },
    {
+    "mod": "true-tile-plus",
+    "note": "src/client/Client.ts @ old line 4210",
+    "line": 4210,
+    "marker": true
+   },
+   {
     "mod": "true-tile",
     "note": "src/client/Client.ts @ old line 4237",
     "line": 4237,
@@ -540,6 +546,12 @@
   ],
   "webclient/src/dash3d/World.ts": [
    {
+    "mod": "true-tile-plus",
+    "note": "src/dash3d/World.ts @ old line 11",
+    "line": 11,
+    "marker": true
+   },
+   {
     "mod": "true-tile",
     "note": "src/dash3d/World.ts @ old line 22",
     "line": 22,
@@ -561,6 +573,12 @@
     "mod": "true-tile",
     "note": "src/dash3d/World.ts @ old line 505",
     "line": 505,
+    "marker": true
+   },
+   {
+    "mod": "true-tile-plus",
+    "note": "src/dash3d/World.ts @ old line 588",
+    "line": 588,
     "marker": true
    },
    {
@@ -669,6 +687,12 @@
     "mod": "true-tile",
     "note": "src/dash3d/World.ts @ old line 1491",
     "line": 1491,
+    "marker": true
+   },
+   {
+    "mod": "true-tile-plus",
+    "note": "src/dash3d/World.ts @ old line 1494",
+    "line": 1494,
     "marker": true
    },
    {

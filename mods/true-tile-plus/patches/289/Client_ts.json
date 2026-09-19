@@ -1,0 +1,48 @@
+{
+ "file": "webclient/src/client/Client.ts",
+ "mod": "true-tile-plus",
+ "rev": "289",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "a52b321a9f42530f3dd2f1a02cd335c955791a12"
+ },
+ "hunks": [
+  {
+   "find": [
+    "        const camYaw: number = this.camYaw;",
+    "",
+    "        for (let axis: number = 0; axis < 5; axis++) {",
+    "            if (!this.camShake[axis]) {"
+   ],
+   "replace": [
+    "        const camYaw: number = this.camYaw;",
+    "",
+    "// lclite:true-tile-plus",
+    "/// custom (lclite \"true-tile-plus\" mod): hand World the true tile — the head of the",
+    "/// local move queue (routeX/routeZ[0]), the same tile mods/true-tile outlines — so",
+    "/// the ground effects can be drawn on that tile's OWN turn in the scene fill order",
+    "/// (World.trueTilePlusDraw, from fill()), where the player's model and every nearer",
+    "/// tile cover them. Only the tile and the level cross over: the effect's settings and",
+    "/// geometry live in the mod's files/ payload and are read World-side, at that hook",
+    "/// (rule 5). Armed up here rather than beside the other arms because a hunk's edit",
+    "/// site must stay >=3 untouched lines clear of its neighbours', and true-tile's arm",
+    "/// and hover-tile's sit inside the camera-shake block below this one.",
+    "if (this.localPlayer) {",
+    "    World.trueTilePlusArm(this.localPlayer.routeX[0], this.localPlayer.routeZ[0], this.minusedlevel);",
+    "}",
+    "// lclite:true-tile-plus:end",
+    "",
+    "        for (let axis: number = 0; axis < 5; axis++) {",
+    "            if (!this.camShake[axis]) {"
+   ],
+   "note": "src/client/Client.ts @ old line 4210",
+   "occ": 1,
+   "pos": [
+    4210,
+    0,
+    4208,
+    4211
+   ]
+  }
+ ]
+}

@@ -51,6 +51,7 @@
 | webclient/src/client/Client.ts | 4000 | wiki-lookup | `// lclite:wiki-lookup` |
 | webclient/src/client/Client.ts | 4174 | low-detail | `// lclite:low-detail` |
 | webclient/src/client/Client.ts | 4193 | camera | `// custom: uniform zoom — the entire camera-relative geometry (orbit distance lc` |
+| webclient/src/client/Client.ts | 4210 | true-tile-plus | `// lclite:true-tile-plus` |
 | webclient/src/client/Client.ts | 4237 | true-tile | `// lclite:true-tile` |
 | webclient/src/client/Client.ts | 4242 | hover-tile | `// lclite:hover-tile` |
 | webclient/src/client/Client.ts | 4248 | hover-tile | `// lclite:hover-tile` |
@@ -93,10 +94,12 @@
 | webclient/src/client/Client.ts | 11449 | stat-orbs | `// custom: OSRS-style stat orbs (lclite TYPE B hook — see lclite/docs/MODS.md) l` |
 | webclient/src/client/Client.ts | 11686 | camera | `/// custom: OSRS-style mouse wheel zoom. Scroll up = zoom in, scroll down = zoom` |
 | webclient/src/client/Client.ts | 11694 | shift-drop | `// lclite:shift-drop` |
+| webclient/src/dash3d/World.ts | 11 | true-tile-plus | `// lclite:true-tile-plus` |
 | webclient/src/dash3d/World.ts | 22 | true-tile | `// lclite:true-tile` |
 | webclient/src/dash3d/World.ts | 114 | hover-tile | `// lclite:hover-tile` |
 | webclient/src/dash3d/World.ts | 117 | camera | `/// custom: camera zoom. visBacking is precomputed at the default camera distanc` |
 | webclient/src/dash3d/World.ts | 505 | true-tile | `// lclite:true-tile` |
+| webclient/src/dash3d/World.ts | 588 | true-tile-plus | `// lclite:true-tile-plus` |
 | webclient/src/dash3d/World.ts | 950 | camera | `// lclite:camera` |
 | webclient/src/dash3d/World.ts | 954 | camera | `/// custom: disarm the ground pick once its destination has been consumed, so th` |
 | webclient/src/dash3d/World.ts | 967 | camera | `// custom: the ground pick stays armed after a walk click and re-resolves every ` |
@@ -115,6 +118,7 @@
 | webclient/src/dash3d/World.ts | 1312 | camera | `// lclite:camera` |
 | webclient/src/dash3d/World.ts | 1367 | camera | `// custom: live probe when zoomed (table stale), else cached row lclite:camera` |
 | webclient/src/dash3d/World.ts | 1491 | true-tile | `// lclite:true-tile` |
+| webclient/src/dash3d/World.ts | 1494 | true-tile-plus | `// lclite:true-tile-plus` |
 | webclient/src/dash3d/World.ts | 2003 | hover-tile | `// lclite:hover-tile` |
 | webclient/src/dash3d/World.ts | 2055 | hover-tile | `// lclite:hover-tile` |
 | webclient/src/dash3d/World.ts | 2141 | hover-tile | `// lclite:hover-tile` |
