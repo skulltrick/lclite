@@ -37,15 +37,17 @@ With nothing installed the launcher opens a five-step wizard instead of the full
 dashboard — the goal is that someone who has never seen a terminal can get to the
 game:
 
-1. **Welcome** — what this is, what it costs you (one file, nothing installed),
-   and an aside listing the mods that come with it.
+1. **Welcome** — what this is, what it costs you (no runtime, nothing installed),
+   and an aside stating the one promise that matters: the mods are one overlay you
+   can switch off, written for the primary revision and ported to the rest.
 2. **Which revision?** — playable revisions only, the recommended one
    pre-selected and explained ("the one Lost City is developing right now"), three
    visible at a time with the rest a scroll away, client-only branches tucked
-   behind a disclosure.
+   behind a disclosure. Each card says how much of the mod set that revision really
+   gets: the full set, some of it, or none.
 3. **What you're getting** — the three things it will do (download, install
-   dependencies, build), plus the mod list when the revision supports LCLite.
-4. **Installing** — four named phases with live ticks, the console tail, and a
+   dependencies, build).
+4. **Installing** — four named phases with live ticks, the tail of the console, and a
    real error state (retry / back / open the dashboard) instead of a dead spinner.
 5. **You're ready** — Play, a web port field for when 80 is taken, and the way
    into the full launcher. Pressing Play is the last step rather than a dead end:
@@ -55,6 +57,14 @@ game:
 Reloading mid-install picks the install back up where it is. `Skip setup` (or
 `Setup guide` later, which re-enters the wizard) toggles between the two views;
 both are remembered in `launcher.json`.
+
+The Welcome slide's **"N revisions available"** counts the revisions the overlay
+mods *end to end* — every mod has hunks for it, its own corpus or one it inherits
+(`fullyModdedRevs`, read from the overlay's corpus layout, never hardcoded). A
+revision that is supported but only partly ported is not counted and is not named
+in the aside, so the number can never promise more than you would get; port the
+rest of the corpus and it appears on its own. With no overlay checkout to read,
+the chip is not shown at all rather than guessed at.
 
 ### The "recommended" revision
 
@@ -70,15 +80,30 @@ automatic.
 
 ## Using it
 
-The dashboard is two columns and one rule: **set up on the left, run it on the
-right.** Left: *Lost City revisions* → *Installs* (with the selected install's
-card — path, ready/needs-setup, *Update from GitHub*, *Rebuild client*) →
-*LCLite mods*. Right: *Your Server* (the world on this machine, and the characters
-on it) and *Join Server* (somebody else's, with your client — see 6 below).
+The dashboard is **one console across the top, then two columns**: **set up on the
+left, run it on the right.** Left: *Lost City revisions* → *Installs* (with the
+selected install's card — path, ready/needs-setup, *Update from GitHub*, *Rebuild
+client*) → *LCLite mods*. Right: *Your Server* (the world on this machine, and the
+characters on it) and *Join Server* (somebody else's, with your client — see 6
+below).
 Anything that is real but not first-run — an existing
 folder instead of a fresh install, reset-to-pristine, the local port, the
 three-socket port story, the tree's internals — sits behind a disclosure with a
 plain-language label, so the everyday path stays two buttons and a tick list.
+
+**The console is one feed, at the top.** There used to be three tabs (Task /
+Server / Bridge) and you had to guess which one a line landed in; now every
+producer writes into a single ordered stream and each line carries the producer it
+came from, so an install, the world it starts and a bridge are one history you can
+read straight through (a finished job's output stays on screen while the next
+thing runs). It is deliberately small — a 160px window that follows the tail — and
+it is the one place you can *work* with the log: **click a line to copy it** (links
+in a line are links), **type in the filter** to keep only matching lines (it matches
+the text and the producer, and says how many it kept), scroll up and it **stops
+following** the tail until you press *Latest ↓*, and *Hide* collapses it to its
+header. Merging happens in the launcher, not in the page: three rings polled
+separately would arrive in poll order, so the order here is the order things
+happened.
 
 **Every section folds.** Each panel header carries a *Hide* / *Show* toggle, and
 what you folded away is remembered in `launcher.json` (`collapsed: ["mods"]`) —
@@ -168,7 +193,8 @@ one scroll for the page).
    line above it names the install that is actually serving. The port comes from
    `data/config/world.json` (default 80 on Windows) or from the field in the UI,
    which writes that file. First boot packs the cache and can take minutes; the
-   server tab streams the boot log. The port/three-sockets explanation folds away
+   console at the top of the page streams the boot log, tagged `world`. The
+   port/three-sockets explanation folds away
    under *Ports & running two worlds*.
 ### Ports and revision quirks
 
@@ -355,6 +381,13 @@ only ever shown or hidden, never re-rendered, so a half-typed
 address survives the poll; the joined card is rebuilt only when the proxy state
 behind it changes, keyed on its own signature.
 
+The console is the other one: it sits outside the re-rendered blocks entirely (it is
+in the shell, above the grid), so its filter box keeps what you typed through every
+poll, and its body is filled by appending the lines `/api/log` hands over. It is
+rebuilt only when the whole view is (coming back from the wizard), and then it
+replays what it already had — a log that empties itself when you glance at the
+setup guide would be worse than no log.
+
 ## API (for scripting)
 
 All under `/api`, all requiring header `X-LCLite-Token: <token>` (the token is in
@@ -364,7 +397,15 @@ the served page). `state`, `revs`, `config` (`{"skip_wizard":true}`,
 deletes the folder and is refused for a hand-added install or one outside
 `<data>/installs/`), `run`, `stop`,
 `browse`, `bun`, `proxy/start`, `proxy/stop`, `job`, `log`, `quit`. Long tasks return a job id; poll
-`job?id=&since=` for incremental log lines.
+`job?id=&since=` for a job's status and step (its lines arrive on `log`).
+
+`log?since=` is **the one console**: every producer's lines (jobs, the world, the
+bridge), in the order they were written, behind a single monotonic cursor, each
+tagged `{n, src, text, at}` with `src` = `task` / `world` / `bridge`. There is no
+`which=` any more — a caller that wants one producer's lines filters on `src`, which
+is also what the page's filter box does. A job's own `job?id=&since=` view still
+exists for its status/step, and the per-producer rings behind the scenes still
+answer `tail()` (explaining a process exit).
 
 `proxy/start` takes `{url, port, id, local_client?}`. `local_client` is
 **optional and means yes** — your build is served unless a script explicitly says

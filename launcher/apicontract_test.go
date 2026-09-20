@@ -108,6 +108,30 @@ func TestJSONKeysTheUIActuallyReads(t *testing.T) {
 		}
 	})
 
+	t.Run("state the wizard reads", func(t *testing.T) {
+		// The Welcome slide counts revisions and names them from revs_full, and the
+		// picker marks each one from it. A renamed key would not fail loudly: the
+		// chip would just stop appearing.
+		l, err := newLauncher(t.TempDir(), "test", true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rec := httptest.NewRecorder()
+		l.handleState(rec, httptest.NewRequest("GET", "/api/state", nil))
+		var got map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("state is not JSON: %v", err)
+		}
+		for _, k := range []string{"version", "revs", "revs_full", "overlay_revs", "installs", "tools", "engine", "proxy", "job"} {
+			if _, ok := got[k]; !ok {
+				t.Errorf("/api/state must ship %q — the page reads it", k)
+			}
+		}
+		if _, ok := got["binary_size"]; ok {
+			t.Error("binary_size is gone from the UI: stop shipping it rather than leaving a field nothing reads")
+		}
+	})
+
 	t.Run("save file", func(t *testing.T) {
 		raw, err := json.Marshal(SaveFile{Username: "u", Profile: "p", Path: "x", Size: 1,
 			Modified: time.Now(), Intact: true})

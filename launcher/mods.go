@@ -136,6 +136,41 @@ func (l *Launcher) overlayRevsFor() []string {
 	return []string{overlayRev}
 }
 
+// fullyModdedRevs lists the revisions the overlay mods END TO END: every mod in the
+// checkout has hunks for that revision (its own corpus, or one it inherits). A
+// revision the overlay merely declares is supported but only partly ported is not
+// one of these — a player there gets some mods, not the set — so the wizard counts
+// these and names them rather than claiming the declared list.
+//
+// Derived, never hardcoded: porting the rest of the corpus to a revision makes it
+// appear here on its own. Empty means "cannot tell" (no overlay checkout to read),
+// and the page then says nothing rather than guessing.
+func (l *Launcher) fullyModdedRevs() []string {
+	if l.localOverlay == "" {
+		return nil
+	}
+	overlay := l.localOverlay
+	mods := allModNames(overlay)
+	if len(mods) == 0 {
+		return nil
+	}
+	manifest := readRevManifest(overlay)
+	out := []string{}
+	for _, rev := range overlayRevs(overlay) {
+		full := true
+		for _, m := range mods {
+			if modCorpusRev(overlay, m, rev, manifest) == "" {
+				full = false
+				break
+			}
+		}
+		if full {
+			out = append(out, rev)
+		}
+	}
+	return out
+}
+
 // revManifest is the overlay's revs.json, as much of it as the launcher needs.
 type revManifest struct {
 	Primary   string                    `json:"primary"`

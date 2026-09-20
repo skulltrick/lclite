@@ -26,18 +26,22 @@ type Job struct {
 	Ended     time.Time
 	lines     []LogLine
 	next      int
+	// console is the launcher's one terminal: every job line is mirrored there too,
+	// so the page shows an install in the same feed as the world it starts.
+	console *Console
 }
 
 type JobManager struct {
 	mu      sync.Mutex
 	current *Job
 	last    *Job
+	console *Console
 }
 
-func newJobManager() *JobManager { return &JobManager{} }
+func newJobManager(console *Console) *JobManager { return &JobManager{console: console} }
 
 func (m *JobManager) run(kind, installID string, fn func(*Job) error) *Job {
-	j := &Job{ID: fmt.Sprintf("%s-%d", kind, time.Now().UnixNano()), Kind: kind, InstallID: installID, Status: "running", Started: time.Now()}
+	j := &Job{ID: fmt.Sprintf("%s-%d", kind, time.Now().UnixNano()), Kind: kind, InstallID: installID, Status: "running", Started: time.Now(), console: m.console}
 	m.mu.Lock()
 	m.current = j
 	m.last = j
@@ -57,8 +61,7 @@ func (m *JobManager) run(kind, installID string, fn func(*Job) error) *Job {
 	if err != nil {
 		j.Status = "failed"
 		j.Err = err.Error()
-		j.lines = append(j.lines, LogLine{N: j.next, Text: "!! " + err.Error(), At: time.Now()})
-		j.next++
+		j.appendLocked("!! " + err.Error())
 	} else {
 		j.Status = "ok"
 	}
@@ -86,16 +89,26 @@ func (m *JobManager) find(id string) *Job {
 
 func (j *Job) logf(format string, a ...any) {
 	text := fmt.Sprintf(format, a...)
-	now := time.Now()
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	for _, line := range strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n") {
-		j.lines = append(j.lines, LogLine{N: j.next, Text: line, At: now})
-		j.next++
+		if line == "" {
+			continue
+		}
+		j.appendLocked(line)
 	}
 	if len(j.lines) > 4000 {
 		j.lines = append([]LogLine(nil), j.lines[len(j.lines)-2000:]...)
 	}
+}
+
+// appendLocked adds one line to the job's own ring and mirrors it to the console.
+// The caller holds j.mu — logf and the job's own end-of-run error both do — which
+// is why this is not just logf.
+func (j *Job) appendLocked(text string) {
+	j.lines = append(j.lines, LogLine{N: j.next, Text: text, At: time.Now()})
+	j.next++
+	j.console.write("task", text)
 }
 
 func (j *Job) setStep(step string) {

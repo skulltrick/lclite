@@ -25,13 +25,14 @@ var uiFS embed.FS
 const tokenPlaceholder = "__LCLITE_TOKEN__"
 
 type Launcher struct {
-	store      *Store
-	dataDir    string
-	version    string
-	binarySize int64
-	jobs       *JobManager
-	engine     *EngineServer
-	proxy      *Proxy
+	store   *Store
+	dataDir string
+	version string
+	jobs    *JobManager
+	engine  *EngineServer
+	proxy   *Proxy
+	// console is the one terminal every producer mirrors into (see console.go).
+	console    *Console
 	token      string
 	httpClient *http.Client
 	// localOverlay = the lclite checkout this exe lives in, when there is one
@@ -41,20 +42,6 @@ type Launcher struct {
 	// honours an explicit request from the page (pressing Play), but the things it
 	// would do unasked — the dashboard, opening your client after a join — stay shut.
 	noBrowser bool
-}
-
-// ownSize reports the size of the running executable — the UI shows it because
-// "one small binary, no runtime" is the whole point of this thing.
-func ownSize() int64 {
-	path, err := os.Executable()
-	if err != nil {
-		return 0
-	}
-	st, err := os.Stat(path)
-	if err != nil {
-		return 0
-	}
-	return st.Size()
 }
 
 func newLauncher(dataDir, version string, noBrowser bool) (*Launcher, error) {
@@ -67,19 +54,30 @@ func newLauncher(dataDir, version string, noBrowser bool) (*Launcher, error) {
 	if _, err := rand.Read(buf); err != nil {
 		return nil, err
 	}
-	return &Launcher{
+	l := &Launcher{
 		store:        store,
 		dataDir:      store.snapshot().DataDir,
 		version:      version,
-		binarySize:   ownSize(),
-		jobs:         newJobManager(),
-		engine:       &EngineServer{},
-		proxy:        &Proxy{},
+		console:      &Console{},
 		token:        hex.EncodeToString(buf),
 		localOverlay: localOverlay,
 		httpClient:   &http.Client{Timeout: 25 * time.Second},
 		noBrowser:    noBrowser,
-	}, nil
+	}
+	// One console, wired into every producer before anything can write: a job, the
+	// world it starts and a bridge all report into the same feed.
+	l.jobs = newJobManager(l.console)
+	l.engine = &EngineServer{log: l.consoleRing("world")}
+	l.proxy = &Proxy{log: l.consoleRing("bridge")}
+	return l, nil
+}
+
+// consoleRing is a producer's own ring, wired to the one console. Every ring a
+// launcher creates goes through here — a ring built by hand has no mirror, and its
+// output then silently never reaches the page (which is what happened to the bridge
+// while it was being rebuilt per join: the lines existed, the console stayed empty).
+func (l *Launcher) consoleRing(src string) LogRing {
+	return LogRing{mirror: l.console, src: src}
 }
 
 func main() {
@@ -316,7 +314,6 @@ func (l *Launcher) handleState(w http.ResponseWriter, r *http.Request) {
 	}
 	out := map[string]any{
 		"version":             l.version,
-		"binary_size":         l.binarySize,
 		"data_dir":            l.dataDir,
 		"platform":            runtime.GOOS + "/" + runtime.GOARCH,
 		"installs":            views,
@@ -329,6 +326,7 @@ func (l *Launcher) handleState(w http.ResponseWriter, r *http.Request) {
 		"recommended_pinned":  cfg.RecommendedRev != "",
 		"overlay_rev":         overlayRev,
 		"overlay_revs":        l.overlayRevsFor(),
+		"revs_full":           l.fullyModdedRevs(),
 		"skip_wizard":         cfg.SkipWizard,
 		"collapsed":           cfg.Collapsed,
 		"tools":               l.detectTools(),
@@ -420,24 +418,13 @@ func (l *Launcher) handleJob(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"ok": true, "job": j.view(since)})
 }
 
+// handleLog serves the one console: every producer's lines, in the order they were
+// written, behind a single cursor. There is no per-producer view to ask for — the
+// page labels each line instead, so a line cannot land in the "wrong" tab.
 func (l *Launcher) handleLog(w http.ResponseWriter, r *http.Request) {
 	since := atoiDefault(r.URL.Query().Get("since"), 0)
-	switch r.URL.Query().Get("which") {
-	case "server":
-		lines, next := l.engine.log.view(since)
-		writeJSON(w, map[string]any{"ok": true, "lines": lines, "next": next})
-	case "proxy":
-		lines, next := l.proxy.log.view(since)
-		writeJSON(w, map[string]any{"ok": true, "lines": lines, "next": next})
-	default:
-		j := l.jobs.find(r.URL.Query().Get("id"))
-		if j == nil {
-			writeJSON(w, map[string]any{"ok": true, "lines": []LogLine{}, "next": 0})
-			return
-		}
-		v := j.view(since)
-		writeJSON(w, map[string]any{"ok": true, "lines": v.Lines, "next": v.Next, "status": v.Status, "step": v.Step, "err": v.Err})
-	}
+	lines, next := l.console.view(since)
+	writeJSON(w, map[string]any{"ok": true, "lines": lines, "next": next})
 }
 
 func atoiDefault(s string, def int) int {

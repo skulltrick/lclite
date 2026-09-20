@@ -18,6 +18,11 @@ type LogRing struct {
 	mu    sync.Mutex
 	lines []LogLine
 	next  int
+	// mirror + src: when this ring belongs to a launcher, every line is also
+	// written to the one console, tagged with the producer. A nil mirror is a ring
+	// on its own (a unit test), which is why Console.write tolerates a nil receiver.
+	mirror *Console
+	src    string
 }
 
 func (r *LogRing) logf(format string, a ...any) {
@@ -31,6 +36,7 @@ func (r *LogRing) logf(format string, a ...any) {
 		}
 		r.lines = append(r.lines, LogLine{N: r.next, Text: line, At: now})
 		r.next++
+		r.mirror.write(r.src, line)
 	}
 	if len(r.lines) > 5000 {
 		r.lines = append([]LogLine(nil), r.lines[len(r.lines)-2500:]...)

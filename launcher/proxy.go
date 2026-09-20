@@ -105,7 +105,7 @@ func (l *Launcher) StartProxy(targetURL string, port int, localClient bool, in *
 		return fmt.Errorf("port %d is already in use — pick another proxy port", port)
 	}
 
-	p := &Proxy{target: target, port: port, useLocal: localClient}
+	p := &Proxy{target: target, port: port, useLocal: localClient, log: l.consoleRing("bridge")}
 	if in != nil {
 		p.localRoot = in.publicDir()
 	}
