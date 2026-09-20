@@ -325,15 +325,6 @@ func (s *EngineServer) InstallID() string {
 	return s.installID
 }
 
-// MgmtPort is the running world's /setup port (0 when nothing runs). The Worlds
-// panel asks for it because that port has no authentication upstream, so it is the
-// one a host must not advertise.
-func (s *EngineServer) MgmtPort() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.mgmtPort
-}
-
 func (s *EngineServer) Status() map[string]any {
 	s.mu.Lock()
 	defer s.mu.Unlock()

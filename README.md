@@ -17,6 +17,16 @@
 
 ---
 
+> [!WARNING]
+> **Do not point LCLite at Lost City's own servers.** LCLite is a *modified client* —
+> it changes the game code you run. Lost City's servers, and any server built on their
+> framework, do not accept modified clients: connecting to them with LCLite is likely
+> to get your account **flagged and banned**, and that is your risk, not theirs.
+>
+> Play LCLite only on **a world you host yourself**, or on a server whose owner has
+> **explicitly said** modified clients are welcome and can accept them. If you are not
+> the host and nobody has told you yes, the answer is no.
+
 ## Why
 
 Lost City's webclient moves fast, and every update turns your hand-picked tweaks
@@ -173,22 +183,18 @@ revision picker (installs a branch as a self-contained folder, `npm install`
 included), "use an existing folder", the convergent mod list, and the two things
 a terminal can't do:
 
-- **Host a world** — start a Lost City server on this machine, then name it: a
-  signed one-line description other players can join by, with the mods it wants
-  or forbids.
+- **Host a world** — start a Lost City server on this machine: the launcher installs
+  the revision, picks free ports, runs the engine and opens the client.
 - **Join somebody else's with your client** — a localhost bridge answers
   `/client/*` from *your* install and bridges everything else to the remote, so
-  your mods follow you onto their world. Paste an address or an invite code, your
-  client opens by itself, and the panel tells you whose server you are on: their
-  name, description, revision and mod rules.
+  your mods follow you onto their world. Type an address and your client opens by
+  itself. Nothing is negotiated with the far end, so the panel describes what *you*
+  are serving and never guesses at what they are running.
 
 The world's characters are listed under **Your Server**, with one button to open
 the save folder. A character is a file on the **host's** disk — the client never
 sees one — so that is all the launcher honestly offers; the old "save vault" that
 copied characters between worlds is gone (see `launcher/README.md`).
-
-There is no directory service: a world travels as an invite code, and the
-**Worlds** list lives entirely in your own `launcher.json`.
 
 ```sh
 cd launcher && go run build.go     # → dist/LCLite-<os>-<arch>

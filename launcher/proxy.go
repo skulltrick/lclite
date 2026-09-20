@@ -33,28 +33,26 @@ type Proxy struct {
 // JoinedWorld is the server a bridge is currently pointing at, described the way the
 // panel has to show it.
 //
-// A bridge started from an invite code or a world card has a NAME, a description, a
-// revision and mod rules — all of it the host's own signed words. A bridge to a bare
-// typed address has none of that, and the field being empty is the honest answer: the
-// panel says "nobody has described this server" rather than inventing a name for it.
-//
-// Install/Mods are this end's half of the join: which build is being served, and what
-// that tree really has applied (read from the tree, not from ticked boxes).
+// There is no directory service and nothing is negotiated with the far end, so the
+// honest description of a target is its address plus this end's half of the join:
+// which build is being served, and what that tree really has applied (read from the
+// tree, not from ticked boxes). Anything more would be invented.
 type JoinedWorld struct {
-	ID          string    `json:"id,omitempty"`
-	Name        string    `json:"name,omitempty"`
-	Description string    `json:"desc,omitempty"`
-	Host        string    `json:"host,omitempty"`
-	Address     string    `json:"addr,omitempty"`
-	Rev         string    `json:"rev,omitempty"`
-	Required    []string  `json:"req,omitempty"`
-	Forbidden   []string  `json:"ban,omitempty"`
-	Self        bool      `json:"self,omitempty"`
-	Signed      bool      `json:"signed,omitempty"`
-	Fingerprint string    `json:"fingerprint,omitempty"`
-	Install     string    `json:"install,omitempty"`
-	Mods        []string  `json:"mods,omitempty"`
-	Since       time.Time `json:"since,omitempty"`
+	Address string    `json:"addr,omitempty"`
+	Install string    `json:"install,omitempty"`
+	Mods    []string  `json:"mods,omitempty"`
+	Since   time.Time `json:"since,omitempty"`
+}
+
+// joinedFor describes a bridge that has just come up. addr is the address the bridge
+// really dials (normalized by StartProxy), not whatever was typed.
+func (l *Launcher) joinedFor(addr string, in *Install) JoinedWorld {
+	j := JoinedWorld{Address: addr, Since: time.Now()}
+	if in != nil {
+		j.Install = in.ID
+		j.Mods = appliedMods(in)
+	}
+	return j
 }
 
 func (p *Proxy) Running() bool {

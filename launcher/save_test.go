@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"hash/crc32"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -224,5 +226,66 @@ func TestListSavesOnAMissingFolderIsEmptyNotAnError(t *testing.T) {
 	in := &Install{ID: "gone", Path: t.TempDir()}
 	if got := ListSaves(in); len(got) != 0 {
 		t.Fatalf("expected an empty list, got %+v", got)
+	}
+}
+
+// ---- the endpoints ---------------------------------------------------------
+
+func TestHandleSavesListsTheWorldsCharacters(t *testing.T) {
+	l, _ := newLauncher(t.TempDir(), "test", false)
+	in := fullInstall(t, "289", "main", []string{"control-panel"})
+	l.store.upsertInstall(in)
+	if err := os.WriteFile(filepath.Join(saveDir(in.engineDir()), "alice.sav"), makeSave([]byte("alice")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	l.handleSaves(rec, httptest.NewRequest("GET", "/api/saves?install=289", nil))
+	var out struct {
+		OK      bool       `json:"ok"`
+		Install string     `json:"install"`
+		Saves   []SaveFile `json:"saves"`
+		Profile string     `json:"profile"`
+		Dir     string     `json:"dir"`
+		Running bool       `json:"running"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode: %v (%s)", err, rec.Body.String())
+	}
+	if !out.OK || out.Install != "289" {
+		t.Fatalf("unexpected response: %s", rec.Body.String())
+	}
+	if len(out.Saves) != 1 || out.Saves[0].Username != "alice" || !out.Saves[0].Intact {
+		t.Fatalf("expected alice intact, got %+v", out.Saves)
+	}
+	if out.Profile != "main" {
+		t.Fatalf("expected the profile reported, got %q", out.Profile)
+	}
+	// The folder is what the panel's one button opens, so it has to be the real one.
+	if out.Dir != saveDir(in.engineDir()) {
+		t.Fatalf("expected the save folder reported, got %q", out.Dir)
+	}
+}
+
+// "Open save folder" must work on a world nobody has logged into yet — an empty
+// folder is the honest thing to show, and refusing to open anything is not.
+func TestEnsureSaveDirCreatesTheFolder(t *testing.T) {
+	in := fullInstall(t, "289", "main", nil)
+	os.RemoveAll(saveDir(in.engineDir()))
+
+	dir, err := ensureSaveDir(in)
+	if err != nil {
+		t.Fatalf("ensureSaveDir: %v", err)
+	}
+	if dir != saveDir(in.engineDir()) {
+		t.Fatalf("expected the save folder, got %q", dir)
+	}
+	st, err := os.Stat(dir)
+	if err != nil || !st.IsDir() {
+		t.Fatalf("the folder must exist after ensureSaveDir: %v", err)
+	}
+	// Idempotent: a second call on an existing folder is a no-op, not an error.
+	if again, err := ensureSaveDir(in); err != nil || again != dir {
+		t.Fatalf("second call: %q, %v", again, err)
 	}
 }

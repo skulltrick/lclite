@@ -327,10 +327,6 @@ func (l *Launcher) handleProxyStart(w http.ResponseWriter, r *http.Request) {
 		// opposite of what this panel promises.
 		LocalClient *bool  `json:"local_client"`
 		ID          string `json:"id"`
-		// WorldID names which world this is, so the joined panel can describe it.
-		// "self" is this machine's own world; blank means "work it out from the
-		// address, or admit that nobody has described it".
-		WorldID string `json:"world_id"`
 	}
 	if err := decode(r, &req); err != nil {
 		fail(w, err)
@@ -351,7 +347,10 @@ func (l *Launcher) handleProxyStart(w http.ResponseWriter, r *http.Request) {
 		fail(w, err)
 		return
 	}
-	l.proxy.SetJoined(l.describeJoin(req.WorldID, req.URL, in))
+	// Describe the bridge from what it really dials, not from what was typed.
+	if t, ok := l.proxy.Status()["target"].(string); ok {
+		l.proxy.SetJoined(l.joinedFor(t, in))
+	}
 
 	port := l.proxy.Status()["port"].(int)
 	url := fmt.Sprintf("http://localhost%s/rs2.cgi", portSuffix(port))

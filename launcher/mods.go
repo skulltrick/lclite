@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -215,17 +213,21 @@ func appliedMods(in *Install) []string {
 	return normMods(m.Mods)
 }
 
-// bundleDigest identifies the exact client build an install would serve, so a player
-// can read it out and a host can compare it against what they expect. It is a
-// fingerprint of the shipped bundle, not a signature — it says "this is the build I
-// have", which is only as trustworthy as the launcher reporting it.
-func bundleDigest(in *Install) string {
-	raw, err := os.ReadFile(filepath.Join(in.publicDir(), "client", "client.js"))
-	if err != nil {
-		return ""
+// normMods trims, drops empties, dedupes and sorts — the canonical form of a mod
+// list, so the panel, the tree's own installed.json and any comparison agree.
+func normMods(in []string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(in))
+	for _, m := range in {
+		m = strings.TrimSpace(m)
+		if m == "" || seen[m] {
+			continue
+		}
+		seen[m] = true
+		out = append(out, m)
 	}
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:])[:16]
+	sort.Strings(out)
+	return out
 }
 
 // listMods reads the mods of a HOST root (lclite/ inside it).

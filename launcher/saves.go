@@ -28,6 +28,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -141,4 +142,75 @@ func ListSaves(in *Install) []SaveFile {
 		return out[i].Modified.After(out[j].Modified)
 	})
 	return out
+}
+
+// ---- the two endpoints -----------------------------------------------------
+
+// saveInstall resolves which install a save request is about: the one named, or the
+// only one there is.
+func (l *Launcher) saveInstall(w http.ResponseWriter, r *http.Request, id string) *Install {
+	cfg := l.store.snapshot()
+	in := cfg.findInstall(id)
+	if in == nil {
+		if len(cfg.Installs) == 1 {
+			return cfg.Installs[0]
+		}
+		fail(w, fmt.Errorf("choose an install first"))
+		return nil
+	}
+	return in
+}
+
+func (l *Launcher) handleSaves(w http.ResponseWriter, r *http.Request) {
+	in := l.saveInstall(w, r, r.URL.Query().Get("install"))
+	if in == nil {
+		return
+	}
+	writeJSON(w, map[string]any{
+		"ok": true, "install": in.ID, "saves": ListSaves(in),
+		"profile": saveProfile(in.engineDir()),
+		"dir":     saveDir(in.engineDir()),
+		// A running world rewrites these files on logout and autosave, so the panel
+		// says so rather than letting somebody poke at them mid-session.
+		"running": l.engine.Busy() && strings.EqualFold(l.engine.InstallID(), in.ID),
+	})
+}
+
+// handleSaveReveal opens the world's save folder in the desktop's file manager.
+//
+// This is the whole of "manage your saves": the launcher shows you the files and
+// hands you the folder, because Explorer/Finder is better at copying, deleting and
+// restoring than a 8 MB launcher will ever be — and a launcher deleting a player's
+// character is a bug waiting to happen.
+func (l *Launcher) handleSaveReveal(w http.ResponseWriter, r *http.Request) {
+	in := l.saveInstall(w, r, r.URL.Query().Get("install"))
+	if in == nil {
+		return
+	}
+	dir, err := ensureSaveDir(in)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	if err := openPath(dir); err != nil {
+		fail(w, fmt.Errorf("could not open %s: %v", dir, err))
+		return
+	}
+	ok(w, map[string]any{"dir": dir})
+}
+
+// ensureSaveDir makes sure a world has a save folder and returns it.
+//
+// A world nobody has logged into yet has no players/ folder; making it beats
+// refusing to open anything, and it is the same path the engine creates on first
+// login. Split out from the handler so the "where" is testable without a test run
+// launching a file manager window.
+func ensureSaveDir(in *Install) (string, error) {
+	dir := saveDir(in.engineDir())
+	if _, err := os.Stat(dir); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return "", fmt.Errorf("could not create %s: %v", dir, err)
+		}
+	}
+	return dir, nil
 }
