@@ -122,13 +122,33 @@ func TestJSONKeysTheUIActuallyReads(t *testing.T) {
 		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 			t.Fatalf("state is not JSON: %v", err)
 		}
-		for _, k := range []string{"version", "revs", "revs_full", "overlay_revs", "installs", "tools", "engine", "proxy", "job"} {
+		for _, k := range []string{"version", "revs", "revs_full", "overlay_revs", "overlay", "installs", "tools", "engine", "proxy", "job"} {
 			if _, ok := got[k]; !ok {
 				t.Errorf("/api/state must ship %q — the page reads it", k)
 			}
 		}
 		if _, ok := got["binary_size"]; ok {
 			t.Error("binary_size is gone from the UI: stop shipping it rather than leaving a field nothing reads")
+		}
+	})
+
+	t.Run("the overlay button's status", func(t *testing.T) {
+		// The update button renders itself from these keys alone: a rename would not
+		// fail loudly — the button would just stop explaining itself, and "Offline"
+		// would lose the reason it is offline.
+		raw, err := json.Marshal(overlayStatus{State: "update", Behind: 2, Dirty: true, Shallow: true,
+			Head: "abc", Remote: "def", Path: "C:/x/lclite", Branch: "main", Note: "n", At: time.Now()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got map[string]any
+		if err := json.Unmarshal(raw, &got); err != nil {
+			t.Fatal(err)
+		}
+		for _, k := range []string{"state", "behind", "ahead", "dirty", "shallow", "head", "remote", "path", "branch", "note"} {
+			if _, ok := got[k]; !ok {
+				t.Errorf("the overlay status must ship %q — the button reads it", k)
+			}
 		}
 	})
 
@@ -170,7 +190,8 @@ func TestWorldEndpointsAreGone(t *testing.T) {
 	}
 	// And the two endpoints that stay must still be routed (a token-less request is
 	// refused, not 404'd).
-	for _, path := range []string{"/api/proxy/start", "/api/proxy/stop", "/api/saves", "/api/saves/reveal"} {
+	for _, path := range []string{"/api/proxy/start", "/api/proxy/stop", "/api/saves", "/api/saves/reveal",
+		"/api/overlay/check", "/api/overlay/update"} {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, httptest.NewRequest("POST", path, nil))
 		if rec.Code == http.StatusNotFound {

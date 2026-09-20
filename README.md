@@ -136,8 +136,11 @@ pristine upstream clone  +  this overlay  →  apply  →  bun build  →  your 
 
 ## When Lost City moves on
 
-In the launcher: select the install → **Update from GitHub** (fast-forwards
-client, engine and content, re-applies mods, rebuilds). By hand:
+Two things move independently, and the launcher keeps them apart. **LCLite** — this
+repo: the mods, tools and page assets — is the header's *Check for update*, which reads
+the repo and turns into *Update* (pull it), *Up-to-date* (nothing to pull) or *Offline*
+(the repo could not be reached). **Lost City** — the client, engine and content a
+revision is built from — is *Update from GitHub* on the install. By hand:
 
 ```
 git -C <install>/webclient pull && git -C <install>/engine pull
@@ -180,8 +183,9 @@ LCLite.exe     single Go binary · ~8 MB · static · Windows / Linux / macOS
 A front door, not a reimplementation: every mod operation still runs
 `tools/lclite.mjs`, so the overlay stays the single source of truth. It adds the
 revision picker (installs a branch as a self-contained folder, `npm install`
-included), "use an existing folder", the convergent mod list, and the two things
-a terminal can't do:
+included), "use an existing folder", the convergent mod list — one *Apply changes*
+button, because unticking a mod and applying is how a mod comes off — and the two
+things a terminal can't do:
 
 - **Host a world** — start a Lost City server on this machine: the launcher installs
   the revision, picks free ports, runs the engine and opens the client.
@@ -190,6 +194,10 @@ a terminal can't do:
   your mods follow you onto their world. Type an address and your client opens by
   itself. Nothing is negotiated with the far end, so the panel describes what *you*
   are serving and never guesses at what they are running.
+
+*Check for update* in the header keeps the overlay itself current: it reads the LCLite
+repo, offers the pull when there is something new, and says *Up-to-date* or *Offline*
+when there isn't — an answer, not a failure.
 
 The world's characters are listed under **Your Server**, with one button to open
 the save folder. A character is a file on the **host's** disk — the client never

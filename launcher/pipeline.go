@@ -181,7 +181,7 @@ func (l *Launcher) installRev(j *Job, rev string, opts installOpts) (*Install, e
 
 	if in.Overlay && l.overlayModsAllowed(in) {
 		j.setStep("applying LCLite mods")
-		if err := l.applyMods(j, in, opts.Mods); err != nil {
+		if err := l.applyMods(j, in, opts.Mods, false); err != nil {
 			return in, err
 		}
 	} else if opts.WithClient {
@@ -197,7 +197,15 @@ func (l *Launcher) installRev(j *Job, rev string, opts installOpts) (*Install, e
 
 // ---- per-install actions ----------------------------------------------------
 
-func (l *Launcher) applyMods(j *Job, in *Install, mods []string) error {
+// applyMods converges the tree onto the requested set of mods.
+//
+// explicit says the caller meant exactly this list: an EMPTY explicit set strips
+// every mod — what unticking everything and pressing *Apply changes* has to do,
+// since applying is convergent and "none of them" is a legitimate answer (it is the
+// panel's only way to ordinary mod removal now that *Remove mods* is gone). An empty
+// IMPLICIT set still means "the default set", i.e. exactly what a bare
+// `node tools/lclite.mjs` applies.
+func (l *Launcher) applyMods(j *Job, in *Install, mods []string, explicit bool) error {
 	overlay := l.overlayFor(in)
 	if overlay == "" {
 		return fmt.Errorf("no LCLite overlay to apply — put this exe in your lclite checkout, or copy lclite/ into %s", in.Path)
@@ -209,12 +217,22 @@ func (l *Launcher) applyMods(j *Job, in *Install, mods []string) error {
 	if _, err := exec.LookPath("node"); err != nil {
 		return fmt.Errorf("node is not installed — the overlay engine needs it (https://nodejs.org)")
 	}
+	mods = normalizeMods(overlay, mods)
+	if len(mods) == 0 && explicit {
+		// Stripping needs node but not bun, so this sits above the bun check: taking
+		// every mod off must never be held up by (or trigger) a bun download.
+		j.logf("nothing ticked — taking every mod off")
+		if err := l.stripMods(j, in); err != nil {
+			return err
+		}
+		j.logf("the tree is back to upstream — reload the client page to pick it up")
+		return nil
+	}
 	if bun, err := l.ensureBun(j.logf); err != nil {
 		j.logf("!! bun unavailable (%v) — mods will apply but the client bundle will not rebuild", err)
 	} else {
 		j.logf("using bun: %s", bun)
 	}
-	mods = normalizeMods(overlay, mods)
 	if len(mods) == 0 {
 		// an empty selection means "the default set" — exactly what a bare
 		// `node tools/lclite.mjs` applies. Stripping is its own action.
@@ -229,6 +247,8 @@ func (l *Launcher) applyMods(j *Job, in *Install, mods []string) error {
 	in.Overlay = true
 	in.Mods = mods
 	l.store.setMods(in.ID, mods, true)
+	j.logf("")
+	j.logf("mods are live — reload the client page to pick them up")
 	return nil
 }
 
@@ -308,7 +328,7 @@ func (l *Launcher) updateInstall(j *Job, in *Install) error {
 	}
 	if in.Overlay && l.overlayModsAllowed(in) {
 		j.setStep("re-applying your mods")
-		if err := l.applyMods(j, in, in.Mods); err != nil {
+		if err := l.applyMods(j, in, in.Mods, false); err != nil {
 			return err
 		}
 	}

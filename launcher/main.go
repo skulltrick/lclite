@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -38,6 +39,11 @@ type Launcher struct {
 	// localOverlay = the lclite checkout this exe lives in, when there is one
 	// (mods are edited there, so it wins over an install's cloned copy).
 	localOverlay string
+	// overlay is the last answer from the update button's check (nil = never
+	// pressed). Kept so a page reload shows the button it was showing — the check
+	// is the user's press, never something the 2.5s poll does behind their back.
+	overlayMu sync.Mutex
+	overlay   *overlayStatus
 	// noBrowser is --no-browser: the launcher opens nothing on its own. It still
 	// honours an explicit request from the page (pressing Play), but the things it
 	// would do unasked — the dashboard, opening your client after a join — stay shut.
@@ -167,6 +173,8 @@ func (l *Launcher) routes() http.Handler {
 
 	api("state", l.handleState)
 	api("revs", l.handleRevs)
+	api("overlay/check", l.handleOverlayCheck)
+	api("overlay/update", l.handleOverlayUpdate)
 	api("config", l.handleConfig)
 	api("install", l.handleInstall)
 	api("import", l.handleImport)
@@ -321,6 +329,7 @@ func (l *Launcher) handleState(w http.ResponseWriter, r *http.Request) {
 		"revs_at":             cfg.RevsAt,
 		"last_rev":            cfg.LastRev,
 		"overlay_path":        l.localOverlay,
+		"overlay":             l.overlayState(),
 		"recommended":         recommended,
 		"recommended_updated": cfg.RecommendedUpdated,
 		"recommended_pinned":  cfg.RecommendedRev != "",

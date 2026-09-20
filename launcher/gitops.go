@@ -270,6 +270,29 @@ func (l *Launcher) runGit(j *Job, dir string, args ...string) error {
 	return j.runCmd("git", full...)
 }
 
+// runGitIn runs git inside dir and hands back its combined output, for the
+// questions that want an answer rather than a stream (the overlay check).
+func runGitIn(dir string, args ...string) (string, error) {
+	return runCapture("git", append([]string{"-C", dir}, args...)...)
+}
+
+// isShallow reports whether a repo is a shallow clone. The launcher's own installs
+// are (syncRepo clones them with --depth 1), and it matters: a fetch there must stay
+// --depth 1, and no fast-forward check can work across the grafted boundary.
+func (l *Launcher) isShallow(dir string) bool {
+	out, err := runGitIn(dir, "rev-parse", "--is-shallow-repository")
+	return err == nil && strings.TrimSpace(out) == "true"
+}
+
+// shortSHA is the 7-character form of a commit id, for one-line messages.
+func shortSHA(sha string) string {
+	sha = strings.TrimSpace(sha)
+	if len(sha) > 7 {
+		return sha[:7]
+	}
+	return sha
+}
+
 // syncRepo clones or fast-forwards one repo at the requested branch.
 func (l *Launcher) syncRepo(j *Job, dir, url, branch string) error {
 	gitDir := filepath.Join(dir, ".git")

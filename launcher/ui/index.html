@@ -85,6 +85,11 @@
   button.secToggle:hover:not(:disabled){background:#ffffff0d;color:var(--accent)}
   button.secToggle .chev{font-size:9px;transition:transform .15s}
   section.panel.collapsed button.secToggle .chev{transform:rotate(-90deg)}
+  /* A panel header can carry one action of its own. Buttons inherit their font, so
+     inside an h2 one would otherwise read as a small-caps label: this drops it back
+     to ordinary button type. */
+  button.secact{background:transparent;border-color:var(--line-soft);padding:3px 9px;font-size:11px;letter-spacing:.3px;text-transform:none;color:var(--dim)}
+  button.secact:hover:not(:disabled){color:var(--accent);border-color:#4d4237;background:#ffffff08}
   .panel .sub{color:var(--dim2);font-size:12px;margin-bottom:10px}
   .empty{color:var(--dim2);font-size:13px;padding:10px 2px}
 
@@ -728,7 +733,7 @@ function mainHTML(){
       </div>
       <span class="spacer"></span>
       <span class="chips">${tools}</span>
-      <button class="ghost" onclick="refreshRevs(true)">Refresh branches</button>
+      <button class="ghost" id="overlaybtn" onclick="overlayAction()">Check for update</button>
       <button class="ghost" onclick="openWizardAgain()">Setup guide</button>
       <button class="ghost" onclick="quitLauncher()">Quit</button>
     </header>
@@ -751,6 +756,7 @@ function mainHTML(){
       <div>
         <section class="panel" data-sec="revs">
           <h2>Lost City revisions<span class="grow"></span>
+            <button class="secact" onclick="refreshRevs(true)" title="read the branch lists from GitHub again">Refresh branches</button>
             <span class="stepper">
               <button id="revup" aria-label="previous revision" title="previous revision (or ↑)" onclick="stepRev(-1)">▲</button>
               <span class="count" id="revcount">1 / ${(S.revs || []).length}</span>
@@ -918,7 +924,7 @@ function refreshModsDirty(){
   const btn = $("applymods");
   if (btn) {
     btn.classList.toggle("dirty", dirty);
-    btn.textContent = dirty ? "Apply mods & build *" : "Apply mods & build";
+    btn.textContent = dirty ? "Apply changes *" : "Apply changes";
   }
 }
 
@@ -1015,14 +1021,14 @@ function modsHTML(){
       : `the first ${Math.min(MOD_PREVIEW, n)} are shown; open the list to tick the rest. <b>Applying removes every mod you haven't ticked.</b>`}${i.overlay_source === "checkout" ? ` These come from <span class="path" title="${esc(i.overlay_path || "")}">${esc(tailPath(i.overlay_path, 38))}</span>, so edits there apply straight away.` : ""}</div>
     ${unavailable ? `<div class="hint" style="margin:0 0 8px">${unavailable} mod${unavailable === 1 ? " has" : "s have"} no hunks for ${esc(i.rev_label || "this revision")} yet and stay off — a mod is all-or-nothing per revision, because half a mod is a broken mod. Porting one is <span class="path">node tools/port.mjs ${esc(i.rev_label || "")}</span>.</div>` : ""}
     <div class="row wrap">
-      <button class="primary" id="applymods" onclick="applyMods()">Apply mods &amp; build</button>
-      <button onclick="stripMods()" title="take every mod off and leave the upstream client">Remove mods</button>
+      <button class="primary" id="applymods" onclick="applyMods()"
+        title="apply exactly what is ticked — every mod you haven't ticked is stripped back to upstream (tick nothing to take them all off)">Apply changes</button>
       <span class="note" id="modsdirty" style="display:none;margin:0 0 0 4px">Not applied yet — the client still has the old set.</span>
     </div>
     <div class="modlist" style="margin-top:9px">${shown.join("") || '<div class="empty">no mods found in lclite/mods</div>'}</div>
     ${more}
     <details class="block"><summary>Something's broken? Reset to pristine</summary>
-      <div class="inner hint">Throws away every local change in webclient/ and engine/ with git — the blunt repair for a tree that drifted. Use <b>Remove mods</b> for ordinary mod removal.</div>
+      <div class="inner hint">Throws away every local change in webclient/ and engine/ with git — the blunt repair for a tree that drifted. Ordinary mod removal is <b>Apply changes</b> with nothing ticked: applying is convergent, so unticked mods come off.</div>
       <button class="danger" style="margin-top:9px" onclick="revertMods()">Reset to pristine</button>
     </details>`;
 }
@@ -1308,6 +1314,9 @@ function renderMain(force){
   }
 
   renderServerLive();
+  // The header is outside every re-rendered block, so its update button is patched
+  // in place like the server card: the poll can never replace "Checking…".
+  renderOverlayBtn();
   const js = $("jobstatus");
   const j = S.job;
   if (js) js.innerHTML = j ? `${esc(j.kind)} · <b>${esc(j.status)}</b>${j.step ? " · " + esc(j.step) : ""}` : (S.busy ? "working…" : "");
@@ -1379,6 +1388,102 @@ function renderJoinLive(){
   card.innerHTML = joinedHTML(p);
 }
 
+/* ------------------------------------------------- the LCLite update button */
+// One button in the header, four answers about LCLite itself (not about Lost City):
+// press it and it asks the LCLite repo whether there is anything new — newer mods,
+// newer tools — and then either offers to pull them or says there is nothing to do.
+//
+//   Check for update → (press) → Update | Up-to-date | Offline
+//
+// The state lives here AND in the launcher (`S.overlay`), so a reload shows the
+// button it was showing: the check is your press, never something the 2.5s poll does
+// behind your back. `ovl.busy` is a state of its own, because "Checking…" must not be
+// overwritten by a poll either.
+const OVL_LABEL = { check: "Check for update", checking: "Checking…", update: "Update", updating: "Updating…", uptodate: "Up-to-date", offline: "Offline", none: "No overlay" };
+let ovl = { state: "", info: null, busy: "" };
+
+function ovlStatus(){ return ovl.busy || ovl.state || "check"; }
+
+// What the button is offering, in words — including the reason when it cannot offer
+// anything (offline says what git said, not just "offline").
+function ovlTitle(st, o){
+  o = o || {};
+  const branch = o.branch || "the repo";
+  switch (st) {
+    case "checking": return "asking the LCLite repo whether anything has changed…";
+    case "updating": return "pulling the new LCLite files…";
+    case "update": {
+      const what = o.shallow ? `newer LCLite files on ${branch}` : `${o.behind} newer LCLite commit${o.behind === 1 ? "" : "s"} on ${branch}`;
+      return `${what} — press to pull them into ${o.path || "your checkout"}.`
+        + (o.dirty ? " This checkout has uncommitted changes, so the update will refuse until they are committed or stashed." : "")
+        + " Your installs keep their current mods until you press Apply changes.";
+    }
+    case "uptodate": return `nothing to update — ${o.path ? o.path + " matches " : ""}${branch}`
+      + (o.head ? " @ " + String(o.head).slice(0, 7) : "")
+      + (o.ahead ? ` (and is ${o.ahead} commit${o.ahead === 1 ? "" : "s"} ahead of it)` : "");
+    case "offline": return "could not reach the LCLite repo — " + (o.note || "no connection") + " (press to try again)";
+    case "none": return o.note || "there is no LCLite overlay here to update";
+    default: return "ask the LCLite repo whether there is anything new to pull";
+  }
+}
+
+function renderOverlayBtn(){
+  const b = $("overlaybtn");
+  if (!b) return;
+  // Adopt what the launcher already knows: a reload (or coming back from the setup
+  // guide) shows the button it was showing instead of asking again.
+  if (!ovl.busy && !ovl.state && S && S.overlay && S.overlay.state) { ovl.state = S.overlay.state; ovl.info = S.overlay; }
+  const st = ovlStatus();
+  b.textContent = OVL_LABEL[st] || OVL_LABEL.check;
+  b.className = st === "update" ? "primary" : "ghost";
+  b.disabled = st === "checking" || st === "updating" || st === "uptodate" || st === "none";
+  b.title = ovlTitle(st, ovl.info);
+}
+
+function overlayAction(){
+  if (ovlStatus() === "update") return overlayUpdate();
+  return overlayCheck();
+}
+
+async function overlayCheck(){
+  ovl.busy = "checking"; renderOverlayBtn();
+  try {
+    const r = await api("overlay/check", {});
+    ovl.info = r.overlay || null;
+    ovl.state = (r.overlay && r.overlay.state) || "offline";
+  } catch (e) {
+    ovl.state = "offline"; ovl.info = { note: e.message };
+  }
+  ovl.busy = "";
+  renderOverlayBtn();
+  const o = ovl.info || {};
+  if (ovl.state === "update") toast(o.shallow ? "There are newer LCLite files — press Update." : `${o.behind} newer LCLite commit${o.behind === 1 ? "" : "s"} — press Update.`, "good");
+  else if (ovl.state === "uptodate") toast("LCLite is up to date.", "good");
+  else if (ovl.state === "offline") toast("Could not reach the LCLite repo: " + (o.note || "offline"), "bad");
+  else toast(o.note || "There is no LCLite overlay here to update.", "bad");
+}
+
+async function overlayUpdate(){
+  ovl.busy = "updating"; renderOverlayBtn();
+  try {
+    const r = await api("overlay/update", {});
+    if (!r || !r.job) throw new Error("the launcher did not start the update");
+    const job = await waitForJob(r.job);
+    if (job.status === "ok") toast("LCLite updated — press Apply changes on an install to build it in.", "good");
+    else toast(job.err || "the update failed", "bad");
+  } catch (e) {
+    toast("Update failed: " + e.message, "bad");
+  }
+  ovl.busy = "";
+  // The launcher's own answer is the truth after an update (it re-checked the
+  // checkout); take it rather than assuming. busy stays set until it lands, so the
+  // button cannot flash the pre-update state on the way.
+  await refresh();
+  ovl.state = (S && S.overlay && S.overlay.state) || "";
+  ovl.info = (S && S.overlay) || null;
+  renderOverlayBtn();
+}
+
 /* ---------------------------------------------------------------- actions */
 function selectInstall(id){ sel = id; render(); }
 async function install(rev){
@@ -1415,15 +1520,16 @@ async function applyMods(){
   // only mods that exist for this revision: the rest are reported, not requested
   const here = new Set((i.mods_available || []).filter(m => m.available !== false).map(m => m.name));
   const mods = modSelection().filter(n => here.has(n));
-  toast(`Applying ${mods.length} mods and rebuilding…`);
+  // Nothing ticked is a request, not an omission: applying is convergent, so an
+  // empty set strips every mod — the panel's one way to take them all off.
+  toast(mods.length ? `Applying ${mods.length} mods and rebuilding…` : "Nothing ticked — taking every mod off…");
   const r = await act(() => api("apply", { id: i.id, mods }), "apply");
   if (!r) return;
   const job = await waitForJob(r.job);
-  toast(job.status === "ok" ? "Mods are live — reload the client page." : (job.err || "apply failed"), job.status === "ok" ? "good" : "bad");
+  toast(job.status === "ok" ? (mods.length ? "Mods are live — reload the client page." : "Every mod is off — the tree is back to upstream.") : (job.err || "apply failed"), job.status === "ok" ? "good" : "bad");
   await refresh();
 }
 async function revertMods(){ const i = currentInstall(); if (!i) return; const r = await act(() => api("reset", { id: i.id }), "reset"); if (r) toast("Working tree reset to pristine."); await refresh(); }
-async function stripMods(){ const i = currentInstall(); if (!i) return; const r = await act(() => api("strip", { id: i.id }), "strip"); if (r) toast("Every mod is off — back to upstream."); await refresh(); }
 async function buildOnly(){ const i = currentInstall(); if (!i) return; const r = await act(() => api("build", { id: i.id }), "build"); if (r) await waitForJob(r.job); await refresh(); }
 async function updateInstall(){ const i = currentInstall(); if (!i) return; const r = await act(() => api("update", { id: i.id }), "update"); if (r) { await waitForJob(r.job); toast("Updated from GitHub."); } await refresh(); }
 // id first, then wipe: the row's own buttons pass both, so clicking "Delete

@@ -91,6 +91,27 @@ folder instead of a fresh install, reset-to-pristine, the local port, the
 three-socket port story, the tree's internals — sits behind a disclosure with a
 plain-language label, so the everyday path stays two buttons and a tick list.
 
+**The header carries the one question about LCLite itself: is there anything new?**
+*Check for update* asks the LCLite repo whether there are newer mods, tools or page
+assets than the overlay you are running, and then says what it found in one word:
+
+| Button | What it means |
+| --- | --- |
+| *Check for update* | nothing has been asked yet — press it |
+| *Update* | the repo has commits this checkout does not — press to pull them |
+| *Up-to-date* | nothing to pull (greyed out) |
+| *Offline* | the repo could not be reached — press to try again |
+| *No overlay* | this launcher has no LCLite checkout to update (greyed out) |
+
+The check is a `git fetch` of the overlay's own branch, so it writes to `.git` and
+never to the working tree, and the answer is remembered in the launcher rather than in
+the page — a reload shows the button it was showing instead of asking again. *Update*
+refuses outright when the checkout has uncommitted changes or commits of its own: the
+launcher does not throw away work it did not make. It updates the **overlay** only —
+an install keeps the mods it was built with until you press *Apply changes* on it.
+*Refresh branches*, which used to sit in this spot, now lives in the *Lost City
+revisions* header, next to the list it refreshes.
+
 **The console is one feed, at the top.** There used to be three tabs (Task /
 Server / Bridge) and you had to guess which one a line landed in; now every
 producer writes into a single ordered stream and each line carries the producer it
@@ -158,19 +179,23 @@ one scroll for the page).
    rather than the way in.
 4. **Mods** — their own panel, under the install list (the right-hand column leads
    with the two things you press every day: **Your Server** and **Join Server**). Tick
-   boxes, *Apply mods & build*. The required mod (the panel — LCLite itself) shows
+   boxes, then *Apply changes*. The required mod (the panel — LCLite itself) shows
    as a locked gold tick rather than a disabled checkbox, because a
    greyed-out box reads as "not included". The list **starts folded to two rows**
    (*Show all 12 mods* opens it) and tracks pending edits: change a tick and the
-   button becomes *Apply mods & build \** with a "not applied yet" line, because the
+   button becomes *Apply changes \** with a "not applied yet" line, because the
    difference between "ticked" and "built in" is exactly the mistake worth designing
    out. What is ticked lives in the page's own state, not in the visible
    checkboxes, so folding the list can never silently drop a hidden mod from the
-   set you are about to apply. *Remove mods* takes every mod back off; *Reset to
+   set you are about to apply. That's `node tools/lclite.mjs --mods <set>`: the listed
+   mods are applied and **everything else is stripped**, so the tree always converges
+   to what the UI shows — which is why there is one button here and not two. Unticking
+   a mod and pressing *Apply changes* takes it off; there is nothing a separate
+   "remove" could do that this does not. The panel mod (LCLite itself) is locked on, so
+   "none at all" is not a state the panel can ask for — for a bare upstream tree
+   use *Reset to pristine* below, or `POST /api/strip` from a script. *Reset to
    pristine* — the blunt git-level repair — lives behind a "Something's broken?"
-   disclosure so it stops competing with it. That's `node tools/lclite.mjs --mods
-   <set>`: the listed mods are applied and everything else is stripped, so the tree
-   always converges to what the UI shows. The required mod is locked on.
+   disclosure so it stops competing with the everyday button.
    **Which revisions come with mods is the overlay's call, not the launcher's.**
    The launcher reads `revs.json` out of the overlay checkout (`overlay_revs` in
    `/api/state`) and offers mods on exactly the revisions it declares — the same
@@ -396,8 +421,24 @@ the served page). `state`, `revs`, `config` (`{"skip_wizard":true}`,
 `update`, `reset`, `strip` (take every mod off), `remove` (`{id, wipe}` — `wipe`
 deletes the folder and is refused for a hand-added install or one outside
 `<data>/installs/`), `run`, `stop`,
-`browse`, `bun`, `proxy/start`, `proxy/stop`, `job`, `log`, `quit`. Long tasks return a job id; poll
+`browse`, `bun`, `overlay/check`, `overlay/update`, `proxy/start`, `proxy/stop`,
+`job`, `log`, `quit`. Long tasks return a job id; poll
 `job?id=&since=` for a job's status and step (its lines arrive on `log`).
+
+`apply` takes `{id, mods}` and is **convergent**: the listed mods are applied and every
+other mod is stripped. `mods` is a pointer on purpose — an **absent** field means "the
+default set" (every mod, what a bare `node tools/lclite.mjs` applies), while an
+**empty array** means "none of them" and strips the tree. The panel never sends the
+empty form (its required mod is locked on), but a script can, and `strip` is the same
+verb spelled out.
+
+The update button is two calls: `overlay/check` (a fetch of the overlay's own branch
+plus a comparison — the answer is the response, and it is also kept for `/api/state`'s
+`overlay` block: `{state, behind, ahead, dirty, shallow, head, remote, path, branch,
+note}`, where `state` is `update` / `uptodate` / `offline` / `none`) and
+`overlay/update` (a job that pulls, refusing a checkout with uncommitted changes or
+commits of its own). `shallow` marks a launcher install's `--depth 1` clone, where git
+cannot count commits, so `behind` reads "at least one".
 
 `log?since=` is **the one console**: every producer's lines (jobs, the world, the
 bridge), in the order they were written, behind a single monotonic cursor, each
@@ -480,6 +521,37 @@ against mocks:
   running launcher, and `TestWorldEndpointsAreGone` pins that — alongside the
   endpoints that must still route.
 
+The update button was verified against **real git repos in temp dirs and a live
+launcher**, not mocks:
+
+- **The four answers are the state machine.** A launcher running from a checkout level
+  with its origin showed *Up-to-date* (greyed out, tooltip naming the path and the
+  commit); a checkout behind its origin showed *Update*; an overlay whose origin does
+  not exist showed *Offline* with git's own sentence in the tooltip, the toast and the
+  console; a launcher with no overlay anywhere showed *No overlay*, greyed out. All
+  read back out of the live DOM, on a page whose 2.5 s poll was running.
+- **The check writes nothing to the working tree** (`git status` identical before and
+  after, in both clone shapes), and **a fetch on a complete clone does not shallow-ify
+  it** — `--depth 1` is only ever asked for on a clone that already is one
+  (`TestOverlayCheckReportsWhatIsNew`).
+- **The full loop lands files**: a shallow overlay one commit behind pulled its new
+  file onto disk, the console showed the `checkout -B main FETCH_HEAD`, and the button
+  went *Update* → *Updating…* → *Up-to-date @ <sha>*
+  (`TestOverlayUpdatePullsTheNewFiles`, plus the same run in the browser).
+- **It refuses to destroy work**: a checkout with uncommitted changes, and one with
+  commits of its own (no fast-forward possible), both fail with a sentence naming the
+  reason, and the local files are still there afterwards
+  (`TestOverlayUpdateRefusesToClobberLocalWork`,
+  `TestOverlayUpdateWillNotForceAForkedCheckout`). A checkout that is *ahead* reads
+  *Up-to-date* rather than offering a pull that would refuse.
+- **The overlay target falls back to an install's own copy** when the launcher lives
+  alone (the portable exe), and follows that copy's origin.
+- **Applying with nothing ticked really strips** — through the live HTTP API, `apply
+  {mods: []}` ran `node tools/lclite.mjs uninstall`, while `apply` with the field absent
+  ran the default set (`--mods …`); pinned by `TestApplyWithNothingTickedStripsEveryMod`
+  against a recording fake overlay. In the panel, *Apply changes* is the only button in
+  that row, and unticking a mod and applying strips it.
+
 The overlay gate for the new `web.ts` hunk was the full one: `apply --check` ✗0,
 `regen` twice byte-identical, `doctor` 0, **only `control-panel`'s patch JSON changed**,
 `matrix` green on all three revisions (274's `inherits` claim survives), and
@@ -500,7 +572,9 @@ The overlay gate for the new `web.ts` hunk was the full one: `apply --check` ✗
   bun has to be on `PATH`.
 - One server at a time, one long task at a time (the overlay is stateful — two
   concurrent applies on one tree is how you corrupt a tree).
-- No auto-update yet; the launcher is small enough to just replace.
+- No auto-update for the launcher **binary** yet — the header's *Check for update* pulls
+  the LCLite overlay (mods, tools, page assets), not this exe, which is small enough to
+  just replace.
 - Rev switching on an install with mods applied is refused until you *Reset to
   pristine* — by design, since the overlay's convergence assumes a clean tree.
 - **A server that pins `web.allowedOrigin` can refuse a bridged socket**, and there is

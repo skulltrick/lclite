@@ -88,8 +88,12 @@ func (l *Launcher) handleImport(w http.ResponseWriter, r *http.Request) {
 
 func (l *Launcher) handleApply(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		ID   string   `json:"id"`
-		Mods []string `json:"mods"`
+		ID string `json:"id"`
+		// Mods is a POINTER so an empty list can mean "none of them": unticking
+		// everything and pressing Apply changes has to strip every mod, while an
+		// absent list still means the default set (see applyMods). A plain slice
+		// would make those two the same request, and the panel promises they differ.
+		Mods *[]string `json:"mods"`
 	}
 	if err := decode(r, &req); err != nil {
 		fail(w, err)
@@ -103,13 +107,12 @@ func (l *Launcher) handleApply(w http.ResponseWriter, r *http.Request) {
 		fail(w, fmt.Errorf("another task is still running — wait for it to finish"))
 		return
 	}
+	var mods []string
+	if req.Mods != nil {
+		mods = *req.Mods
+	}
 	j := goJob(l, "mods", in.ID, func(j *Job) error {
-		if err := l.applyMods(j, in, req.Mods); err != nil {
-			return err
-		}
-		j.logf("")
-		j.logf("mods are live — reload the client page to pick them up")
-		return nil
+		return l.applyMods(j, in, mods, req.Mods != nil)
 	})
 	ok(w, map[string]any{"job": j.ID})
 }
@@ -132,7 +135,7 @@ func (l *Launcher) handleBuild(w http.ResponseWriter, r *http.Request) {
 	}
 	j := goJob(l, "build", in.ID, func(j *Job) error {
 		if in.Overlay && l.overlayModsAllowed(in) {
-			return l.applyMods(j, in, in.Mods)
+			return l.applyMods(j, in, in.Mods, false)
 		}
 		return l.buildClient(j, in)
 	})
