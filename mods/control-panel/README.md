@@ -45,7 +45,7 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
   The panel's own mark (FAB + header, `MARK()` in panel.js) is the SAME art at the same
   48-unit viewBox, inlined with per-instance mask/gradient ids — three copies of one
   logo, so change all three together or none.
-- `patches/client_ejs.json` — the two tags (currently `?v=12`/`?v=26` — see below), the
+- `patches/client_ejs.json` — the two tags (currently `?v=13`/`?v=30` — see below), the
   favicon `<link>` pair in the head, the `<title>` (and the `data-rev` attribute the
   panel's header chip reads — see the next bullet), and the
   canvas-sizing logic itself: `setSize()` now takes ANY decimal (clamped 0.25x..8x),
@@ -131,7 +131,7 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
 
 ## Version-keying (stale-cache law, MODS.md "The contract")
 
-The ejs tags carry `?v=N` (`panel.css?v=12`, `panel.js?v=26` today). ANY revision of
+The ejs tags carry `?v=N` (`panel.css?v=13`, `panel.js?v=30` today). ANY revision of
 panel.js or panel.css shipped to a live server MUST bump N in the hunk (edit the
 live client.ejs, then `node tools/regen.mjs` BEFORE `apply` — regen-before-apply or
 the manifest thinks control-panel uninstalled). Brave re-serves stale plain paths
@@ -207,6 +207,17 @@ mod's surface uses exactly this, which is why no mod ever touches `lcm*` keys it
 - A mod's view is its row PLUS its settings, with no group header: the row
   already carries the name, the star, the status line and the master, and a
   header over a single open section would just repeat the name.
+- **A row with no master switch of its own is NOT the core.** The switch column
+  renders the gold `core` pill only for `CORE_ID` (control-panel itself); any other
+  master-less row — the synthesized row a dropped-in mod folder gets, or a mod whose
+  settings are several rows with no single on/off — gets a muted `no switch` pill
+  saying what is true ("on whenever it is installed"). Before that split the column
+  fell through to the core pill, so every dropped-in mod claimed to be LCLite itself
+  and told the player it "cannot be switched off from inside the game". The synthesized
+  name comes from `cap(id)`, which had the same class of bug — a zero-width `^`
+  alternative matched the empty string and capitalized nothing, so a folder called
+  `demo-mod` listed as "demo Mod"; `cap` now captures the first letter in its own group
+  and keeps the separator (`Demo Mod`, `Ground Items`).
 - TCG/GPU rows carry a live `status()` line (positional `window.tcgInfo()`
   contract) refreshed on the panel's 400ms sync tick; TCG's reads
   `window.tcgLoggedIn()` first and says `not logged in` instead of reporting the

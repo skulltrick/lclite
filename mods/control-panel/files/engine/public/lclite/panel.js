@@ -62,7 +62,11 @@
     };
 
     const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    const cap = s => String(s ?? '').replace(/(^|[-_ ]\w)/g, m => m.toUpperCase()).replace(/[-_]/g, ' ');
+    // `cap` is for a mod id the panel has NO registry entry for (the synthesized row a
+    // dropped-in mod folder gets). The first character needs its OWN capture group: a
+    // zero-width `^` alternative matches the empty string and capitalizes nothing, so
+    // every synthesized row read "demo Mod" instead of "Demo Mod".
+    const cap = s => String(s ?? '').replace(/(^|[-_ ])(\w)/g, (_, sep, c) => sep + c.toUpperCase()).replace(/[-_]/g, ' ');
 
     // the engine's revision, handed over by the ejs script tag (data-rev, set from
     // the engine's own config). The server writes the same value into <title>, so
@@ -565,11 +569,23 @@
                 renderView();                // section visibility can change
             });
             row.appendChild(wrapSwitch(input));
-        } else {
+        } else if (p.id === CORE_ID) {
             const chip = document.createElement('span');
             chip.className = 'lcm-pcore';
             chip.textContent = 'core';
             chip.title = 'LCLite itself — cannot be switched off from inside the game';
+            row.appendChild(chip);
+        } else {
+            // A mod with NO master switch — a dropped-in mod folder whose row was
+            // synthesized from installed.json, or one whose settings are several rows
+            // with no single on/off. Say exactly that, in a muted chip: this column
+            // used to fall through to the CORE pill, so every new mod claimed to BE
+            // LCLite itself ("cannot be switched off from inside the game").
+            const chip = document.createElement('span');
+            chip.className = 'lcm-pnone';
+            chip.textContent = 'no switch';
+            chip.title = 'This mod has no on/off switch of its own — it is on whenever it is installed'
+                + (hasRows ? '; its settings are in its own view' : '');
             row.appendChild(chip);
         }
 
