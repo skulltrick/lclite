@@ -113,9 +113,6 @@ const MODS = {
         'webclient/bundle.ts',
         'engine/view/client.ejs'
     ],
-    'anti-cheat': [
-        'webclient/src/client/Client.ts'
-    ],
     'no-censor': [
         // BOTH halves of one policy: the client's WordFilter is the layer that can
         // honour a per-player setting, so it decides what gets masked, and the
@@ -163,8 +160,7 @@ const HUNK_OWNER = {
         ['xp-drops', /xpDrops|XP_DROP|XP_PANEL|XP_HIDE|XP_BURST|XP_MAX|drawXp|xpSkillLabel|xpLastSkill|xpLastGain|xpStatic|xpRates|areaXp|STAT_ICON_BY_SKILL|gained amount|skill icons|fresh xp-drop|Experience  /i],
         ['stat-orbs', /orbsEnabled|orbsWereOn|drawStatOrbs|drawOrb\b|stat orbs|Stat orbs|statOrbs|backing ring|glass highlight|procedural orb/i],
         ['true-tile', /drawTrueTile|trueTileLine|trueTile\b|true tile|true-tile/i],
-        ['anti-cheat', /antiCheatEnabled|antiCheat|ANTICHEAT_|telemetry|mouseTracking\.length|RuneScope/i],
-        ['camera', /cameraZoom|wheelZoom|middleRotate|wheelScrollChat|rotateLastScreen|middleMouseDown|scrollChatbox|onwheel|camFollow|orbitCamera|setVisZoom|viewRadius|visTile|clearPick|World\.click|lostcityClient|applyCameraSettings/],
+        ['camera', /cameraZoom|wheelZoom|middleRotate|wheelScrollChat|rotateLastScreen|middleMouseDown|scrollChatbox|onwheel|camFollow|orbitCamera|setVisZoom|viewRadius|visTile|clearPick|World\.click|lostcityClient|applyCameraSettings|EVENT_MOUSE_MOVE|EVENT_CAMERA_POSITION|mouseTracking\.length/],
         ['hotkeys', /hotkeys|Hotkeys|hotkeyKey|Press Enter to Chat/],
         ['wiki-lookup', /wikiLookup|WikiLookup|wiki lookup|Wiki <target>/i]
     ],

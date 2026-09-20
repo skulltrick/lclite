@@ -112,6 +112,243 @@
   },
   {
    "find": [
+    "            this.mouseTracking.length = 0;",
+    "        } else if (this.mouseClickButton !== 0 || this.mouseTracking.length >= 40) {",
+    "            this.out.p1Enc(ClientProt.EVENT_MOUSE_MOVE);",
+    "            this.out.p1(0);",
+    "            const start = this.out.pos;",
+    "            let count = 0;",
+    "",
+    "            // custom: Java client checks `start - this.out.pos < 240` but this is obviously wrong",
+    "            //   and will lead to an invalid packet if the user is buffering a lot of mouse movements (i.e. while disconnected)",
+    "            for (let i = 0; i < this.mouseTracking.length && this.out.pos - start < 240; i++) {",
+    "                count++;",
+    "",
+    "                let y = this.mouseTracking.y[i];",
+    "                if (y < 0) {",
+    "                    y = 0;",
+    "                } else if (y > 502) {",
+    "                    y = 502;",
+    "                }",
+    "",
+    "                let x = this.mouseTracking.x[i];",
+    "                if (x < 0) {",
+    "                    x = 0;",
+    "                } else if (x > 764) {",
+    "                    x = 764;",
+    "                }",
+    "",
+    "                let pos = y * 765 + x;",
+    "                if (this.mouseTracking.y[i] === -1 && this.mouseTracking.x[i] === -1) {",
+    "                    x = -1;",
+    "                    y = -1;",
+    "                    pos = 0x7ffff;",
+    "                }",
+    "",
+    "                if (x !== this.mouseTrackedX || y !== this.mouseTrackedY) {",
+    "                    let dx = x - this.mouseTrackedX;",
+    "                    this.mouseTrackedX = x;",
+    "                    let dy = y - this.mouseTrackedY;",
+    "                    this.mouseTrackedY = y;",
+    "",
+    "                    if (this.mouseTrackDelta < 8 && dx >= -32 && dx <= 31 && dy >= -32 && dy <= 31) {",
+    "                        dx += 32;",
+    "                        dy += 32;",
+    "                        this.out.p2((this.mouseTrackDelta << 12) + (dx << 6) + dy);",
+    "                        this.mouseTrackDelta = 0;",
+    "                    } else if (this.mouseTrackDelta < 8) {",
+    "                        this.out.p3(0x800000 + (this.mouseTrackDelta << 19) + pos);",
+    "                        this.mouseTrackDelta = 0;",
+    "                    } else {",
+    "                        this.out.p4(0xc0000000 + (this.mouseTrackDelta << 19) + pos);",
+    "                        this.mouseTrackDelta = 0;",
+    "                    }",
+    "                } else if (this.mouseTrackDelta < 2047) {",
+    "                    this.mouseTrackDelta++;",
+    "                }",
+    "            }",
+    "",
+    "            this.out.psize1(this.out.pos - start);",
+    "",
+    "            if (count >= this.mouseTracking.length) {",
+    "                this.mouseTracking.length = 0;",
+    "            } else {",
+    "                this.mouseTracking.length -= count;",
+    "",
+    "                for (let i = 0; i < this.mouseTracking.length; i++) {",
+    "                    this.mouseTracking.x[i] = this.mouseTracking.x[i + count];",
+    "                    this.mouseTracking.y[i] = this.mouseTracking.y[i + count];",
+    "                }",
+    "            }",
+    "        }",
+    ""
+   ],
+   "replace": [
+    "            this.mouseTracking.length = 0;",
+    "        } else if (this.mouseClickButton !== 0 || this.mouseTracking.length >= 40) {",
+    "            // custom (lclite camera mod): this rev reports mouse movement to the server as lclite:camera",
+    "            // EVENT_MOUSE_MOVE telemetry, packed by the loop that used to live here. The camera",
+    "            // mod never sends it. The samples are still dropped, so the client cannot sit on a",
+    "            // full 500-entry buffer.",
+    "            this.mouseTracking.length = 0;",
+    "        }",
+    ""
+   ],
+   "note": "src/client/Client.ts @ old line 2065",
+   "occ": 1,
+   "pos": [
+    2064,
+    66,
+    2062,
+    2131
+   ]
+  },
+  {
+   "find": [
+    "",
+    "        if (this.mouseClickButton !== 0) {",
+    "            let delta = ((this.mouseClickTime - this.prevMouseClickTime) / 50) | 0;",
+    "            if (delta > 4095) {",
+    "                delta = 4095;",
+    "            }",
+    "",
+    "            this.prevMouseClickTime = this.mouseClickTime;",
+    "",
+    "            let y = this.mouseClickY;",
+    "            if (y < 0) {",
+    "                y = 0;",
+    "            } else if (y > 502) {",
+    "                y = 502;",
+    "            }",
+    "",
+    "            let x = this.mouseClickX;",
+    "            if (x < 0) {",
+    "                x = 0;",
+    "            } else if (x > 764) {",
+    "                x = 764;",
+    "            }",
+    "",
+    "            const pos = y * 765 + x;",
+    "",
+    "            let button = 0;",
+    "            if (this.mouseClickButton === 2) {",
+    "                button = 1;",
+    "            }",
+    "",
+    "            this.out.p1Enc(ClientProt.EVENT_MOUSE_CLICK);",
+    "            this.out.p4((delta << 20) + (button << 19) + pos);",
+    "        }",
+    "",
+    "        if (this.sendCameraDelay > 0) {"
+   ],
+   "replace": [
+    "",
+    "        // custom (lclite camera mod): EVENT_MOUSE_CLICK telemetry is never sent either — the lclite:camera",
+    "        // same click still reaches the server as its own OP_*/IF_* packet.",
+    "",
+    "        if (this.sendCameraDelay > 0) {"
+   ],
+   "note": "src/client/Client.ts @ old line 2133",
+   "occ": 1,
+   "pos": [
+    2132,
+    32,
+    2131,
+    2165
+   ]
+  },
+  {
+   "find": [
+    "            this.sendCameraDelay = 20;",
+    "            this.sendCamera = false;",
+    "            this.out.p1Enc(ClientProt.EVENT_CAMERA_POSITION);",
+    "            this.out.p2(this.orbitCameraPitch);",
+    "            this.out.p2(this.orbitCameraYaw);",
+    "        }",
+    ""
+   ],
+   "replace": [
+    "            this.sendCameraDelay = 20;",
+    "            this.sendCamera = false;",
+    "            // custom (lclite camera mod): the EVENT_CAMERA_POSITION packet was sent from lclite:camera",
+    "            // here — the camera's pitch/yaw is never reported to the server now. The resend",
+    "            // timer above is kept so the client's own camera bookkeeping, and the middle-drag",
+    "            // rotate that arms it, behaves exactly as before.",
+    "        }",
+    ""
+   ],
+   "note": "src/client/Client.ts @ old line 2177",
+   "occ": 1,
+   "pos": [
+    2176,
+    3,
+    2174,
+    2180
+   ]
+  },
+  {
+   "find": [
+    "",
+    "        if (this.focus && !this.focusIn) {",
+    "            this.focusIn = true;",
+    "            this.out.p1Enc(ClientProt.EVENT_APPLET_FOCUS);",
+    "            this.out.p1(1);",
+    "        } else if (!this.focus && this.focusIn) {",
+    "            this.focusIn = false;",
+    "            this.out.p1Enc(ClientProt.EVENT_APPLET_FOCUS);",
+    "            this.out.p1(0);",
+    "        }",
+    "",
+    "        this.checkMinimap();"
+   ],
+   "replace": [
+    "",
+    "        // custom (lclite camera mod): focus changes are not reported to the server lclite:camera",
+    "        // (EVENT_APPLET_FOCUS).",
+    "",
+    "        this.checkMinimap();"
+   ],
+   "note": "src/client/Client.ts @ old line 2182",
+   "occ": 1,
+   "pos": [
+    2181,
+    9,
+    2180,
+    2191
+   ]
+  },
+  {
+   "find": [
+    "        }",
+    "",
+    "        Client.cyclelogic7++;",
+    "        if (Client.cyclelogic7 > 62) {",
+    "            Client.cyclelogic7 = 0;",
+    "",
+    "            this.out.p1Enc(ClientProt.ANTICHEAT_CYCLELOGIC7);",
+    "        }",
+    "",
+    "        if (World.groundX !== -1) {"
+   ],
+   "replace": [
+    "        }",
+    "",
+    "        // custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC7 counter and its packet are lclite:camera",
+    "        // gone — no legacy cycle-logic telemetry leaves this client.",
+    "",
+    "        if (World.groundX !== -1) {"
+   ],
+   "note": "src/client/Client.ts @ old line 2304",
+   "occ": 1,
+   "pos": [
+    2303,
+    6,
+    2301,
+    2310
+   ]
+  },
+  {
+   "find": [
     "                const success: boolean = this.tryMove(this.localPlayer.routeX[0], this.localPlayer.routeZ[0], x, z, true, 0, 0, 0, 0, 0, 0);",
     "                World.groundX = -1;",
     "",
@@ -158,6 +395,37 @@
     0,
     2324,
     2327
+   ]
+  },
+  {
+   "find": [
+    "    // todo: order",
+    "    private async handleInputKey(): Promise<void> {",
+    "        Client.cyclelogic4++;",
+    "        if (Client.cyclelogic4 > 192) {",
+    "            Client.cyclelogic4 = 0;",
+    "",
+    "            this.out.p1Enc(ClientProt.ANTICHEAT_CYCLELOGIC4);",
+    "            this.out.p1(232);",
+    "        }",
+    "",
+    "        while (true) {"
+   ],
+   "replace": [
+    "    // todo: order",
+    "    private async handleInputKey(): Promise<void> {",
+    "        // custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC4 counter and its packet are lclite:camera",
+    "        // gone — no legacy cycle-logic telemetry leaves this client.",
+    "",
+    "        while (true) {"
+   ],
+   "note": "src/client/Client.ts @ old line 2939",
+   "occ": 1,
+   "pos": [
+    2938,
+    7,
+    2936,
+    2946
    ]
   },
   {
@@ -246,6 +514,519 @@
     0,
     4257,
     4260
+   ]
+  },
+  {
+   "find": [
+    "            this.minimapFlagX = 0;",
+    "",
+    "            Client.cyclelogic6++;",
+    "            if (Client.cyclelogic6 > 122) {",
+    "                Client.cyclelogic6 = 0;",
+    "",
+    "                this.out.p1Enc(ClientProt.ANTICHEAT_CYCLELOGIC6);",
+    "                this.out.p1(62);",
+    "            }",
+    "        }",
+    ""
+   ],
+   "replace": [
+    "            this.minimapFlagX = 0;",
+    "",
+    "            // custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC6 counter and its packet are lclite:camera",
+    "            // gone — no legacy cycle-logic telemetry leaves this client.",
+    "        }",
+    ""
+   ],
+   "note": "src/client/Client.ts @ old line 4268",
+   "occ": 1,
+   "pos": [
+    4267,
+    7,
+    4265,
+    4275
+   ]
+  },
+  {
+   "find": [
+    "        }",
+    "",
+    "        Client.cyclelogic1++;",
+    "        if (Client.cyclelogic1 > 1174) {",
+    "            Client.cyclelogic1 = 0;",
+    "",
+    "            this.out.p1Enc(ClientProt.ANTICHEAT_CYCLELOGIC1);",
+    "            this.out.p1(0);",
+    "            const start = this.out.pos;",
+    "            if (((Math.random() * 2.0) | 0) === 0) {",
+    "                this.out.p2(11499);",
+    "            }",
+    "            this.out.p2(10548);",
+    "            if (((Math.random() * 2.0) | 0) == 0) {",
+    "                this.out.p1(139);",
+    "            }",
+    "            if (((Math.random() * 2.0) | 0) == 0) {",
+    "                this.out.p1(94);",
+    "            }",
+    "            this.out.p2(51693);",
+    "            this.out.p1(16);",
+    "            this.out.p2(15036);",
+    "            if (((Math.random() * 2.0) | 0) == 0) {",
+    "                this.out.p1(65);",
+    "            }",
+    "            this.out.p1((Math.random() * 256.0) | 0);",
+    "            this.out.p2(22990);",
+    "            this.out.psize1(this.out.pos - start);",
+    "        }",
+    "    }",
+    ""
+   ],
+   "replace": [
+    "        }",
+    "",
+    "        // custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC1 counter and its packet are lclite:camera",
+    "        // gone — no legacy cycle-logic telemetry leaves this client.",
+    "    }",
+    ""
+   ],
+   "note": "src/client/Client.ts @ old line 4387",
+   "occ": 1,
+   "pos": [
+    4386,
+    27,
+    4384,
+    4414
+   ]
+  },
+  {
+   "find": [
+    "            this.cross[((this.crossCycle / 100) | 0) + 4]?.plotSprite(this.crossX - 8 - 4, this.crossY - 8 - 4);",
+    "",
+    "            Client.cyclelogic5++;",
+    "            if (Client.cyclelogic5 > 57) {",
+    "                Client.cyclelogic5 = 0;",
+    "",
+    "                this.out.p1Enc(ClientProt.ANTICHEAT_CYCLELOGIC5);",
+    "            }",
+    "        }",
+    ""
+   ],
+   "replace": [
+    "            this.cross[((this.crossCycle / 100) | 0) + 4]?.plotSprite(this.crossX - 8 - 4, this.crossY - 8 - 4);",
+    "",
+    "            // custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC5 counter and its packet are lclite:camera",
+    "            // gone — no legacy cycle-logic telemetry leaves this client.",
+    "        }",
+    ""
+   ],
+   "note": "src/client/Client.ts @ old line 4868",
+   "occ": 1,
+   "pos": [
+    4867,
+    6,
+    4865,
+    4874
+   ]
+  },
+  {
+   "find": [
+    "        }",
+    "",
+    "        Client.cyclelogic3++;",
+    "        if (Client.cyclelogic3 > 112) {",
+    "            Client.cyclelogic3 = 0;",
+    "",
+    "            this.out.p1Enc(ClientProt.ANTICHEAT_CYCLELOGIC3);",
+    "            this.out.p1(50);",
+    "        }",
+    "    }",
+    ""
+   ],
+   "replace": [
+    "        }",
+    "",
+    "        // custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC3 counter and its packet are lclite:camera",
+    "        // gone — no legacy cycle-logic telemetry leaves this client.",
+    "    }",
+    ""
+   ],
+   "note": "src/client/Client.ts @ old line 5403",
+   "occ": 1,
+   "pos": [
+    5402,
+    7,
+    5400,
+    5410
+   ]
+  },
+  {
+   "find": [
+    "        const angle: number = (info >> 6) & 0x3;",
+    "",
+    "        Client.cyclelogic2++;",
+    "        if (Client.cyclelogic2 > 1086) {",
+    "            Client.cyclelogic2 = 0;",
+    "",
+    "            this.out.p1Enc(ClientProt.ANTICHEAT_CYCLELOGIC2);",
+    "            this.out.p1(0);",
+    "            const start = this.out.pos;",
+    "            if (((Math.random() * 2.0) | 0) == 0) {",
+    "                this.out.p2(16791);",
+    "            }",
+    "            this.out.p1(254);",
+    "            this.out.p2((Math.random() * 65536.0) | 0);",
+    "            this.out.p2(16128);",
+    "            this.out.p2(52610);",
+    "            this.out.p2((Math.random() * 65536.0) | 0);",
+    "            this.out.p2(55420);",
+    "            if (((Math.random() * 2.0) | 0) == 0) {",
+    "                this.out.p2(35025);",
+    "            }",
+    "            this.out.p2(46628);",
+    "            this.out.p1((Math.random() * 256.0) | 0);",
+    "            this.out.psize1(this.out.pos - start);",
+    "        }",
+    "",
+    "        if (shape === LocShape.CENTREPIECE_STRAIGHT || shape === LocShape.CENTREPIECE_DIAGONAL || shape === LocShape.GROUND_DECOR) {"
+   ],
+   "replace": [
+    "        const angle: number = (info >> 6) & 0x3;",
+    "",
+    "        // custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC2 counter and its packet are lclite:camera",
+    "        // gone — no legacy cycle-logic telemetry leaves this client.",
+    "",
+    "        if (shape === LocShape.CENTREPIECE_STRAIGHT || shape === LocShape.CENTREPIECE_DIAGONAL || shape === LocShape.GROUND_DECOR) {"
+   ],
+   "note": "src/client/Client.ts @ old line 5572",
+   "occ": 1,
+   "pos": [
+    5571,
+    23,
+    5569,
+    5595
+   ]
+  },
+  {
+   "find": [
+    "",
+    "                if (action === MiniMenuAction.OP_OBJ1) {",
+    "                    if ((b & 0x3) == 0) {",
+    "                        Client.oplogic7++;",
+    "                    }",
+    "                    if (Client.oplogic7 >= 123) {",
+    "                        this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC7);",
+    "                        this.out.p4(0);",
+    "                    }",
+    "",
+    "                    this.out.p1Enc(ClientProt.OPOBJ1);"
+   ],
+   "replace": [
+    "",
+    "                if (action === MiniMenuAction.OP_OBJ1) {",
+    "                    // custom (lclite camera mod): no ANTICHEAT_OPLOGIC7 telemetry — the OP_OBJ1 packet lclite:camera",
+    "                    // below is all this branch sends.",
+    "",
+    "                    this.out.p1Enc(ClientProt.OPOBJ1);"
+   ],
+   "note": "src/client/Client.ts @ old line 8607",
+   "occ": 1,
+   "pos": [
+    8606,
+    7,
+    8604,
+    8614
+   ]
+  },
+  {
+   "find": [
+    "",
+    "                if (action === MiniMenuAction.OP_OBJ4) {",
+    "                    Client.oplogic8 += c;",
+    "                    if (Client.oplogic8 >= 75) {",
+    "                        this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC8);",
+    "                        this.out.p1(19);",
+    "                    }",
+    "",
+    "                    this.out.p1Enc(ClientProt.OPOBJ4);"
+   ],
+   "replace": [
+    "",
+    "                if (action === MiniMenuAction.OP_OBJ4) {",
+    "                    // custom (lclite camera mod): no ANTICHEAT_OPLOGIC8 telemetry — the OP_OBJ4 packet lclite:camera",
+    "                    // below is all this branch sends.",
+    "",
+    "                    this.out.p1Enc(ClientProt.OPOBJ4);"
+   ],
+   "note": "src/client/Client.ts @ old line 8627",
+   "occ": 1,
+   "pos": [
+    8626,
+    5,
+    8624,
+    8632
+   ]
+  },
+  {
+   "find": [
+    "",
+    "                if (action === MiniMenuAction.OP_OBJ5) {",
+    "                    Client.oplogic3 += this.mapBuildBaseZ;",
+    "                    if (Client.oplogic3 >= 118) {",
+    "                        this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC3);",
+    "                        this.out.p4(0);",
+    "                    }",
+    "",
+    "                    this.out.p1Enc(ClientProt.OPOBJ5);"
+   ],
+   "replace": [
+    "",
+    "                if (action === MiniMenuAction.OP_OBJ5) {",
+    "                    // custom (lclite camera mod): no ANTICHEAT_OPLOGIC3 telemetry — the OP_OBJ5 packet lclite:camera",
+    "                    // below is all this branch sends.",
+    "",
+    "                    this.out.p1Enc(ClientProt.OPOBJ5);"
+   ],
+   "note": "src/client/Client.ts @ old line 8637",
+   "occ": 1,
+   "pos": [
+    8636,
+    5,
+    8634,
+    8642
+   ]
+  },
+  {
+   "find": [
+    "",
+    "        if (action === MiniMenuAction.OP_LOC2) {",
+    "            Client.oplogic1 += c;",
+    "            if (Client.oplogic1 >= 139) {",
+    "                this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC1);",
+    "                this.out.p4(0);",
+    "            }",
+    "",
+    "            this.interactWithLoc(b, c, a, ClientProt.OPLOC2);"
+   ],
+   "replace": [
+    "",
+    "        if (action === MiniMenuAction.OP_LOC2) {",
+    "            // custom (lclite camera mod): no ANTICHEAT_OPLOGIC1 telemetry — the OPLOC2 packet lclite:camera",
+    "            // below is all this branch sends.",
+    "",
+    "            this.interactWithLoc(b, c, a, ClientProt.OPLOC2);"
+   ],
+   "note": "src/client/Client.ts @ old line 8796",
+   "occ": 1,
+   "pos": [
+    8795,
+    5,
+    8793,
+    8801
+   ]
+  },
+  {
+   "find": [
+    "",
+    "        if (action === MiniMenuAction.OP_LOC3) {",
+    "            Client.oplogic2++;",
+    "            if (Client.oplogic2 >= 124) {",
+    "                this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC2);",
+    "                this.out.p2(37954);",
+    "            }",
+    "",
+    "            this.interactWithLoc(b, c, a, ClientProt.OPLOC3);"
+   ],
+   "replace": [
+    "",
+    "        if (action === MiniMenuAction.OP_LOC3) {",
+    "            // custom (lclite camera mod): no ANTICHEAT_OPLOGIC2 telemetry — the OPLOC3 packet lclite:camera",
+    "            // below is all this branch sends.",
+    "",
+    "            this.interactWithLoc(b, c, a, ClientProt.OPLOC3);"
+   ],
+   "note": "src/client/Client.ts @ old line 8806",
+   "occ": 1,
+   "pos": [
+    8805,
+    5,
+    8803,
+    8811
+   ]
+  },
+  {
+   "find": [
+    "",
+    "                if (action === MiniMenuAction.OP_PLAYER1) {",
+    "                    Client.oplogic4++;",
+    "                    if (Client.oplogic4 >= 52) {",
+    "                        this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC4);",
+    "                        this.out.p1(131);",
+    "                    }",
+    "",
+    "                    this.out.p1Enc(ClientProt.OPPLAYER1);"
+   ],
+   "replace": [
+    "",
+    "                if (action === MiniMenuAction.OP_PLAYER1) {",
+    "                    // custom (lclite camera mod): no ANTICHEAT_OPLOGIC4 telemetry — the OPPLAYER1 packet lclite:camera",
+    "                    // below is all this branch sends.",
+    "",
+    "                    this.out.p1Enc(ClientProt.OPPLAYER1);"
+   ],
+   "note": "src/client/Client.ts @ old line 8862",
+   "occ": 1,
+   "pos": [
+    8861,
+    5,
+    8859,
+    8867
+   ]
+  },
+  {
+   "find": [
+    "",
+    "                if (action === MiniMenuAction.OP_PLAYER4) {",
+    "                    Client.oplogic5 += a;",
+    "                    if (Client.oplogic5 >= 66) {",
+    "                        this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC5);",
+    "                        this.out.p1(154);",
+    "                    }",
+    "",
+    "                    this.out.p1Enc(ClientProt.OPPLAYER4);"
+   ],
+   "replace": [
+    "",
+    "                if (action === MiniMenuAction.OP_PLAYER4) {",
+    "                    // custom (lclite camera mod): no ANTICHEAT_OPLOGIC5 telemetry — the OPPLAYER4 packet lclite:camera",
+    "                    // below is all this branch sends.",
+    "",
+    "                    this.out.p1Enc(ClientProt.OPPLAYER4);"
+   ],
+   "note": "src/client/Client.ts @ old line 8880",
+   "occ": 1,
+   "pos": [
+    8879,
+    5,
+    8877,
+    8885
+   ]
+  },
+  {
+   "find": [
+    "",
+    "                        if (action === MiniMenuAction.ACCEPT_TRADEREQ) {",
+    "                            Client.oplogic5 += a;",
+    "                            if (Client.oplogic5 >= 66) {",
+    "                                this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC5);",
+    "                                this.out.p1(154);",
+    "                            }",
+    "",
+    "                            this.out.p1Enc(ClientProt.OPPLAYER4);"
+   ],
+   "replace": [
+    "",
+    "                        if (action === MiniMenuAction.ACCEPT_TRADEREQ) {",
+    "                            // custom (lclite camera mod): no ANTICHEAT_OPLOGIC5 telemetry on a trade accept — the lclite:camera",
+    "                            // OPPLAYER4 packet below is all this branch sends.",
+    "",
+    "                            this.out.p1Enc(ClientProt.OPPLAYER4);"
+   ],
+   "note": "src/client/Client.ts @ old line 8913",
+   "occ": 1,
+   "pos": [
+    8912,
+    5,
+    8910,
+    8918
+   ]
+  },
+  {
+   "find": [
+    "",
+    "                        if (action === MiniMenuAction.ACCEPT_DUELREQ) {",
+    "                            Client.oplogic4++;",
+    "                            if (Client.oplogic4 >= 52) {",
+    "                                this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC4);",
+    "                                this.out.p1(131);",
+    "                            }",
+    "",
+    "                            this.out.p1Enc(ClientProt.OPPLAYER1);"
+   ],
+   "replace": [
+    "",
+    "                        if (action === MiniMenuAction.ACCEPT_DUELREQ) {",
+    "                            // custom (lclite camera mod): no ANTICHEAT_OPLOGIC4 telemetry on a duel accept — the lclite:camera",
+    "                            // OPPLAYER1 packet below is all this branch sends.",
+    "",
+    "                            this.out.p1Enc(ClientProt.OPPLAYER1);"
+   ],
+   "note": "src/client/Client.ts @ old line 8923",
+   "occ": 1,
+   "pos": [
+    8922,
+    5,
+    8920,
+    8928
+   ]
+  },
+  {
+   "find": [
+    "",
+    "            if (action === MiniMenuAction.OP_HELD4) {",
+    "                Client.oplogic9++;",
+    "                if (Client.oplogic9 >= 116) {",
+    "                    this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC9);",
+    "                    this.out.p3(13018169);",
+    "                }",
+    "",
+    "                this.out.p1Enc(ClientProt.OPHELD4);"
+   ],
+   "replace": [
+    "",
+    "            if (action === MiniMenuAction.OP_HELD4) {",
+    "                // custom (lclite camera mod): no ANTICHEAT_OPLOGIC9 telemetry — the OPHELD4 packet lclite:camera",
+    "                // below is all this branch sends.",
+    "",
+    "                this.out.p1Enc(ClientProt.OPHELD4);"
+   ],
+   "note": "src/client/Client.ts @ old line 8993",
+   "occ": 1,
+   "pos": [
+    8992,
+    5,
+    8990,
+    8998
+   ]
+  },
+  {
+   "find": [
+    "        if (action === MiniMenuAction.INV_BUTTON1 || action === MiniMenuAction.INV_BUTTON2 || action === MiniMenuAction.INV_BUTTON3 || action === MiniMenuAction.INV_BUTTON4 || action === MiniMenuAction.INV_BUTTON5) {",
+    "            if (action === MiniMenuAction.INV_BUTTON1) {",
+    "                if ((a & 0x3) == 0) {",
+    "                    Client.oplogic6++;",
+    "                }",
+    "                if (Client.oplogic6 >= 133) {",
+    "                    this.out.p1Enc(ClientProt.ANTICHEAT_OPLOGIC6);",
+    "                    this.out.p2(6118);",
+    "                }",
+    "",
+    "                this.out.p1Enc(ClientProt.INV_BUTTON1);"
+   ],
+   "replace": [
+    "        if (action === MiniMenuAction.INV_BUTTON1 || action === MiniMenuAction.INV_BUTTON2 || action === MiniMenuAction.INV_BUTTON3 || action === MiniMenuAction.INV_BUTTON4 || action === MiniMenuAction.INV_BUTTON5) {",
+    "            if (action === MiniMenuAction.INV_BUTTON1) {",
+    "                // custom (lclite camera mod): no ANTICHEAT_OPLOGIC6 telemetry — the INV_BUTTON1 packet lclite:camera",
+    "                // below is all this branch sends.",
+    "",
+    "                this.out.p1Enc(ClientProt.INV_BUTTON1);"
+   ],
+   "note": "src/client/Client.ts @ old line 9126",
+   "occ": 1,
+   "pos": [
+    9125,
+    7,
+    9123,
+    9133
    ]
   },
   {

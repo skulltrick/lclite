@@ -73,8 +73,10 @@
     // mod registry ---------------------------------------------------------
     // id = the lclite/mods/<id> folder name (matches installed.json).
     // master: {key, def} — the mod's on/off. master.invert: the row's switch is
-    // a DISABLE control (checked = engine key 'false', e.g. "Disable anti-cheat").
-    // null = no engine master (the panel itself). Mods absent from this list but
+    // a DISABLE control (checked = engine key 'false') for a row whose NAME is the
+    // thing being switched off; no row needs it today (anti-cheat was the only
+    // one), kept so a future "Disable X" row has the shape. null = no engine
+    // master (the panel itself). Mods absent from this list but
     // present in the manifest get
     // synthesized entries (name/desc from their settings rows; master only if the
     // mod has exactly ONE toggle row, whose key then doubles as the master).
@@ -104,12 +106,8 @@
               const i = window.tcgInfo();   // positional contract (see tcg_core.ts)
               return '◈ ' + i[0].toLocaleString('en-US') + ' · ' + i[11] + ' cards · ' + i[16] + ' kills';
           } },
-        // inverted row: the switch is labelled DISABLE — checked means packets OFF,
-        // so it mirrors the antiCheat engine key (checked ⇔ LS 'false').
-        { id: 'anti-cheat', name: 'Disable anti-cheat', desc: 'Disables the client sending legacy mouse/camera/anticheat packets.', master: { key: 'antiCheat', def: 'true', invert: true } },
         // NOT inverted: the name is the action ("Disable profanity filter"), so
         // checked = the filter is off = the key's own 'true' — the hide-roofs shape.
-        // (anti-cheat inverts because ITS label names the thing being switched off.)
         { id: 'no-censor', name: 'Disable profanity filter', desc: "Chat is not censored: your own messages, other players' and private messages alike.", master: { key: 'noCensor', def: 'true' } },
         { id: 'hide-roofs', name: 'Hide roofs', desc: 'Removes roofs everywhere, not only while you stand under them. Off: the game hides them itself as you walk in.', master: { key: 'hideRoofs', def: 'false' } },
         { id: 'low-detail', name: 'Low detail', desc: 'Untextured ground applies instantly; ground decorations and half-size textures need a client refresh (F5).', master: { key: 'lowDetail', def: 'false' } },
@@ -130,7 +128,7 @@
     // kind: 'toggle' writes 'true'/'false'; 'action' fires; 'slider' writes a float;
     // 'text' writes the raw string (an item-name list) on commit
     // desc is the hover tooltip text (and search fodder), not visible subtext
-    // NOTE: single-toggle mods (xp-drops, anti-cheat, no-censor, hide-roofs,
+    // NOTE: single-toggle mods (xp-drops, no-censor, hide-roofs,
     // low-detail, shift-drop) intentionally have NO row here — their master switch
     // on their list row IS their only setting (RuneLite: no config => nothing to
     // open). true-tile, stat-orbs and gpu graduated: master on the row, plus their
@@ -402,8 +400,8 @@
     const saveFavs = () => LS.set('lcmFavMods', [...FAVS].join(','));
     // the CORE row is always first (it is not a plugin: it cannot be switched off and
     // it has nothing to sort against — see CORE_ID); below it, favorites first, then
-    // alphabetical by name (case-insensitive — 'Disable anti-cheat' sorts under D,
-    // 'GPU' under G, 'XP drops' last)
+    // alphabetical by name (case-insensitive — 'Disable profanity filter' sorts
+    // under D, 'GPU' under G, 'XP drops' last)
     const favCmp = (a, b) =>
         (b.id === CORE_ID ? 1 : 0) - (a.id === CORE_ID ? 1 : 0) ||
         (FAVS.has(b.id) ? 1 : 0) - (FAVS.has(a.id) ? 1 : 0) ||

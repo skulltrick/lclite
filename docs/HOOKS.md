@@ -26,19 +26,17 @@
 | webclient/src/client/Client.ts | 121 | xp-drops | `/// custom (lclite "xp-drops"): skill id -> staticons sprite index. Pack order i` |
 | webclient/src/client/Client.ts | 355 | camera | `/// custom: OSRS-style camera zoom + middle-button rotate lclite:camera` |
 | webclient/src/client/Client.ts | 422 | xp-drops | `/// custom (lclite "xp-drops" mod): OSRS-style xp drops + level progress panel. ` |
-| webclient/src/client/Client.ts | 514 | anti-cheat | `/// custom (lclite "anti-cheat" mod): gates every legacy RuneScope telemetry lcl` |
 | webclient/src/client/Client.ts | 587 | camera | `// lclite:camera` |
 | webclient/src/client/Client.ts | 588 | camera | `// lclite:camera` |
 | webclient/src/client/Client.ts | 602 | low-detail | `// lclite:low-detail` |
 | webclient/src/client/Client.ts | 1015 | xp-drops | `// custom: skill icons for xp-drops (staticons = skills 0-17 in the SAME lclite:` |
 | webclient/src/client/Client.ts | 1729 | tcg | `// lclite:tcg — tell the (window) core who just logged in; it loads that` |
 | webclient/src/client/Client.ts | 1820 | xp-drops | `// custom: fresh xp-drop feed per session (world hop / re-login). lclite:xp-drop` |
-| webclient/src/client/Client.ts | 2061 | anti-cheat | `// custom (lclite "anti-cheat"): read our OWN key once per cycle here (the lclit` |
-| webclient/src/client/Client.ts | 2063 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 2132 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 2173 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 2181 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 2307 | anti-cheat | `// lclite:anti-cheat` |
+| webclient/src/client/Client.ts | 2064 | camera | `// custom (lclite camera mod): this rev reports mouse movement to the server as ` |
+| webclient/src/client/Client.ts | 2132 | camera | `// custom (lclite camera mod): EVENT_MOUSE_CLICK telemetry is never sent either ` |
+| webclient/src/client/Client.ts | 2176 | camera | `// custom (lclite camera mod): the EVENT_CAMERA_POSITION packet was sent from lc` |
+| webclient/src/client/Client.ts | 2181 | camera | `// custom (lclite camera mod): focus changes are not reported to the server lcli` |
+| webclient/src/client/Client.ts | 2303 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC7 counter and its packet ` |
 | webclient/src/client/Client.ts | 2316 | camera | `// custom: the ground pick stays armed (World.click) after a walk click and lcli` |
 | webclient/src/client/Client.ts | 2326 | camera | `// custom: pick expiry is handled inside World.renderAll (clearPick / clickCycle` |
 | webclient/src/client/Client.ts | 2335 | wiki-lookup | `// lclite:wiki-lookup` |
@@ -46,7 +44,7 @@
 | webclient/src/client/Client.ts | 2568 | wiki-lookup | `// lclite:wiki-lookup` |
 | webclient/src/client/Client.ts | 2598 | wiki-lookup | `// lclite:wiki-lookup` |
 | webclient/src/client/Client.ts | 2743 | stat-orbs | `// custom (lclite "stat-orbs" mod): the orb column and its prayer book sit ON th` |
-| webclient/src/client/Client.ts | 2942 | anti-cheat | `// lclite:anti-cheat` |
+| webclient/src/client/Client.ts | 2938 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC4 counter and its packet ` |
 | webclient/src/client/Client.ts | 3091 | tcg | `// lclite:tcg — ::tcg opens the album; staff subcommands (give/roll)` |
 | webclient/src/client/Client.ts | 3227 | camera | `// custom: smooth the wheel zoom toward its target (OSRS-style easing) lclite:ca` |
 | webclient/src/client/Client.ts | 3888 | stat-orbs | `/// custom (lclite "stat-orbs" mod): fields + tunables live in this one lclite:s` |
@@ -58,17 +56,17 @@
 | webclient/src/client/Client.ts | 4242 | hover-tile | `// lclite:hover-tile` |
 | webclient/src/client/Client.ts | 4248 | hover-tile | `// lclite:hover-tile` |
 | webclient/src/client/Client.ts | 4259 | camera | `// lclite:camera` |
-| webclient/src/client/Client.ts | 4271 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 4387 | anti-cheat | `// lclite:anti-cheat` |
+| webclient/src/client/Client.ts | 4267 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC6 counter and its packet ` |
+| webclient/src/client/Client.ts | 4386 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC1 counter and its packet ` |
 | webclient/src/client/Client.ts | 4478 | hide-roofs | `// lclite:hide-roofs` |
 | webclient/src/client/Client.ts | 4572 | xp-drops | `/// custom (lclite "xp-drops" mod): "Skill +N" rows drifting up from the bottom ` |
 | webclient/src/client/Client.ts | 4575 | xp-drops | `// custom (lclite "xp-drops"): tracker panel + drop rows into the game buffer. l` |
 | webclient/src/client/Client.ts | 4801 | ground-items | `// lclite:ground-items` |
-| webclient/src/client/Client.ts | 4868 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 5098 | hover-tile | `// lclite:hover-tile` |
+| webclient/src/client/Client.ts | 4867 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC5 counter and its packet ` |
+| webclient/src/client/Client.ts | 5091 | hover-tile | `// lclite:hover-tile` |
 | webclient/src/client/Client.ts | 5162 | ground-items | `// lclite:ground-items` |
-| webclient/src/client/Client.ts | 5403 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 5572 | anti-cheat | `// lclite:anti-cheat` |
+| webclient/src/client/Client.ts | 5402 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC3 counter and its packet ` |
+| webclient/src/client/Client.ts | 5571 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC2 counter and its packet ` |
 | webclient/src/client/Client.ts | 6685 | xp-drops | `// custom: a gained amount (xp > stored) = drop; equal/below = login lclite:xp-d` |
 | webclient/src/client/Client.ts | 6695 | tcg | `// custom (lclite "tcg"): feed the credit economy from real xp — 100c/1k xp lcli` |
 | webclient/src/client/Client.ts | 7902 | tcg | `// lclite:tcg — the LOCAL player aiming at an npc (attack/cast/follow` |
@@ -78,17 +76,17 @@
 | webclient/src/client/Client.ts | 8290 | ground-items | `// lclite:ground-items` |
 | webclient/src/client/Client.ts | 8364 | shift-drop | `// lclite:shift-drop` |
 | webclient/src/client/Client.ts | 8585 | wiki-lookup | `// lclite:wiki-lookup` |
-| webclient/src/client/Client.ts | 8609 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 8627 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 8637 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 8796 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 8806 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 8862 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 8880 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 8913 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 8923 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 8993 | anti-cheat | `// lclite:anti-cheat` |
-| webclient/src/client/Client.ts | 9128 | anti-cheat | `// lclite:anti-cheat` |
+| webclient/src/client/Client.ts | 8606 | camera | `// custom (lclite camera mod): no ANTICHEAT_OPLOGIC7 telemetry — the OP_OBJ1 pac` |
+| webclient/src/client/Client.ts | 8626 | camera | `// custom (lclite camera mod): no ANTICHEAT_OPLOGIC8 telemetry — the OP_OBJ4 pac` |
+| webclient/src/client/Client.ts | 8636 | camera | `// custom (lclite camera mod): no ANTICHEAT_OPLOGIC3 telemetry — the OP_OBJ5 pac` |
+| webclient/src/client/Client.ts | 8795 | camera | `// custom (lclite camera mod): no ANTICHEAT_OPLOGIC1 telemetry — the OPLOC2 pack` |
+| webclient/src/client/Client.ts | 8805 | camera | `// custom (lclite camera mod): no ANTICHEAT_OPLOGIC2 telemetry — the OPLOC3 pack` |
+| webclient/src/client/Client.ts | 8861 | camera | `// custom (lclite camera mod): no ANTICHEAT_OPLOGIC4 telemetry — the OPPLAYER1 p` |
+| webclient/src/client/Client.ts | 8879 | camera | `// custom (lclite camera mod): no ANTICHEAT_OPLOGIC5 telemetry — the OPPLAYER4 p` |
+| webclient/src/client/Client.ts | 8912 | camera | `// custom (lclite camera mod): no ANTICHEAT_OPLOGIC5 telemetry on a trade accept` |
+| webclient/src/client/Client.ts | 8922 | camera | `// custom (lclite camera mod): no ANTICHEAT_OPLOGIC4 telemetry on a duel accept ` |
+| webclient/src/client/Client.ts | 8992 | camera | `// custom (lclite camera mod): no ANTICHEAT_OPLOGIC9 telemetry — the OPHELD4 pac` |
+| webclient/src/client/Client.ts | 9125 | camera | `// custom (lclite camera mod): no ANTICHEAT_OPLOGIC6 telemetry — the INV_BUTTON1` |
 | webclient/src/client/Client.ts | 11172 | hotkeys | `// lclite:hotkeys — keybinds: F-key sidebar tabs, Esc closes interfaces, WASD ca` |
 | webclient/src/client/Client.ts | 11310 | hotkeys | `// lclite:hotkeys — a locked chatbox (WASD camera + press-enter-to-chat) prompts` |
 | webclient/src/client/Client.ts | 11334 | stat-orbs | `// custom (lclite "stat-orbs"): read our OWN key here (runs every frame); lclite` |

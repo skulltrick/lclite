@@ -208,11 +208,11 @@ func TestHandleWorldAddAcceptsAGoodCodeAndWarnsOnUnsigned(t *testing.T) {
 
 func TestHandleWorldCheckGatesOnTheTreeNotTheTickedBoxes(t *testing.T) {
 	l, _ := newLauncher(t.TempDir(), "test", false)
-	// The tree says anti-cheat is applied, even if the UI would claim otherwise.
-	in := fullInstall(t, "289", "main", []string{"control-panel", "gpu", "anti-cheat"})
+	// The tree says no-censor is applied, even if the UI would claim otherwise.
+	in := fullInstall(t, "289", "main", []string{"control-panel", "gpu", "no-censor"})
 	l.store.upsertInstall(in)
 
-	world, _ := testManifest(t) // requires true-tile+gpu, forbids anti-cheat
+	world, _ := testManifest(t) // requires true-tile+gpu, forbids no-censor
 	l.store.addWorld(World{Manifest: world, AddedAt: time.Now()})
 
 	rec := httptest.NewRecorder()
@@ -225,10 +225,10 @@ func TestHandleWorldCheckGatesOnTheTreeNotTheTickedBoxes(t *testing.T) {
 		t.Fatalf("decode: %v (%s)", err, rec.Body.String())
 	}
 	if !out.Report.Blocked {
-		t.Fatalf("anti-cheat is applied and forbidden, so this must block: %+v", out.Report)
+		t.Fatalf("no-censor is applied and forbidden, so this must block: %+v", out.Report)
 	}
-	if len(out.Report.Refused) != 1 || out.Report.Refused[0] != "anti-cheat" {
-		t.Fatalf("expected anti-cheat refused, got %v", out.Report.Refused)
+	if len(out.Report.Refused) != 1 || out.Report.Refused[0] != "no-censor" {
+		t.Fatalf("expected no-censor refused, got %v", out.Report.Refused)
 	}
 	if len(out.Report.Missing) != 1 || out.Report.Missing[0] != "true-tile" {
 		t.Fatalf("expected true-tile missing, got %v", out.Report.Missing)
@@ -236,7 +236,7 @@ func TestHandleWorldCheckGatesOnTheTreeNotTheTickedBoxes(t *testing.T) {
 	if out.Report.Digest == "" {
 		t.Fatal("the report should carry a digest of the build that would be served")
 	}
-	if strings.Contains(strings.Join(out.Report.Applied, ","), "anti-cheat") == false {
+	if strings.Contains(strings.Join(out.Report.Applied, ","), "no-censor") == false {
 		t.Fatal("the report should say what is actually applied")
 	}
 }
@@ -267,9 +267,9 @@ func TestHandleWorldCheckPassesACleanSet(t *testing.T) {
 // answer the question it can answer: which build would this install serve?
 func TestHandleWorldCheckAcceptsATypedAddress(t *testing.T) {
 	l, _ := newLauncher(t.TempDir(), "test", false)
-	in := fullInstall(t, "289", "main", []string{"control-panel", "gpu", "anti-cheat"})
+	in := fullInstall(t, "289", "main", []string{"control-panel", "gpu", "no-censor"})
 	l.store.upsertInstall(in)
-	world, _ := testManifest(t) // requires true-tile+gpu, forbids anti-cheat
+	world, _ := testManifest(t) // requires true-tile+gpu, forbids no-censor
 	l.store.addWorld(World{Manifest: world, AddedAt: time.Now()})
 
 	type checkOut struct {
@@ -307,7 +307,7 @@ func TestHandleWorldCheckAcceptsATypedAddress(t *testing.T) {
 	if err := json.Unmarshal(rec2.Body.Bytes(), &b); err != nil {
 		t.Fatalf("decode: %v (%s)", err, rec2.Body.String())
 	}
-	if !b.Report.Blocked || len(b.Report.Refused) != 1 || b.Report.Refused[0] != "anti-cheat" {
+	if !b.Report.Blocked || len(b.Report.Refused) != 1 || b.Report.Refused[0] != "no-censor" {
 		t.Fatalf("a typed address must still meet that world's rules: %+v", b.Report)
 	}
 	if b.World.ID != world.ID {
@@ -387,7 +387,7 @@ func TestHandleWorldPublishSignsAndRefusesContradictions(t *testing.T) {
 	rec := httptest.NewRecorder()
 	l.handleWorldPublish(rec, jsonReq(t, map[string]any{
 		"name": "Bob's 289", "description": "slow xp",
-		"mods_required": []string{"gpu"}, "mods_forbidden": []string{"anti-cheat"},
+		"mods_required": []string{"gpu"}, "mods_forbidden": []string{"no-censor"},
 	}))
 	var out struct {
 		OK          bool          `json:"ok"`
@@ -632,7 +632,7 @@ func TestJSONKeysTheUIActuallyReads(t *testing.T) {
 		p.target = &url.URL{Scheme: "http", Host: "play.example.com:443"}
 		p.SetJoined(JoinedWorld{
 			ID: "w1", Name: "n", Description: "d", Host: "h", Address: "a:1", Rev: "289",
-			Required: []string{"gpu"}, Forbidden: []string{"anti-cheat"}, Self: true,
+			Required: []string{"gpu"}, Forbidden: []string{"no-censor"}, Self: true,
 			Signed: true, Fingerprint: "fp", Install: "289", Mods: []string{"gpu"}, Since: time.Now(),
 		})
 		st := p.Status()

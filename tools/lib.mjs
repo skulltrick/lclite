@@ -57,10 +57,6 @@ export const MOD_META = {
         label: 'Hover tile',
         desc: 'Highlights the tile your mouse is over. Customizable.',
     },
-    'anti-cheat': {
-        label: 'Disable anti-cheat',
-        desc: 'Disables the client sending legacy mouse/camera/anticheat packets.',
-    },
     'no-censor': {
         label: 'Disable profanity filter',
         // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this)

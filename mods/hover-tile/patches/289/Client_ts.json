@@ -81,12 +81,24 @@
   },
   {
    "find": [
-    "    }",
+    "        }",
     "",
-    "    private checkMinimap(): void {",
-    "        if (Client.lowMem && this.sceneState === 2 && ClientBuild.minusedlevel !== this.minusedlevel) {"
+    "        const tileLocalX: number = sceneX & 0x7f;",
+    "        const tileLocalZ: number = sceneZ & 0x7f;",
+    "        const y00: number = (this.groundh[realLevel][tileX][tileZ] * (128 - tileLocalX) + this.groundh[realLevel][tileX + 1][tileZ] * tileLocalX) >> 7;",
+    "        const y11: number = (this.groundh[realLevel][tileX][tileZ + 1] * (128 - tileLocalX) + this.groundh[realLevel][tileX + 1][tileZ + 1] * tileLocalX) >> 7;",
+    "        return (y00 * (128 - tileLocalZ) + y11 * tileLocalZ) >> 7;",
+    "    }",
+    ""
    ],
    "replace": [
+    "        }",
+    "",
+    "        const tileLocalX: number = sceneX & 0x7f;",
+    "        const tileLocalZ: number = sceneZ & 0x7f;",
+    "        const y00: number = (this.groundh[realLevel][tileX][tileZ] * (128 - tileLocalX) + this.groundh[realLevel][tileX + 1][tileZ] * tileLocalX) >> 7;",
+    "        const y11: number = (this.groundh[realLevel][tileX][tileZ + 1] * (128 - tileLocalX) + this.groundh[realLevel][tileX + 1][tileZ + 1] * tileLocalX) >> 7;",
+    "        return (y00 * (128 - tileLocalZ) + y11 * tileLocalZ) >> 7;",
     "    }",
     "",
     "    // lclite:hover-tile",
@@ -195,16 +207,15 @@
     "        Pix3D.trans = savedTrans;",
     "        Pix3D.hclip = savedHclip;",
     "    }",
-    "    private checkMinimap(): void {",
-    "        if (Client.lowMem && this.sceneState === 2 && ClientBuild.minusedlevel !== this.minusedlevel) {"
+    ""
    ],
-   "note": "src/client/Client.ts @ old line 5098",
+   "note": "src/client/Client.ts @ old line 5092",
    "occ": 1,
    "pos": [
-    5098,
-    0,
-    5096,
-    5099
+    5091,
+    5,
+    5089,
+    5097
    ]
   }
  ]

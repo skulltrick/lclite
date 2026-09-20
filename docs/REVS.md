@@ -152,16 +152,16 @@ so the rest of that mod's hunks keep following the primary.
 
 | revision | how it gets its hunks | mods | notes |
 |---|---|---|---|
-| **289** | primary — the corpus in `mods/*/patches/289/` | 12 | the reference: everything is authored here |
-| **274** | inherits 289 | 12 | every anchor matches 274 byte-for-byte, so it costs zero extra maintenance |
-| **254** | own corpus in `mods/*/patches/254/` | 7 | upstream rewrote code inside 41 of the 104 anchors; 5 mods need revision-specific work |
+| **289** | primary — the corpus in `mods/*/patches/289/` | 16 | the reference: everything is authored here |
+| **274** | inherits 289 | 16 | every anchor matches 274 byte-for-byte, so it costs zero extra maintenance |
+| **254** | own corpus in `mods/*/patches/254/` | 6 | upstream rewrote code inside 41 of the 104 anchors the corpus had at the last port; 5 mods need revision-specific work |
 
 `254`'s five unavailable mods, and why — the honest list:
 
 | mod | why it is not on 254 yet |
 |---|---|
 | `control-panel` | its terser-reserve hunk anchors on 289's reserve list, and 254 has no `engine/src/web.ts` at all (the page's `revision` local is not there to patch) |
-| `camera` | 254 has no `World.visBacking` / `visBackingDirty` — the visibility cache the zoom-out hook maintains was added upstream after 254 |
+| `camera` | 254 has no `World.visBacking` / `visBackingDirty` — the visibility cache the zoom-out hook maintains was added upstream after 254. The legacy-telemetry suppression lives in this mod too (folded in 2026-09-20), so 254 does not have that either |
 | `xp-drops` | 254 has no `Client.statBaseLevel` / `statXP` / `readbit` — the level-tracking hooks the drop math reads |
 | `stat-orbs` | the minimap/`areaMap` draw path the orbs attach to was restructured |
 | `hotkeys` | 254 has no `import Skill from '#/client/Skill.js'` in `Client.ts`, the block the keybind hooks sit beside |
@@ -170,9 +170,12 @@ None of those is an anchor that needs nudging: the code each mod hooks does not 
 254. Supporting them means writing the equivalent against 254's own structures — a
 revision-specific job, and the port report says so rather than pretending.
 
-### Worked example: the two mods that ported after a hand-fix
+### Worked example: the mods that ported after a hand-fix
 
-`tcg` and `anti-cheat` re-anchored perfectly on 254 and still did not compile there:
+`anti-cheat` is gone now — its telemetry suppression was folded into `camera` on
+2026-09-20 and its 254 corpus was deleted with it — but it is kept in this example
+because the two-error shape is what makes the lesson: it and `tcg` re-anchored
+perfectly on 254 and still did not compile there:
 
 ```
 tcg        src/client/Client.ts(8977,88): error TS2339: Property 'loopCycle' does not exist on type 'typeof Client'.
@@ -184,9 +187,10 @@ neither. Both are one-line, revision-specific differences in the mod's own code,
 fix belongs in **254's corpus**:
 
 ```bash
-node tools/port.mjs 254 --mods tcg,anti-cheat --partial   # apply them for inspection
+node tools/port.mjs 254 --mods tcg --partial   # apply it for inspection
 #   Client.loopCycle -> this.loopCycle      (254 keeps loopCycle per instance)
-#   this.out.p1Enc(  -> this.out.pIsaac(    (254's name for the ISAAC-masked opcode)
+#   anti-cheat's fix was the same shape: this.out.p1Enc( -> this.out.pIsaac(
+#   (254's name for the ISAAC-masked opcode) — its corpus went with the mod
 cd <install>/webclient && ./node_modules/.bin/tsc --noEmit -p tsconfig.json   # clean
 LCLITE_ROOT=<install> node tools/regen.mjs                # snapshot 254's own hunks
 ```

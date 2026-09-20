@@ -10,7 +10,7 @@
       "note": "every anchor in the 289 corpus still matches 274 byte-for-byte, so it needs no corpus of its own (matrix verifies this)"
     },
     "254": {
-      "note": "own corpus: upstream rewrote code inside 41 of the 104 anchors. 7 mods are ported (tcg and anti-cheat needed two hand-fixed 254-specific call sites); control-panel, camera, xp-drops, stat-orbs and hotkeys hook code that does not exist at 254 yet — see docs/REVS.md"
+      "note": "own corpus: upstream rewrote code inside 41 of the 104 anchors the corpus had at the last port. 6 mods are ported (tcg needed two hand-fixed 254-specific call sites); control-panel, camera, xp-drops, stat-orbs and hotkeys hook code that does not exist at 254 yet, and the legacy-telemetry suppression lives in camera now, so 254 has none — see docs/REVS.md"
     }
   }
 }

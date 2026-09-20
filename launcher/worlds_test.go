@@ -23,7 +23,7 @@ func testManifest(t *testing.T) (WorldManifest, ed25519.PrivateKey) {
 		Address:         "192.168.1.20:8080",
 		Rev:             "289",
 		ModsRequired:    []string{"true-tile", "gpu"},
-		ModsForbidden:   []string{"anti-cheat"},
+		ModsForbidden:   []string{"no-censor"},
 		AllowSaveImport: true,
 		Host:            "Bob",
 	}
@@ -199,10 +199,10 @@ func TestDecodeWorldCodeBoundsInflation(t *testing.T) {
 }
 
 func TestModRulesMatrix(t *testing.T) {
-	known := []string{"true-tile", "gpu", "anti-cheat", "hotkeys"}
+	known := []string{"true-tile", "gpu", "no-censor", "hotkeys"}
 
 	t.Run("clean set is allowed", func(t *testing.T) {
-		rep := EvaluateModRules([]string{"true-tile", "gpu"}, []string{"true-tile"}, []string{"anti-cheat"}, known)
+		rep := EvaluateModRules([]string{"true-tile", "gpu"}, []string{"true-tile"}, []string{"no-censor"}, known)
 		if !rep.OK || rep.Blocked {
 			t.Fatalf("expected ok, got %+v", rep)
 		}
@@ -212,12 +212,12 @@ func TestModRulesMatrix(t *testing.T) {
 	})
 
 	t.Run("a forbidden mod blocks", func(t *testing.T) {
-		rep := EvaluateModRules([]string{"true-tile", "anti-cheat"}, nil, []string{"anti-cheat"}, known)
+		rep := EvaluateModRules([]string{"true-tile", "no-censor"}, nil, []string{"no-censor"}, known)
 		if rep.OK || !rep.Blocked {
 			t.Fatalf("a forbidden mod that is applied must block, got %+v", rep)
 		}
-		if len(rep.Refused) != 1 || rep.Refused[0] != "anti-cheat" {
-			t.Fatalf("expected anti-cheat refused, got %v", rep.Refused)
+		if len(rep.Refused) != 1 || rep.Refused[0] != "no-censor" {
+			t.Fatalf("expected no-censor refused, got %v", rep.Refused)
 		}
 	})
 
@@ -232,7 +232,7 @@ func TestModRulesMatrix(t *testing.T) {
 	})
 
 	t.Run("blocking wins over warning", func(t *testing.T) {
-		rep := EvaluateModRules([]string{"anti-cheat"}, []string{"gpu"}, []string{"anti-cheat"}, known)
+		rep := EvaluateModRules([]string{"no-censor"}, []string{"gpu"}, []string{"no-censor"}, known)
 		if !rep.Blocked {
 			t.Fatal("a forbidden mod must block even when a required one is also missing")
 		}
@@ -323,7 +323,7 @@ func TestCleanNormalizesModLists(t *testing.T) {
 	m := WorldManifest{
 		Name:          "  Spaced  ",
 		ModsRequired:  []string{" gpu ", "true-tile", "gpu", "", "  "},
-		ModsForbidden: []string{"anti-cheat", "anti-cheat"},
+		ModsForbidden: []string{"no-censor", "no-censor"},
 	}
 	m.Clean()
 	if m.Name != "Spaced" {

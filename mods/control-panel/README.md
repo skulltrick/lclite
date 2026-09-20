@@ -112,8 +112,10 @@ theme colour (see the favicon bullet) — its fills stay literal in panel.js.
   every mod row below it is filtered out.
 - Master switches write each mod's OWN engine key (see MODS.md "The contract").
   `master.invert: true` flips the row's MEANING, not the storage: the switch is
-  a DISABLE control (checked ⇔ key 'false'). Only "Disable anti-cheat" uses it
-  (key stays `antiCheat` — the engine reads it; checked ON = packets OFF).
+  a DISABLE control (checked ⇔ key 'false'). No row uses it today — "Disable
+  anti-cheat" was the only one and that mod is gone (its telemetry suppression is
+  unconditional in `mods/camera` now) — so it stays as the shape a future
+  "Disable X" row would take.
 - Per-mod gear button (right of the description, before the switch): appears
   only on mods that HAVE settings rows, and only in the list — click opens that
   mod's view (the same path as clicking the row body, just discoverable). It is
@@ -205,7 +207,7 @@ mod's surface uses exactly this, which is why no mod ever touches `lcm*` keys it
 - A mod's view is its row PLUS its settings, with no group header: the row
   already carries the name, the star, the status line and the master, and a
   header over a single open section would just repeat the name.
-- TCG/anti-cheat rows carry a live `status()` line (positional `window.tcgInfo()`
+- TCG/GPU rows carry a live `status()` line (positional `window.tcgInfo()`
   contract) refreshed on the panel's 400ms sync tick; TCG's reads
   `window.tcgLoggedIn()` first and says `not logged in` instead of reporting the
   `default` account's balance while the game is on its title screen.

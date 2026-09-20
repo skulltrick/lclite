@@ -54,7 +54,9 @@ without `****`). Off, both halves are byte-for-byte upstream.
   `mods/control-panel/files/engine/public/lclite/panel.js`
   (`master.key === 'noCensor'`, `def: 'true'`). Not `invert`: the row's name is the
   action ("Disable profanity filter"), so checked = filter off = the key's own `'true'`
-  — the `hide-roofs` shape, not the `anti-cheat` one. `noCensor` is in the panel's
+  — the `hide-roofs` shape. (`master.invert`, the DISABLE-labelled shape the old
+  anti-cheat row used, has no user since that mod was folded into `camera`.)
+  `noCensor` is in the panel's
   Reset-all clear list.
 - Single-toggle mod: no settings rows, no `status()` — the row's master switch IS the
   whole setting.

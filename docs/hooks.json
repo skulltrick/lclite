@@ -136,12 +136,6 @@
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 514",
-    "line": 514,
-    "marker": true
-   },
-   {
     "mod": "camera",
     "note": "src/client/Client.ts @ old line 587",
     "line": 587,
@@ -178,39 +172,33 @@
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 2061",
-    "line": 2061,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 2065",
+    "line": 2064,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 2064",
-    "line": 2063,
-    "marker": true
-   },
-   {
-    "mod": "anti-cheat",
+    "mod": "camera",
     "note": "src/client/Client.ts @ old line 2133",
     "line": 2132,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 2174",
-    "line": 2173,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 2177",
+    "line": 2176,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
+    "mod": "camera",
     "note": "src/client/Client.ts @ old line 2182",
     "line": 2181,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 2308",
-    "line": 2307,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 2304",
+    "line": 2303,
     "marker": true
    },
    {
@@ -256,9 +244,9 @@
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 2943",
-    "line": 2942,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 2939",
+    "line": 2938,
     "marker": true
    },
    {
@@ -328,15 +316,15 @@
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 4272",
-    "line": 4271,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 4268",
+    "line": 4267,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 4388",
-    "line": 4387,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 4387",
+    "line": 4386,
     "marker": true
    },
    {
@@ -364,15 +352,15 @@
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 4869",
-    "line": 4868,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 4868",
+    "line": 4867,
     "marker": true
    },
    {
     "mod": "hover-tile",
-    "note": "src/client/Client.ts @ old line 5098",
-    "line": 5098,
+    "note": "src/client/Client.ts @ old line 5092",
+    "line": 5091,
     "marker": true
    },
    {
@@ -382,15 +370,15 @@
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 5404",
-    "line": 5403,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 5403",
+    "line": 5402,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 5573",
-    "line": 5572,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 5572",
+    "line": 5571,
     "marker": true
    },
    {
@@ -448,69 +436,69 @@
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8610",
-    "line": 8609,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 8607",
+    "line": 8606,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8628",
-    "line": 8627,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 8627",
+    "line": 8626,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8638",
-    "line": 8637,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 8637",
+    "line": 8636,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8797",
-    "line": 8796,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 8796",
+    "line": 8795,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8807",
-    "line": 8806,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 8806",
+    "line": 8805,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8863",
-    "line": 8862,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 8862",
+    "line": 8861,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8881",
-    "line": 8880,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 8880",
+    "line": 8879,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8914",
-    "line": 8913,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 8913",
+    "line": 8912,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8924",
-    "line": 8923,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 8923",
+    "line": 8922,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 8994",
-    "line": 8993,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 8993",
+    "line": 8992,
     "marker": true
    },
    {
-    "mod": "anti-cheat",
-    "note": "src/client/Client.ts @ old line 9129",
-    "line": 9128,
+    "mod": "camera",
+    "note": "src/client/Client.ts @ old line 9126",
+    "line": 9125,
     "marker": true
    },
    {

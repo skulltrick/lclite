@@ -40,7 +40,8 @@ hunks; the completed fix plan that closed the gaps below lives in
 
 ### 1. Anchors encode identity as geography  ← the big one
 `find` arrays carry incidental context, not semantic anchors. Worst case:
-anti-cheat Client.ts hunk = **6 payload lines in a 130-line find array** (20:1).
+the anti-cheat Client.ts hunk (that mod was folded into `camera` on 2026-09-20, so
+this is a kept measurement) = **6 payload lines in a 130-line find array** (20:1).
 camera World.ts hunks carry ~100-line context each. Every context line is a
 **false dependency**: upstream can rewrite all of it without touching the hook
 site, and the hunk still "drifts."

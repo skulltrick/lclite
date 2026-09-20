@@ -77,13 +77,12 @@ that works, and how a revision is added, is [docs/REVS.md](docs/REVS.md).
 | | Mod | What you notice |
 |---|---|---|
 | ⚙ | **LCLite** | The panel itself: search, favorites, per-mod settings, Alt+drag placement, fullscreen, screenshots |
-| ☾ | **Camera** | Wheel zoom (0.4–2.6×, eased), middle-drag rotate, one-shot walk pick, chatbox scroll — the OSRS feel |
+| ☾ | **Camera** | Wheel zoom (0.4–2.6×, eased), middle-drag rotate, one-shot walk pick, chatbox scroll — the OSRS feel. It also stops the client sending the legacy mouse/camera/anticheat telemetry, so "anti-cheat off" is part of this mod now |
 | 📈 | **XP drops** | Floating `+N` rows with skill icons plus a tan level-progress tracker, auto-hiding |
 | 🔮 | **Stat orbs** | HP / Prayer / Energy orbs down the minimap's lower-left, numbers always visible; click the run orb to run, the prayer orb for the prayer book |
 | 🃏 | **TCG** *(beta)* | Credits from xp, level-ups and kills → 5-card packs (7 tiers, foils, rare apex packs) → a 6,376-card album, cut to the cards your revision could have (1,388 of them at 289) |
 | 🟩 | **True tile** | Outline on the tile the *server* has you on, with color/border/fill controls |
 | 🎯 | **Hover tile** | Outline on the tile your mouse is over — sheared on slopes, hidden once the cursor leaves the scene |
-| 🛡 | **Disable anti-cheat** | ON = the client stops sending legacy mouse/camera/anticheat telemetry (default OFF — leave it OFF on public worlds) |
 | 🤬 | **Disable profanity filter** | Chat is not censored: your own messages, other players' and private messages alike |
 | 🚀 | **GPU** *(beta)* | WebGPU render of the 3D world at software-exact parity; falls back on any driver error, reason shown in the panel |
 | 🏠 | **Hide roofs** | Roofs everywhere, not only while you stand under them |
