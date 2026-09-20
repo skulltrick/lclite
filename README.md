@@ -8,7 +8,7 @@
 [![launcher release](https://github.com/skulltrick/lclite/actions/workflows/launcher-release.yml/badge.svg)](https://github.com/skulltrick/lclite/actions/workflows/launcher-release.yml)
 ![license](https://img.shields.io/badge/license-MIT-8a7454)
 
-![LCLite running on the Lost City webclient](docs/screens/ingame.png)
+![LCLite running on the Lost City webclient](docs/screens/truetileplus1.gif)
 
 <sub>OSRS camera · XP tracker · stat orbs · true tile · WebGPU renderer · TCG packs — press <b>F1</b> in your game.</sub><br>
 <sub>No fork. No hand-merges. Survives the next build.</sub>
@@ -64,32 +64,45 @@ inside one as `lclite/` and the tools find it without `LCLITE_ROOT`.
 
 ## The mods
 
-Twelve mods, one folder each. Names are the ones you'll read in the panel.
+Seventeen mods, one folder each. Names and order are the ones you'll read in the
+panel.
 
-They are not tied to one revision. Pick **274** or **254** in the launcher instead of
-**289** and the same mods come with it, each revision from hunks that were re-anchored
-against that revision's own source. The launcher tells you exactly which mods a
-revision gets; how that works, and how a revision is added, is
-[docs/REVS.md](docs/REVS.md).
+They are not tied to one revision. Pick **274** in the launcher instead of **289** and
+every mod comes with it — each of the primary corpus's anchors still matches 274's
+source byte-for-byte, and `node tools/matrix.mjs` re-verifies that claim against real
+clones. **254** has a corpus of its own and 7 of the 17 mods; the other ten hook code
+254 does not have yet. The launcher tells you exactly which mods a revision gets; how
+that works, and how a revision is added, is [docs/REVS.md](docs/REVS.md).
 
 | | Mod | What you notice |
 |---|---|---|
+| ⚙ | **LCLite** | The panel itself: search, favorites, per-mod settings, Alt+drag placement, fullscreen, screenshots |
 | ☾ | **Camera** | Wheel zoom (0.4–2.6×, eased), middle-drag rotate, one-shot walk pick, chatbox scroll — the OSRS feel |
-| 🟩 | **True tile** | Outline on the tile the *server* has you on, with color/border/fill controls |
-| 🔮 | **Stat orbs** | HP / Prayer / Energy orbs down the minimap's lower-left, numbers always visible |
 | 📈 | **XP drops** | Floating `+N` rows with skill icons plus a tan level-progress tracker, auto-hiding |
+| 🔮 | **Stat orbs** | HP / Prayer / Energy orbs down the minimap's lower-left, numbers always visible; click the run orb to run, the prayer orb for the prayer book |
+| 🃏 | **TCG** *(beta)* | Credits from xp, level-ups and kills → 5-card packs (7 tiers, foils, rare apex packs) → a 6,376-card album, cut to the cards your revision could have (1,388 of them at 289) |
+| 🟩 | **True tile** | Outline on the tile the *server* has you on, with color/border/fill controls |
+| 🎯 | **Hover tile** | Outline on the tile your mouse is over — sheared on slopes, hidden once the cursor leaves the scene |
+| 🛡 | **Disable anti-cheat** | ON = the client stops sending legacy mouse/camera/anticheat telemetry (default OFF — leave it OFF on public worlds) |
+| 🤬 | **Disable profanity filter** | Chat is not censored: your own messages, other players' and private messages alike |
+| 🚀 | **GPU** *(beta)* | WebGPU render of the 3D world at software-exact parity; falls back on any driver error, reason shown in the panel |
 | 🏠 | **Hide roofs** | Roofs everywhere, not only while you stand under them |
 | 🧱 | **Low detail** | RuneLite's Low Detail switch: untextured ground, no decorations, half-size textures |
 | ⇧ | **Shift-click drop** | Hold Shift and left-click an item to drop it, skipping the menu |
-| ⌨ | **Hotkeys** | F-key sidebar tabs, Esc closes interfaces, WASD camera with press-enter-to-chat |
-| 🛡 | **Disable anti-cheat** | ON = the client stops sending legacy mouse/camera/anticheat telemetry (default OFF — leave it OFF on public worlds) |
-| 🚀 | **GPU** *(beta)* | WebGPU render of the 3D world at software-exact parity; falls back on any driver error, reason shown in the panel |
-| 🃏 | **TCG** *(beta)* | Credits from xp, level-ups and kills → 5-card packs (7 tiers, foils, rare apex packs) → a 6,376-card album |
-| ⚙ | **LCLite** | The panel itself: search, favorites, per-mod settings, Alt+drag placement, fullscreen, screenshots |
+| ⌨ | **Hotkeys** | F-key sidebar tabs, Esc closes interfaces, Space and 1-5 drive dialogues, WASD camera with press-enter-to-chat |
+| 📖 | **Wiki lookup** | A wiki button on the minimap: arm it, click any NPC, object or item, and its OSRS wiki page opens |
+| 🏷 | **Ground item labels** | Labels on the items lying on the ground; hold Alt to see every item and click `-` / `+` to hide or show one |
+| 🔥 | **True tile+** | Ground effects on your true tile: flat flames licking off its border, or a ripple wave sweeping out of it |
 
-![The LCLite panel](docs/screens/panel.png)
+<img src="docs/screens/new_panel.png" alt="The LCLite panel" width="440">
 
-<sub>The panel in game: one mod's settings at a time, LCLite itself pinned on top of the list, every row a live switch.</sub>
+![True tile+](docs/screens/truetileplus2.gif)
+
+![TCG — credits from a kill](docs/screens/tcg1.png)
+
+![TCG — pack reveal](docs/screens/tcg2.png)
+
+![TCG — the collection album](docs/screens/tcg3.png)
 
 ## How it works
 
@@ -158,9 +171,19 @@ LCLite.exe     single Go binary · ~8 MB · static · Windows / Linux / macOS
 A front door, not a reimplementation: every mod operation still runs
 `tools/lclite.mjs`, so the overlay stays the single source of truth. It adds the
 revision picker (installs a branch as a self-contained folder, `npm install`
-included), "use an existing folder", the convergent mod list, local-world
-running, and a localhost bridge for joining a Lost City server with **your**
-client.
+included), "use an existing folder", the convergent mod list, and the two things
+a terminal can't do:
+
+- **Host a world** — start a Lost City server on this machine, then name it: a
+  signed one-line description other players can join by, with the mods it wants
+  or forbids.
+- **Join somebody else's with your client** — a localhost bridge answers
+  `/client/*` from *your* install and bridges everything else to the remote, so
+  your mods follow you onto their world. Paste an address or an invite code, and
+  the **save vault** carries your character across.
+
+There is no directory service: a world travels as an invite code, and the
+**Worlds** list lives entirely in your own `launcher.json`.
 
 ```sh
 cd launcher && go run build.go     # → dist/LCLite-<os>-<arch>
@@ -187,7 +210,7 @@ LCLite.bat / LCLite.exe   ← what players double-click
 launcher/                 ← its Go source (stdlib only)
 tools/                    ← lclite.mjs (apply/build/doctor) · regen.mjs (hunks) · acceptance.sh
 mods/<name>/              ← patches/*.json + files/ payload + README.md
-docs/                     ← MODS.md guide, HOOKS map, architecture dossier, archive/
+docs/                     ← MODS.md guide, HOOKS map, architecture dossier, screens/, archive/
 root.json                 ← host project layout (edit for custom servers)
 FOR_AGENTS_README.md      ← read this first if you're an agent
 ```
