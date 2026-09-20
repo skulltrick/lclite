@@ -29,7 +29,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import {
     LIB_DIR, meta, findMods, toLF, loadRevManifest, supportedRevs, hostRev,
-    corporaOnDisk, corpusRevFor, flatPatchFiles,
+    corporaOnDisk, corpusRevFor, flatPatchFiles, isModDir, payloadFiles,
 } from './lib.mjs';
 
 const asJson = process.argv.includes('--json');
@@ -43,8 +43,10 @@ const ROOT = path.resolve(process.env.LCLITE_ROOT || path.join(LIB_DIR, '..'));
 const REV = (revArg >= 0 ? process.argv[revArg + 1] : null) || hostRev(ROOT) || REVS.primary;
 
 const mods = findMods(LIB_DIR, REV);   // LIB_DIR = lclite/ root
+// Every directory under mods/ that IS a mod (`.`/`_` prefixed folders are the
+// template/scratch escape hatch — lib.mjs isModDir, mirrored by the launcher).
 const allModDirs = fs.existsSync(path.join(LIB_DIR, 'mods'))
-    ? fs.readdirSync(path.join(LIB_DIR, 'mods')).filter(n => fs.statSync(path.join(LIB_DIR, 'mods', n)).isDirectory())
+    ? fs.readdirSync(path.join(LIB_DIR, 'mods')).filter(n => isModDir(n) && fs.statSync(path.join(LIB_DIR, 'mods', n)).isDirectory())
     : [];
 
 const issues = [];      // {sev:'drift'|'struct', msg}
@@ -169,6 +171,11 @@ let anyDrift = false, anyMissing = false;
 for (const mod of mods) {
     const m = meta(mod.name);
     let installed = true, ok = 0, drift = 0;
+    // A mod's files/ payload is the other half of its installed state: `apply` copies
+    // those files, and a files/-only mod (no hunks at all — the shape the docs call
+    // TYPE A) is installed exactly when they are in the tree. Without this the report
+    // claims a payload-only mod is ON in a tree that has never seen it.
+    const payload = payloadFiles(mod.dir);
     for (const patch of mod.patches) {
         const abs = path.join(ROOT, patch.file);
         const revRepo = patch.file.split('/')[0];
@@ -206,11 +213,14 @@ for (const mod of mods) {
             }
         }
     }
+    // ...and so must every payload file (a payload-only mod has nothing else)
+    for (const rel of payload) if (!fs.existsSync(path.join(ROOT, rel))) installed = false;
     report.mods[mod.name] = {
         required: !!m.required, installed,
         hunks_ok: ok, hunks_drifted: drift,
         corpus: mod.missingCorpus ? null : mod.corpusRev,
         inherited: !!mod.inherited,
+        payload: payload.length,
     };
     if (drift) anyDrift = true;
 }
@@ -380,7 +390,8 @@ if (asJson) {
     console.log('');
     for (const [name, s] of Object.entries(report.mods)) {
         const src = s.corpus && s.inherited ? `  corpus:${s.corpus}` : '';
-        console.log(`  ${s.installed ? 'ON ' : 'off'}  ${name.padEnd(14)} hunks ok=${s.hunks_ok}${s.hunks_drifted ? ` DRIFTED=${s.hunks_drifted}` : ''}${s.corpus === null ? '  NO CORPUS' : ''}${src}${s.required ? '  (required)' : ''}`);
+        const lane = s.corpus === null ? (s.payload ? '  payload only' : '  NO CORPUS') : '';
+        console.log(`  ${s.installed ? 'ON ' : 'off'}  ${name.padEnd(14)} hunks ok=${s.hunks_ok}${s.hunks_drifted ? ` DRIFTED=${s.hunks_drifted}` : ''}${lane}${src}${s.required ? '  (required)' : ''}`);
     }
     console.log('');
     for (const [repo, r] of Object.entries(report.revs)) {

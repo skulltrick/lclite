@@ -5,6 +5,14 @@ Hunks are minimal `{find, replace}` line arrays anchored by unique text; regen
 extracts them from `git diff -U0` of the live tree. Deep context:
 `docs/hunk-system-assessment.md`, `docs/archive/actions-2026-09.md`.
 
+**Adding a mod is a folder.** `mods/<name>/` with hunks (`patches/<rev>/`) and/or a
+`files/` payload IS a mod — discovered by scan, listed by the launcher, applied and
+stripped by the same convergent engine as every other mod. `node tools/lclite.mjs new
+<name>` copies the working layout example at `mods/_template/` under your name, and
+`node tools/selfcheck.mjs` asserts the whole drop-in contract. Human-facing on-ramp:
+[docs/MAKING-A-MOD.md](docs/MAKING-A-MOD.md) — read that before authoring, and
+`mods/_template/README.md` for the annotated layout.
+
 **Hunks are per-revision.** A mod ships one corpus per revision it supports —
 `mods/<mod>/patches/<rev>/` — declared in `revs.json`, verified by
 `tools/matrix.mjs`, ported by `tools/port.mjs`. Read
@@ -63,6 +71,12 @@ authority on the model, the resolution rule and the workflows.
    dirty-by-design; only lclite/ gets commits. (README's "commit modded state
    before upgrading" step is a manual-merge fallback for drift emergencies only —
    run it, upgrade, reseat, then `git reset` back before the next regen.)
+7. **Update `mods/<name>/README.md` in the same commit as any behavior change.**
+   It is the ONLY handoff the next agent's resume reads (design intent, what's
+   in the box, the settings contract, deliberate divergences — see mods/tcg for
+   the layout). A stale README is a stale map: one honest line costs less than
+   the next agent's re-derivation. Mods predating the scaffold have no README —
+   the first nontrivial change to one writes it.
 8. **A mod is all-or-nothing per revision.** If it cannot be fully re-anchored on a
    revision it does not go there partially: `port.mjs` reverts it, and the launcher lists
    it as unavailable. Half a mod is a broken mod (camera without its visibility hook,
@@ -73,12 +87,11 @@ authority on the model, the resolution rule and the workflows.
    running regen afterwards — regen is what turns "the tree on that revision is right"
    into "that revision's corpus is right". And a revision must be declared in `revs.json`
    BEFORE regen will file a corpus under it.
-10. **Update `mods/<name>/README.md` in the same commit as any behavior change.**
-   It is the ONLY handoff the next agent's resume reads (design intent, what's
-   in the box, the settings contract, deliberate divergences — see mods/tcg for
-   the layout). A stale README is a stale map: one honest line costs less than
-   the next agent's re-derivation. Mods predating the scaffold have no README —
-   the first nontrivial change to one writes it.
+10. **A mod folder is discovered, not registered.** `mods/<name>/` is a mod the moment it
+   exists — hunks and/or a `files/` payload — and `mods/_*` / `mods/.*` are NOT mods (the
+   layout example lives at `mods/_template`). Never add a mod to a list to make it
+   visible: if a dropped-in folder does not appear, the folder is wrong, and
+   `node tools/selfcheck.mjs` says which half of the contract broke.
 
 ## Loop for a TYPE B (engine) change
 edit live tree (marker!) → `node tools/regen.mjs` (writes that revision's corpus) →
@@ -96,6 +109,16 @@ recurring cost of a non-inheriting revision, and why `inherits` is the default.
 edit `mods/control-panel/files/engine/public/lclite/panel.{js,css}` →
 `LCLITE_ROOT=<install> node tools/lclite.mjs apply` (re-copies files) → browser
 check. No rebuild. (Drop `LCLITE_ROOT` if you copied this repo inside a checkout.)
+A mod that only ships its OWN `files/` payload is the same loop without the panel edit:
+`node tools/lclite.mjs new <name>` scaffolds exactly that shape, plus the one hunk that
+loads it — see docs/MAKING-A-MOD.md §1–5.
+
+## Loop for a NEW mod (any type)
+`node tools/lclite.mjs new <name>` (copies `mods/_template/`) → edit payload/tree with
+markers → add its patched files to `MODS` in regen.mjs → regen → apply → doctor 0 ·
+matrix green · acceptance byte-identical → build if TS changed → `mods/<name>/README.md`
+in the same commit. A folder with neither hunks nor a payload is not a mod: doctor exits
+3 saying it "cannot deliver anything".
 
 ## Loop for a LAUNCHER change
 `launcher/` is Go, stdlib only, zero modules in go.mod — keep it that way (the
@@ -115,12 +138,16 @@ tools/lclite.mjs applier/picker/build (+`doctor`, `new <mod>`, `--rev`) · tools
 (writes mods/<mod>/patches/<rev>/ + docs/hooks.json, docs/HOOKS.md for the primary) ·
 doctor.mjs health report (exit 2 drift / 3 structural — also 3 when there is no host
 tree here; audits EVERY corpus's pins/markers, not just the tree's) ·
+selfcheck.mjs the drop-in contract as assertions (folder rule, discovery, the layout
+example still anchors — runs in CI) ·
 matrix.mjs replays every declared revision over pristine clones (the gate on
 `inherits`) · port.mjs re-anchors the primary corpus onto another revision (assisted
 reseat + typecheck gate, all-or-nothing per mod) · lib.mjs shared helpers (+ the
-reseater) · revs.json the revision declaration (primary + supported + inherits) ·
+reseater, isModDir/payloadFiles) · revs.json the revision declaration (primary + supported + inherits) ·
 root.json host layout (repo dirs/remotes — edit for custom 2004-lineage servers) ·
-mods/<name>/{patches/<rev>/*.json, files/, README.md}.
+mods/<name>/{patches/<rev>/*.json, files/, README.md} · mods/_template the annotated
+layout example `new` copies (not a mod: `_`-prefixed folders are skipped) ·
+docs/MAKING-A-MOD.md the on-ramp for authors.
 Commands: `node tools/lclite.mjs [apply|build|pick|list|doctor|new <mod>|uninstall] [--rev <rev>]`.
 
 ## References beyond this repo

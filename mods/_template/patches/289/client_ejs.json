@@ -1,0 +1,37 @@
+{
+ "file": "engine/view/client.ejs",
+ "mod": "example-mod",
+ "rev": "289",
+ "generated_from": {
+  "repo": "engine",
+  "head": "0c7cf6555d0cf92d2348999b2fd27c6ceff5ffbf"
+ },
+ "hunks": [
+  {
+   "find": [
+    "<body>",
+    "    <center>",
+    "        <div id=\"game\">"
+   ],
+   "replace": [
+    "<body>",
+    "    <!-- lclite:example-mod -->",
+    "    <!-- lclite: this mod's own page script, version-keyed like every other page",
+    "         asset (bump ?v= here and VERSION in the payload together). Delete this hunk",
+    "         and patches/ if your mod needs no page script — a files/ payload alone is a",
+    "         valid mod, and it installs on every revision. -->",
+    "    <script src=\"/lclite/example-mod/ui.js?v=1\" defer></script>",
+    "    <center>",
+    "        <div id=\"game\">"
+   ],
+   "note": "view/client.ejs @ old line 335",
+   "occ": 1,
+   "pos": [
+    335,
+    0,
+    334,
+    336
+   ]
+  }
+ ]
+}

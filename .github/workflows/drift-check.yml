@@ -82,6 +82,7 @@ jobs:
           node --check tools/doctor.mjs
           node --check tools/matrix.mjs
           node --check tools/port.mjs
+          node --check tools/selfcheck.mjs
           node --check mods/control-panel/files/engine/public/lclite/panel.js
           # every corpus is JSON, for every revision
           for j in mods/*/patches/*/*.json; do node -e "JSON.parse(require('fs').readFileSync('$j','utf8'))" || exit 1; done
@@ -131,6 +132,11 @@ jobs:
       - name: Dry-run installer (anchor drift test)
         run: node tools/lclite.mjs apply --check --rev ${{ steps.revs.outputs.primary }}
         # exit 2 == some hunk's anchor drifted upstream; the log prints which
+
+      - name: Drop-in contract (mods/ folder rule + the layout example still anchors)
+        run: node tools/selfcheck.mjs
+        # exit 1 == a mod folder stopped being discovered, or mods/_template (what
+        # `lclite.mjs new` copies) no longer anchors on the pinned sources
 
       - name: "Doctor (structural canary: markers, overlap geometry, rev skew, corpora)"
         run: node tools/doctor.mjs

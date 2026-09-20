@@ -9,6 +9,12 @@ TYPE B — engine mod       anything that touches the game client's internals (c
                           renderer, input, packets, interfaces)
 ```
 
+> **New here? Read [MAKING-A-MOD.md](MAKING-A-MOD.md) first** — it is the on-ramp: the
+> folder contract, `node tools/lclite.mjs new <name>` (which copies the working layout
+> example in `mods/_template/`), how the launcher discovers and toggles a mod, and the
+> loop with its gates. This document is the *depth*: the hook-site table, the
+> panel↔engine contract, the terser and version-keying laws, the TYPE C blueprint.
+
 > **Revisions.** A mod ships one corpus per revision it supports:
 > `mods/<mod>/patches/<rev>/`, declared in `revs.json` and verified by
 > `tools/matrix.mjs`. This document is about *authoring* a mod, and it is written for
@@ -86,6 +92,13 @@ Re-copy into the tree and you're done (no rebuild for panel changes):
 ```
 node tools/lclite.mjs apply     # rewrites engine/public/lclite/*
 ```
+
+> **A mod can also ship its OWN page assets** rather than adding rows to the shared panel:
+> `mods/<name>/files/engine/public/lclite/<name>/{ui.js,style.css,…}` is copied verbatim
+> into the tree and served at `/lclite/<name>/…`, version-keyed like every other page
+> asset. That is the shape `node tools/lclite.mjs new <name>` scaffolds — a payload plus
+> the one hunk that loads it — and it needs no panel edit at all (the F1 panel synthesizes
+> a row from `installed.json`). See [MAKING-A-MOD.md](MAKING-A-MOD.md) §1–5.
 
 ---
 
@@ -427,27 +440,41 @@ is for other people's servers and pure-local cosmetics.
 
 ## Authoring for distribution (a mod folder others can install)
 
-A third-party lclite mod IS just a folder — no new framework:
-1. `mods/<name>/patches/<rev>/*.json` hunks, every added block marker-first (`lclite:<mod>`).
-2. optional `files/` payload (copied verbatim; stripped only if unedited).
-3. optional panel row (MOD_REGISTRY entry in control-panel's panel.js — or rely on the
-   synthesized row; ship the row as your own files/ copy if you want rich UI).
-4. namespaced your keys: `localStorage` names prefixed with your mod (camelCase);
-   read them at YOUR hook site, per frame.
-5. degrade gracefully: `typeof window.lostcityClient?.foo === 'function'` before any
-   engine call; fall back when a cache pack lacks icons/sprites.
-6. target a host with `root.json` (repo dirs/remotes) — patch JSONs reseat per host;
+A third-party lclite mod IS just a folder — no new framework, no registry to join. The
+full walkthrough is [MAKING-A-MOD.md](MAKING-A-MOD.md); the layout example that
+`node tools/lclite.mjs new <name>` copies is [`mods/_template/`](../mods/_template).
+The contract, in one place:
+
+1. **The folder is the mod.** `mods/<name>/` is discovered by scanning `mods/` — by the
+   CLI, the launcher and the acceptance harness alike — the moment it exists. There is no
+   list to add it to; `tools/lib.mjs` `MOD_META` only supplies presentation (label, desc,
+   order) and `doctor` prints a note when its wording drifts from your F1 panel row.
+2. **Two lanes, either or both.** `patches/<rev>/*.json` hunks, every added block
+   marker-first (`lclite:<mod>`, or `<!-- lclite:<mod> -->` in an EJS HTML region); and/or
+   a `files/` payload copied verbatim (`files/<repo path>` → `<repo path>`, so
+   `files/engine/public/lclite/<mod>/ui.js` is served at `/lclite/<mod>/ui.js`). A mod
+   with only a payload installs on every revision — it has no anchors to rot — and one
+   with neither lane is not installable at all (`doctor` exit 3).
+3. **`_`/`.` prefixed folders are not mods.** Use them for scratch and for the layout
+   example; nothing will list, apply, audit or byte-compare them.
+4. **Settings**: ONE `localStorage` key of your own (camelCase, mod-prefixed), read at
+   YOUR hook site per frame — never another mod's key, never a shared hub (rule 5).
+5. **Panel row** (optional): a `MOD_REGISTRY` entry in control-panel's panel.js, and the
+   same wording in `MOD_META`; bump that panel's `?v=` in the live ejs when you add one.
+   Without a row the F1 panel synthesizes one from `installed.json`, so a dropped-in mod
+   still appears in-game.
+6. **Degrade gracefully**: `typeof window.lostcityClient?.foo === 'function'` before any
+   engine call; fall back when a cache pack lacks icons/sprites; treat an absent
+   `data-rev` as "no gate".
+7. **Target a host** with `root.json` (repo dirs/remotes) — patch JSONs reseat per host;
    hunks against Lost City apply as-is to revs near the pinned `generated_from.head`.
-7. one name, one description: add your `MOD_META` entry in `tools/lib.mjs` (the
-   launcher and the CLI picker read `label`/`desc` from there) and make it read
-   exactly like your F1 panel row (`MOD_REGISTRY` in control-panel's panel.js).
-   Two lists with two wordings is how a mod ends up "Low detail option" in one
-   place and "Low detail" in the other; `node tools/doctor.mjs` prints a note
-   when they drift.
+8. **Prove it** with the gates in MAKING-A-MOD.md §8 (`selfcheck`, `apply --check`,
+   `doctor`, `matrix`, `acceptance.sh`, `tsc`, `build`) before you publish.
 
 Distributing = publishing a repo with this layout; users point `LCLITE_ROOT` at it or
-drop it beside their repos like any other overlay. A mods *registry* is deliberately
-NOT a thing yet — folders + git remotes are enough until someone installs one.
+drop it beside their repos like any other overlay, or hand you the `mods/<name>/` folder
+to drop into theirs. A mods *registry* is deliberately NOT a thing — folders + git
+remotes are enough until someone installs one.
 
 ## Ideas register (parking lot)
 

@@ -20,7 +20,7 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { LIB_DIR, meta, findMods, countOccurrences, toLF, restoreEOL, stripPatchFile, loadRootManifest, loadRevManifest, supportedRevs, hostRev } from './lib.mjs';
+import { LIB_DIR, meta, findMods, countOccurrences, toLF, restoreEOL, stripPatchFile, loadRootManifest, loadRevManifest, supportedRevs, hostRev, payloadFiles, readmeSummary } from './lib.mjs';
 
 const __dirname = LIB_DIR;                       // lclite/ root (overlay)
 const TOOLS_DIR = path.dirname(fileURLToPath(import.meta.url));   // <overlay>/tools/
@@ -162,15 +162,18 @@ function copyModFiles(mod) {
 }
 
 // Remove a deselected mod's copied files — only when the tree copy still
-// matches the overlay byte-for-byte (never clobber someone's hand edits).
+// matches the overlay byte-for-byte (never clobber someone's hand edits) — and
+// then prune the directories the payload created, so a strip really is the inverse
+// of an apply instead of leaving empty `engine/public/lclite/<mod>/` folders behind.
 function removeModFiles(mod) {
     const out = [];
     const fdir = path.join(mod.dir, 'files');
     if (!fs.existsSync(fdir)) return out;
+    const dirs = new Set();
     const walk = d => {
         for (const e of fs.readdirSync(d, { withFileTypes: true })) {
             const p = path.join(d, e.name);
-            if (e.isDirectory()) walk(p);
+            if (e.isDirectory()) { walk(p); dirs.add(path.join(ROOT, path.relative(fdir, p))); }
             else {
                 const rel = path.relative(fdir, p).replace(/\\/g, '/');
                 const dst = path.join(ROOT, rel);
@@ -182,12 +185,23 @@ function removeModFiles(mod) {
         }
     };
     walk(fdir);
+    // deepest first; a directory that still holds anything (another mod's payload, a
+    // file the user put there) is not empty and simply stays
+    for (const d of [...dirs].sort((a, b) => b.length - a.length)) {
+        try { fs.rmdirSync(d); } catch { /* not empty, or already gone */ }
+    }
     return out;
 }
 
 // ---- installed-state detection ----------------------------------------------
-// A mod counts as installed when every one of its hunks is verbatim present
-// (the same test apply uses for "already"). Anything else => strip then apply.
+// A mod counts as installed when EVERYTHING it delivers is in the tree: every one
+// of its hunks verbatim present (the same test apply uses for "already") and every
+// file of its files/ payload copied. Anything else => strip then apply.
+//
+// A mod with NO hunks at all is still a mod when it ships a payload — that is the
+// files/-only shape, and its payload is the whole of what it delivers. Requiring a
+// hunk would make such a mod permanently "off": never in installed.json, never in
+// the F1 panel's list, and never counted by `apply` as applied.
 function modInstalled(mod) {
     let hunks = 0;
     for (const patch of mod.patches) {
@@ -199,15 +213,9 @@ function modInstalled(mod) {
             if (countOccurrences(text, h.replace.join('\n')) < 1) return false;
         }
     }
-    if (!hunks) return false;
-    const fdir = path.join(mod.dir, 'files');
-    if (fs.existsSync(fdir)) {
-        let any = false;
-        const walk = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else { any = true; if (!fs.existsSync(path.join(ROOT, path.relative(fdir, p)))) throw new Error('gone'); } } };
-        try { walk(fdir); } catch { return false; }
-        if (!any) return false;
-    }
-    return true;
+    const payload = payloadFiles(mod.dir);
+    if (!hunks) return payload.length > 0 && payload.every(rel => fs.existsSync(path.join(ROOT, rel)));
+    return payload.every(rel => fs.existsSync(path.join(ROOT, rel)));
 }
 
 function buildManifest(mods) {
@@ -284,10 +292,10 @@ function converge(mods, want, check, rev) {
     for (const mod of mods) {
         const m = meta(mod.name);
         // A mod with no corpus for this revision (and nothing to inherit) has no
-        // hunks to apply OR to strip. Say so once, in its own list — calling it
-        // "stripped" would be a lie, and calling it a failure would block a rev
-        // that is simply narrower than the primary one.
-        if (mod.missingCorpus) { skipped.push(mod.name); continue; }
+        // hunks to apply OR to strip. That is only a reason to skip it when it has
+        // no files/ payload either — a files/-only mod delivers its payload on every
+        // revision, and skipping it would make a dropped-in mod silently uninstallable.
+        if (mod.missingCorpus && !mod.hasPayload) { skipped.push(mod.name); continue; }
         if (want[mod.name]) {
             let tA = 0, tL = 0, tF = 0;
             for (const patch of mod.patches) {
@@ -320,7 +328,7 @@ function converge(mods, want, check, rev) {
         }
     }
     if (skipped.length) {
-        console.log(`  — no corpus for ${rev}: ${skipped.join(', ')} (see revs.json / tools/port.mjs)`);
+        console.log(`  — not a mod on ${rev} (no hunks and no files/ payload): ${skipped.join(', ')} (see revs.json / tools/port.mjs)`);
     }
     return { fails, changed, skipped };
 }
@@ -382,26 +390,62 @@ async function pick(mods) {
 }
 
 // ---- new-mod scaffold (B2) ---------------------------------------------------
-// One command instead of a wiki hunt. Creates the folder contract and prints the
-// exact 5-step recipe; `doctor` will verify every step afterwards.
+// One command instead of a wiki hunt. It COPIES the layout example in
+// mods/_template/ — a complete, working mod (a files/ payload plus the ONE hunk
+// that loads it) — under the new name, rewriting the id everywhere it appears:
+// folder and file names, the `// lclite:<mod>` markers, the payload's own
+// self-stamp, the README. What comes out is a mod the launcher lists and can apply
+// and strip immediately; nothing about it is a stub, and doctor is green on it
+// before you have written a line.
+//
+// The template folder is `_template` precisely so it is NOT a mod: every reader
+// (these tools and the launcher) skips `mods/_*` and `mods/.*` (lib.mjs isModDir).
+const TEMPLATE = path.join(__dirname, 'mods', '_template');
+const TEMPLATE_ID = 'example-mod';
+const camel = name => name.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
+
 function scaffold(name) {
     const dir = path.join(__dirname, 'mods', name);
     if (fs.existsSync(dir)) { console.error(`mods/${name} already exists`); process.exitCode = 1; return; }
-    fs.mkdirSync(path.join(dir, 'patches'), { recursive: true });
-    fs.writeFileSync(path.join(dir, 'README.md'),
-        `# mods/${name}\n\nOne paragraph: what this mod does and how a player notices it.\n\n` +
-        `## Engine hunks (TYPE B)\nEdit the live tree, then \`node lclite/regen.mjs\` — hunks route here\n` +
-        `automatically because every added block carries \`// lclite:${name}\` as its first line.\n` +
-        `Files this mod patches must be listed in MODS + HUNK_OWNER fallback in regen.mjs.\n\n` +
-        `## Settings contract\nlocalStorage key \`${name}\` (camelCase), read per-frame at this mod's OWN hook site.\n` +
-        `Panel row: PLUGINS entry in mods/control-panel/files/engine/public/lclite/panel.js.\n`);
-    console.log(`created mods/${name}/`);
-    console.log('\nnext steps (all verified by `node lclite/tools/lclite.mjs doctor`):');
-    console.log(`  1. edit webclient/src/... (or engine/view/...) directly — start every added block with "/* lclite:${name} */"`);
-    console.log('  2. dev-test fast:   bun run bundle.ts dev   (unmangled names for console probes)');
-    console.log(`  3. snapshot hunks:  add '${name}': ['<file>', ...] to MODS in regen.mjs, then node lclite/regen.mjs`);
-    console.log('  4. prove it:        t/ pristine apply == live tree byte-for-byte (README "acceptance test")');
-    console.log('  5. panel row:       MOD_REGISTRY entry { id, name, desc, master:{key,def} } in panel.js (TYPE A if no hunks)');
+    if (!fs.existsSync(TEMPLATE)) {
+        console.error(`mods/_template/ is missing — it is the layout example this command copies.`);
+        console.error(`  restore it (git checkout -- mods/_template) and rerun.`);
+        process.exitCode = 1;
+        return;
+    }
+    const swap = s => s.split(TEMPLATE_ID).join(name).split(camel(TEMPLATE_ID)).join(camel(name));
+    let files = 0;
+    const copy = (src, dst) => {
+        fs.mkdirSync(dst, { recursive: true });
+        for (const e of fs.readdirSync(src, { withFileTypes: true })) {
+            const s = path.join(src, e.name), d = path.join(dst, swap(e.name));
+            if (e.isDirectory()) copy(s, d);
+            else {
+                // text files carry the id (markers, paths, keys); nothing in the
+                // template is binary, so a utf-8 round-trip is safe here
+                fs.writeFileSync(d, swap(fs.readFileSync(s, 'utf-8')));
+                files++;
+            }
+        }
+    };
+    copy(TEMPLATE, dir);
+    console.log(`created mods/${name}/  (${files} files, copied from mods/_template — the layout example)`);
+    console.log('');
+    console.log('it is a working mod already. To see it:');
+    console.log(`  LCLITE_ROOT=<install> node tools/lclite.mjs apply --mods ${name},control-panel`);
+    console.log('  ...then load the client: the page script logs one line and stamps itself.');
+    console.log('');
+    console.log('to make it yours (each step is checked by a tool, so nothing rots silently):');
+    console.log(`  1. code      mods/${name}/files/engine/public/lclite/${name}/ui.js  — plain page script, no build`);
+    console.log(`  2. hook      edit the tree, start every added block with // lclite:${name} (or <!-- lclite:${name} --> in ejs)`);
+    console.log(`  3. snapshot  add '${name}': ['<file>', ...] to MODS in tools/regen.mjs, then LCLITE_ROOT=<install> node tools/regen.mjs`);
+    console.log(`  4. settings  localStorage key '${camel(name)}' read at YOUR hook site, per frame (rule 5)`);
+    console.log(`  5. panel row { id: '${name}', name: '…', desc: '…', master: { key: '${camel(name)}', def: 'false' } }`);
+    console.log(`               in mods/control-panel/files/engine/public/lclite/panel.js + bump its ?v= in the ejs`);
+    console.log(`  6. prove it  LCLITE_ROOT=<install> node tools/doctor.mjs (exit 0) · node tools/matrix.mjs`);
+    console.log(`               bash tools/acceptance.sh  ·  node tools/lclite.mjs build`);
+    console.log('');
+    console.log(`layout, and what each part is for: mods/${name}/README.md + docs/MAKING-A-MOD.md`);
 }
 
 // ---- main ----------------------------------------------------------------------
@@ -455,8 +499,13 @@ async function main() {
         for (const m of mods) {
             const info = meta(m.name);
             let inst = false; try { inst = modInstalled(m); } catch { }
-            const src = m.missingCorpus ? 'no-corpus' : m.inherited ? `inherited:${m.corpusRev}` : `corpus:${m.corpusRev}`;
-            console.log(`${m.name}|${m.missingCorpus ? 'unavailable' : inst ? 'installed' : 'off'}|${info.label}|${info.desc}${info.required ? ' [required]' : ''}|${src}`);
+            // what this mod delivers HERE: its hunks (own corpus or an inherited one)
+            // or only its files/ payload. Neither = nothing to install on this rev.
+            const src = !m.missingCorpus ? (m.inherited ? `inherited:${m.corpusRev}` : `corpus:${m.corpusRev}`)
+                : m.hasPayload ? 'payload-only' : 'no-corpus';
+            const state = (m.missingCorpus && !m.hasPayload) ? 'unavailable' : inst ? 'installed' : 'off';
+            const desc = info.desc || readmeSummary(m.dir);
+            console.log(`${m.name}|${state}|${info.label}|${desc}${info.required ? ' [required]' : ''}|${src}`);
         }
         return;
     }

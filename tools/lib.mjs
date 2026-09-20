@@ -101,6 +101,21 @@ export const MOD_META = {
 
 export const meta = name => MOD_META[name] || { label: name, desc: '', required: false };
 
+// readmeSummary is the fallback blurb for a mod that has no MOD_META entry yet:
+// the first non-heading line of its README. The launcher does exactly this in Go
+// (modReadmeSummary), so a dropped-in mod reads the same in both places — the CLI
+// list is not allowed to be the one view that shows an empty description.
+export function readmeSummary(modDir) {
+    let raw;
+    try { raw = fs.readFileSync(path.join(modDir, 'README.md'), 'utf-8'); } catch { return ''; }
+    for (let line of raw.replace(/\r\n/g, '\n').split('\n')) {
+        line = line.trim();
+        if (!line || line.startsWith('#') || line.startsWith('>') || line.startsWith('---')) continue;
+        return line.length > 160 ? line.slice(0, 160) + '…' : line;
+    }
+    return '';
+}
+
 // ---- root manifest (C1) ------------------------------------------------------
 // The overlay normally installs into a Lost City checkout (webclient/ + engine/
 // one level up). root.json declares what THIS host project looks like so lclite
@@ -234,17 +249,54 @@ export function patchJsonName(relPath) {
     return path.basename(relPath).replace(/\W+/, '_') + '.json';
 }
 
+// ---- what counts as a mod folder --------------------------------------------
+// ONE rule, read by every tool AND mirrored in Go (launcher/mods.go): a directory
+// under mods/ is a mod unless its name starts with `.` or `_`. The underscore is
+// the escape hatch for something that LOOKS like a mod and must never ship —
+// `mods/_template/` is the layout example `lclite.mjs new` copies, and it must not
+// be listed, applied, stripped, audited, counted, or byte-compared by anything.
+// Keeping the rule here (and in the launcher) is what stops a template from being
+// "a mod with a corpus" the moment someone adds one.
+export function isModDir(name) {
+    return !name.startsWith('.') && !name.startsWith('_');
+}
+
+// payloadFiles lists a mod's files/ payload as HOST-ROOT-relative paths
+// (mods/<mod>/files/engine/public/x.js -> engine/public/x.js). `apply` copies each
+// verbatim into the tree, so this list is also the mod's installed test and its
+// strip list. Empty = the mod ships no payload.
+export function payloadFiles(modDir) {
+    const fdir = path.join(modDir, 'files');
+    const out = [];
+    if (!fs.existsSync(fdir)) return out;
+    const walk = d => {
+        for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+            const p = path.join(d, e.name);
+            if (e.isDirectory()) walk(p);
+            else out.push(path.relative(fdir, p).replace(/\\/g, '/'));
+        }
+    };
+    walk(fdir);
+    return out;
+}
+
 // ---- mod discovery (the contract lclite.mjs has always used) --------------
 // rev = which corpus to load. Every mod is returned; one with no corpus for this
 // rev (and no inherited one) comes back with patches:[] and `missingCorpus: true`,
 // which is how "this mod has no hunks for this revision" is reported instead of
 // exploding — a partial rev is a fact to display, not a crash.
+//
+// A mod delivers through two independent lanes: its hunks (per revision) and its
+// files/ payload (every revision). `hasPayload` is therefore the second half of
+// "can this mod be installed here at all" — a files/-only mod is available on
+// every revision, and treating it as "unavailable" would hide an installable mod.
 export function findMods(lcliteDir, rev) {
     const manifest = loadRevManifest(lcliteDir);
     const modsDir = path.join(lcliteDir, 'mods');
     const mods = [];
     if (!fs.existsSync(modsDir)) return mods;
     for (const name of fs.readdirSync(modsDir)) {
+        if (!isModDir(name)) continue;
         const dir = path.join(modsDir, name);
         if (!fs.statSync(dir).isDirectory()) continue;
         const corpora = corporaOnDisk(dir);
@@ -258,6 +310,7 @@ export function findMods(lcliteDir, rev) {
         }
         mods.push({
             name, dir, rev: rev || null, patches, corpora,
+            hasPayload: payloadFiles(dir).length > 0,
             corpusRev: from, inherited: !!from && from !== rev,
             missingCorpus: !!rev && patches.length === 0,
         });

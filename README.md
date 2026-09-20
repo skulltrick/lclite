@@ -74,13 +74,13 @@ inside one as `lclite/` and the tools find it without `LCLITE_ROOT`.
 
 ## The mods
 
-Seventeen mods, one folder each. Names and order are the ones you'll read in the
+Sixteen mods, one folder each. Names and order are the ones you'll read in the
 panel.
 
 They are not tied to one revision. Pick **274** in the launcher instead of **289** and
 every mod comes with it — each of the primary corpus's anchors still matches 274's
 source byte-for-byte, and `node tools/matrix.mjs` re-verifies that claim against real
-clones. **254** has a corpus of its own and 7 of the 17 mods; the other ten hook code
+clones. **254** has a corpus of its own and 6 of the 16 mods; the other ten hook code
 254 does not have yet. The launcher tells you exactly which mods a revision gets; how
 that works, and how a revision is added, is [docs/REVS.md](docs/REVS.md).
 
@@ -212,6 +212,20 @@ Design notes, the HTTP API and the known limits: [`launcher/README.md`](launcher
 
 ## For mod authors & AI agents
 
+**Making a mod** — a mod is a folder in `mods/`, discovered by scan; the launcher lists it,
+applies it and strips it like every other mod, with no registry to edit.
+
+```
+node tools/lclite.mjs new my-thing     # copies the working layout example (mods/_template)
+node tools/lclite.mjs list             # what every mod folder resolves to, here and now
+node tools/selfcheck.mjs               # the drop-in contract, asserted
+```
+
+- [`docs/MAKING-A-MOD.md`](docs/MAKING-A-MOD.md) — the on-ramp: the folder contract, the
+  two delivery lanes (hunks / `files/` payload), how the launcher sees a mod, the loop and
+  its gates.
+- [`mods/_template/`](mods/_template) — the annotated layout example `new` copies. Not a
+  mod: `_`-prefixed folders are skipped by every reader.
 - [`docs/MODS.md`](docs/MODS.md) — how to author a mod (TYPE A UI / TYPE B engine
   / TYPE C entities), the panel↔engine contract, the ideas register.
 - [`FOR_AGENTS_README.md`](FOR_AGENTS_README.md) — the hard rules, and the loop to
@@ -227,9 +241,10 @@ Design notes, the HTTP API and the known limits: [`launcher/README.md`](launcher
 ```
 LCLite.bat / LCLite.exe   ← what players double-click
 launcher/                 ← its Go source (stdlib only)
-tools/                    ← lclite.mjs (apply/build/doctor) · regen.mjs (hunks) · acceptance.sh
-mods/<name>/              ← patches/*.json + files/ payload + README.md
-docs/                     ← MODS.md guide, HOOKS map, architecture dossier, screens/, archive/
+tools/                    ← lclite.mjs (apply/build/doctor) · regen.mjs (hunks) · selfcheck.mjs · acceptance.sh
+mods/<name>/              ← patches/<rev>/*.json + files/ payload + README.md
+mods/_template/           ← the layout example `new` copies (skipped: not a mod)
+docs/                     ← MAKING-A-MOD.md, MODS.md guide, HOOKS map, architecture dossier, screens/, archive/
 root.json                 ← host project layout (edit for custom servers)
 FOR_AGENTS_README.md      ← read this first if you're an agent
 ```

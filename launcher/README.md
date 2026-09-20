@@ -182,7 +182,7 @@ one scroll for the page).
    boxes, then *Apply changes*. The required mod (the panel — LCLite itself) shows
    as a locked gold tick rather than a disabled checkbox, because a
    greyed-out box reads as "not included". The list **starts folded to two rows**
-   (*Show all 12 mods* opens it) and tracks pending edits: change a tick and the
+   (*Show all N mods* opens it) and tracks pending edits: change a tick and the
    button becomes *Apply changes \** with a "not applied yet" line, because the
    difference between "ticked" and "built in" is exactly the mistake worth designing
    out. What is ticked lives in the page's own state, not in the visible
@@ -213,6 +213,20 @@ one scroll for the page).
    mirrors `MOD_REGISTRY` in the control-panel mod, and `node tools/doctor.mjs`
    prints a note when the two wordings drift apart. Order is alphabetical by the
    name you read, like the panel.
+
+   **A mod folder IS a mod** — the list is a directory scan of the overlay
+   checkout's `mods/`, so dropping a folder in is the whole install story for a
+   new mod (`node tools/lclite.mjs new <name>` scaffolds a working one from
+   `mods/_template/`). A folder with no `MOD_META` entry still lists: its label
+   is the folder name and its description is the first non-heading line of its
+   README. Folders whose names start with `_` or `.` are not mods and never
+   appear — that is how the layout example lives in the repo without being
+   installable. **Available** means the mod can actually deliver on the selected
+   revision: it has hunks for it (its own corpus, or one it inherits) *or* a
+   `files/` payload, which is copied verbatim on every revision. Both halves
+   matter: a files/-only mod has no anchors to rot and must not be greyed out as
+   "no hunks for this revision". [docs/MAKING-A-MOD.md](../docs/MAKING-A-MOD.md)
+   owns the contract; `node tools/selfcheck.mjs` asserts it.
 5. **Start** — runs `npm run quickstart` in the selected install's `engine/` and
    opens the client; the button says *Start* whatever is selected, and the status
    line above it names the install that is actually serving. The port comes from

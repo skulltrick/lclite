@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -137,10 +138,11 @@ func (l *Launcher) overlayRevsFor() []string {
 }
 
 // fullyModdedRevs lists the revisions the overlay mods END TO END: every mod in the
-// checkout has hunks for that revision (its own corpus, or one it inherits). A
-// revision the overlay merely declares is supported but only partly ported is not
-// one of these — a player there gets some mods, not the set — so the wizard counts
-// these and names them rather than claiming the declared list.
+// checkout is a thing on that revision (its own corpus, one it inherits, or a
+// files/ payload it delivers everywhere). A revision the overlay merely declares is
+// supported but only partly ported is not one of these — a player there gets some
+// mods, not the set — so the wizard counts these and names them rather than claiming
+// the declared list.
 //
 // Derived, never hardcoded: porting the rest of the corpus to a revision makes it
 // appear here on its own. Empty means "cannot tell" (no overlay checkout to read),
@@ -159,7 +161,7 @@ func (l *Launcher) fullyModdedRevs() []string {
 	for _, rev := range overlayRevs(overlay) {
 		full := true
 		for _, m := range mods {
-			if modCorpusRev(overlay, m, rev, manifest) == "" {
+			if !modAvailable(overlay, m, rev, manifest) {
 				full = false
 				break
 			}
@@ -270,9 +272,42 @@ func listMods(root string) []ModInfo {
 	return listModsFromOverlay(filepath.Join(root, "lclite"), "")
 }
 
+// hasPayload reports whether mods/<mod>/files/ holds any file. A mod delivers
+// through two independent lanes — its hunks (one corpus per revision) and its
+// files/ payload (copied on every revision) — so this is the second half of "can
+// this mod be installed on this revision at all". A files/-only mod is a
+// legitimate drop-in (docs/MAKING-A-MOD.md calls it the payload lane); without
+// this it would list as a toggle that can never do anything.
+func hasPayload(overlay, mod string) bool {
+	found := false
+	_ = filepath.WalkDir(filepath.Join(overlay, "mods", mod, "files"), func(_ string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil // no files/ dir at all: no payload
+		}
+		if !d.IsDir() {
+			found = true
+			return fs.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
+// modAvailable mirrors the CLI's rule for "is this mod a thing on this revision":
+// it has hunks here (its own corpus or one it inherits) or a files/ payload to copy.
+func modAvailable(overlay, mod, rev string, m revManifest) bool {
+	return modCorpusRev(overlay, mod, rev, m) != "" || hasPayload(overlay, mod)
+}
+
 // listModsFromOverlay reads mods/ inside an overlay checkout itself — which is
 // what the launcher drives, since your checkout is the source of truth. rev (optional)
 // marks each mod Available for that revision.
+//
+// Discovery is a folder scan, deliberately: dropping a folder into mods/ is the
+// whole install story for a new mod (see docs/MAKING-A-MOD.md). A folder missing
+// from MOD_META still lists — under its folder name, with its README's first line
+// as the description — and `_`/`.` prefixed folders are skipped outright, which is
+// how the layout example (mods/_template) stays out of everyone's mod list.
 func listModsFromOverlay(overlay, rev string) []ModInfo {
 	entries, err := os.ReadDir(filepath.Join(overlay, "mods"))
 	if err != nil {
@@ -285,7 +320,7 @@ func listModsFromOverlay(overlay, rev string) []ModInfo {
 		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") || strings.HasPrefix(e.Name(), "_") {
 			continue
 		}
-		info := ModInfo{Name: e.Name(), Label: e.Name(), Available: rev == "" || modCorpusRev(overlay, e.Name(), rev, manifest) != ""}
+		info := ModInfo{Name: e.Name(), Label: e.Name(), Available: rev == "" || modAvailable(overlay, e.Name(), rev, manifest)}
 		if m, ok := meta[e.Name()]; ok {
 			if m.Label != "" {
 				info.Label = m.Label

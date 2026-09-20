@@ -102,6 +102,73 @@ func TestApplyWithNothingTickedStripsEveryMod(t *testing.T) {
 	}
 }
 
+// A dropped-in mod folder IS the install story for a new mod: the launcher finds it
+// by scanning mods/, and a folder with no MOD_META entry must still list with
+// something a player can read — its folder name, and its README's first line as the
+// description. `_`/`.` prefixed folders are not mods at all, which is how the layout
+// example (mods/_template) lives in the repo without appearing in anyone's list.
+func TestDropInModFolderIsListed(t *testing.T) {
+	overlay := t.TempDir()
+	writeText(t, filepath.Join(overlay, "revs.json"), `{"primary":"289","supported":{"289":{}}}`+"\n")
+	writeText(t, filepath.Join(overlay, "mods", "my-thing", "README.md"),
+		"# my-thing\n\nLabels the thing on the floor.\n\n## Notes\n")
+	writeText(t, filepath.Join(overlay, "mods", "my-thing", "files", "engine", "public", "lclite", "my-thing", "ui.js"), "// page script\n")
+	writeText(t, filepath.Join(overlay, "mods", "_template", "README.md"), "not a mod\n")
+	writeText(t, filepath.Join(overlay, "mods", ".scratch", "README.md"), "not a mod either\n")
+	if err := os.MkdirAll(filepath.Join(overlay, "mods", "empty-thing"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	mods := listModsFromOverlay(overlay, "289")
+	by := map[string]ModInfo{}
+	for _, m := range mods {
+		by[m.Name] = m
+	}
+	if len(mods) != 2 {
+		t.Fatalf("got %d mods (%v) — `_`/`.` folders are not mods", len(mods), mods)
+	}
+	got, ok := by["my-thing"]
+	if !ok {
+		t.Fatalf("the dropped-in folder did not list: %v", mods)
+	}
+	if got.Label != "my-thing" {
+		t.Errorf("label = %q, want the folder name when MOD_META has no entry", got.Label)
+	}
+	if got.Desc != "Labels the thing on the floor." {
+		t.Errorf("desc = %q, want the README's first non-heading line", got.Desc)
+	}
+	if !got.Available {
+		t.Errorf("a files/ payload installs on every revision — Available must be true")
+	}
+	if e := by["empty-thing"]; e.Available {
+		t.Errorf("a mod with no hunks and no payload is not installable, got Available=true")
+	}
+}
+
+// The payload lane is revision-independent: a files/-only mod has no anchors to rot,
+// so it is available even on a revision it ships no corpus for. Greying it out as
+// "no hunks for this revision" would hide a mod that installs perfectly well.
+func TestPayloadOnlyModIsAvailableOnEveryRevision(t *testing.T) {
+	overlay := t.TempDir()
+	writeText(t, filepath.Join(overlay, "revs.json"), `{"primary":"289","supported":{"289":{},"254":{}}}`+"\n")
+	writeText(t, filepath.Join(overlay, "mods", "assets", "files", "engine", "public", "lclite", "assets", "theme.css"), "body{}\n")
+	writeText(t, filepath.Join(overlay, "mods", "hunks-only", "patches", "289", "Client_ts.json"),
+		`{"file":"webclient/src/client/Client.ts","hunks":[]}`+"\n")
+
+	for _, rev := range []string{"289", "254"} {
+		by := map[string]ModInfo{}
+		for _, m := range listModsFromOverlay(overlay, rev) {
+			by[m.Name] = m
+		}
+		if !by["assets"].Available {
+			t.Errorf("rev %s: a files/-only mod must be available", rev)
+		}
+		if by["hunks-only"].Available != (rev == "289") {
+			t.Errorf("rev %s: hunks-only Available = %v (it has a 289 corpus and nothing for 254)", rev, by["hunks-only"].Available)
+		}
+	}
+}
+
 // The list is ordered by what players read, not by folder name — the panel's
 // list does the same, so "LCLite" sorts under L, not C.
 func TestModListSortsByLabel(t *testing.T) {

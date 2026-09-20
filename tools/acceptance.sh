@@ -43,6 +43,10 @@ pin() {
         const want = process.argv[1], root = path.join(process.argv[2], "mods");
         const rev = process.argv[3];
         for (const m of fs.readdirSync(root)) {
+            // `.`/`_` prefixed folders are not mods (mods/_template is the layout
+            // example): including them here would let a template pin stand in for
+            // the corpus pin, which is a silent way to test the wrong commits.
+            if (m.startsWith(".") || m.startsWith("_")) continue;
             const d = path.join(root, m, "patches", rev);
             if (!fs.existsSync(d)) continue;
             for (const f of fs.readdirSync(d)) {
@@ -103,11 +107,15 @@ import json, glob, os, sys, filecmp
 t, install, repo, label, primary = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
 files = set()
 for f in glob.glob(os.path.join(repo, 'mods/*/patches/%s/*.json' % primary)):
+    if os.path.basename(os.path.dirname(os.path.dirname(f))).startswith(('_', '.')):
+        continue                      # not a mod (mods/_template is the layout example)
     d = json.load(open(f))
     if d.get('file'):
         files.add(d['file'])
 # files/ payloads are copied verbatim too (panel.js, gpu/, tcg/, hotkeys' core)
 for mod in glob.glob(os.path.join(repo, 'mods/*/files')):
+    if os.path.basename(os.path.dirname(mod)).startswith(('_', '.')):
+        continue                      # not a mod
     for root, _dirs, names in os.walk(mod):
         for n in names:
             rel = os.path.relpath(os.path.join(root, n), mod).replace('\\', '/')

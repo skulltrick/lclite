@@ -38,12 +38,21 @@ mods of every kind: [docs/MODS.md](docs/MODS.md).
 
 ## Authoring a mod
 
-- **TYPE A (UI-only)** — a panel row writing a `localStorage` key. No engine
-  patch, no rebuild: `node tools/lclite.mjs apply` re-copies the statics.
+The on-ramp — the folder contract, the two delivery lanes, how the launcher discovers and
+toggles a mod, and the loop with its gates — is
+[docs/MAKING-A-MOD.md](docs/MAKING-A-MOD.md). Start there; the annotated layout example
+`node tools/lclite.mjs new <name>` copies is [`mods/_template/`](mods/_template).
+
+- **A mod is a folder** in `mods/`, discovered by scan: `mods/<name>/` with hunks
+  (`patches/<rev>/*.json`) and/or a `files/` payload. Nothing to register; a folder whose
+  name starts with `_` or `.` is not a mod.
+- **TYPE A (UI-only)** — a panel row writing a `localStorage` key, or a page asset shipped
+  as `files/engine/public/lclite/<name>/…`. No engine patch, no rebuild:
+  `node tools/lclite.mjs apply` re-copies the statics.
 - **TYPE B (engine mod)** — edit the upstream TS sources in your working tree
   (`LCLITE_ROOT` if you're not standing in one), **start every added block with a
   `lclite:<mod>` marker comment**, then `node tools/regen.mjs` extracts the hunks
-  into `mods/<name>/patches/*.json`.
+  into `mods/<name>/patches/<rev>/*.json`.
 - **TYPE C (visual entities)** — model overrides / fake NPCs: files/ code + a
   minimal import hunk; hook-site blueprint in docs/MODS.md.
 
@@ -61,6 +70,12 @@ Rules that keep hunks durable:
   HEAD makes the overlay think there's nothing to apply.
 
 ## Acceptance test (required for PRs touching hunks)
+
+First, the contract itself (fast, no tree needed, runs in CI):
+
+```
+node tools/selfcheck.mjs        # mods/ folder rule, discovery, the layout example still anchors
+```
 
 Fast form — against a real install (every anchor must be found, doctor healthy):
 
