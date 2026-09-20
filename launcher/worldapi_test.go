@@ -264,6 +264,125 @@ func TestHandleWorldCheckPassesACleanSet(t *testing.T) {
 	}
 }
 
+// A player can name the target by typing its address instead of pasting a code.
+// An address nobody has described carries no rules — but the gate must still
+// answer the question it can answer: which build would this install serve?
+func TestHandleWorldCheckAcceptsATypedAddress(t *testing.T) {
+	l, _ := newLauncher(t.TempDir(), "test")
+	in := fullInstall(t, "289", "main", []string{"control-panel", "gpu", "anti-cheat"})
+	l.store.upsertInstall(in)
+	world, _ := testManifest(t) // requires true-tile+gpu, forbids anti-cheat
+	l.store.addWorld(World{Manifest: world, AddedAt: time.Now()})
+
+	type checkOut struct {
+		OK     bool          `json:"ok"`
+		Report ModRuleReport `json:"report"`
+		World  WorldManifest `json:"world"`
+	}
+
+	// (a) an address nobody described: nothing to block on, but the applied set
+	// and the build digest still come back.
+	rec := httptest.NewRecorder()
+	l.handleWorldCheck(rec, jsonReq(t, map[string]any{"addr": "play.example.com:443", "install": "289"}))
+	var a checkOut
+	if err := json.Unmarshal(rec.Body.Bytes(), &a); err != nil {
+		t.Fatalf("decode: %v (%s)", err, rec.Body.String())
+	}
+	if !a.OK {
+		t.Fatalf("a typed address must be answerable: %s", rec.Body.String())
+	}
+	if a.Report.Blocked || len(a.Report.Refused) != 0 || len(a.Report.Missing) != 0 {
+		t.Fatalf("an address with no description has no rules to apply: %+v", a.Report)
+	}
+	if len(a.Report.Applied) == 0 || a.Report.Digest == "" {
+		t.Fatalf("the gate must still report the build this install would serve: %+v", a.Report)
+	}
+	if a.World.Address != "play.example.com:443" {
+		t.Fatalf("expected the typed address back, got %q", a.World.Address)
+	}
+
+	// (b) the same address written the way a person writes it — scheme, caps, a
+	// trailing slash — is the saved world, so its rules DO apply.
+	rec2 := httptest.NewRecorder()
+	l.handleWorldCheck(rec2, jsonReq(t, map[string]any{"addr": "https://192.168.1.20:8080/", "install": "289"}))
+	var b checkOut
+	if err := json.Unmarshal(rec2.Body.Bytes(), &b); err != nil {
+		t.Fatalf("decode: %v (%s)", err, rec2.Body.String())
+	}
+	if !b.Report.Blocked || len(b.Report.Refused) != 1 || b.Report.Refused[0] != "anti-cheat" {
+		t.Fatalf("a typed address must still meet that world's rules: %+v", b.Report)
+	}
+	if b.World.ID != world.ID {
+		t.Fatalf("expected the saved world to be the one gated, got %q", b.World.ID)
+	}
+}
+
+func TestSameWorldAddrIgnoresSchemeCaseAndTrailingSlash(t *testing.T) {
+	cases := []struct {
+		a, b string
+		want bool
+	}{
+		{"play.example.com:443", "play.example.com:443", true},
+		{"https://Play.Example.com:443/", "play.example.com:443", true},
+		{"http://play.example.com", "play.example.com", true},
+		{"192.168.1.20:8080", "http://192.168.1.20:8080", true},
+		{"play.example.com:443", "play.example.com:8080", false},
+		// Two blanks are never "the same server" — that is how a missing address
+		// would otherwise silently match the first world in the list.
+		{"", "", false},
+		{"  ", "", false},
+	}
+	for _, c := range cases {
+		if got := sameWorldAddr(c.a, c.b); got != c.want {
+			t.Errorf("sameWorldAddr(%q, %q) = %v, want %v", c.a, c.b, got, c.want)
+		}
+	}
+}
+
+// Your own invite code is not a world to import: the list already leads with that
+// world, so storing it again would show one server twice — and the join gate would
+// then check you against your own rules as if you were a guest.
+func TestHandleWorldAddRecognisesYourOwnCode(t *testing.T) {
+	l, _ := newLauncher(t.TempDir(), "test")
+	priv, err := l.store.hostKey()
+	if err != nil {
+		t.Fatalf("host key: %v", err)
+	}
+	m := l.localWorldManifest()
+	m.Name = "My own 289"
+	m.Address = "192.168.1.5:80"
+	if err := m.Sign(priv); err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+	code, err := EncodeWorldCode(m)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	l.handleWorldAdd(rec, jsonReq(t, map[string]any{"code": code}))
+	var out struct {
+		OK   bool   `json:"ok"`
+		Self bool   `json:"self"`
+		ID   string `json:"id"`
+		W    struct {
+			ID string `json:"id"`
+		} `json:"world"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode: %v (%s)", err, rec.Body.String())
+	}
+	if !out.OK || !out.Self {
+		t.Fatalf("a code for this launcher's own world must come back as self: %s", rec.Body.String())
+	}
+	if out.W.ID != m.ID {
+		t.Fatalf("expected the manifest to be handed back, got %q", out.W.ID)
+	}
+	if n := len(l.store.snapshot().Worlds); n != 0 {
+		t.Fatalf("your own world must not be stored as somebody else's: %d saved", n)
+	}
+}
+
 func TestHandleWorldPublishSignsAndRefusesContradictions(t *testing.T) {
 	l, _ := newLauncher(t.TempDir(), "test")
 
@@ -483,6 +602,26 @@ func TestJSONKeysTheUIActuallyReads(t *testing.T) {
 		for _, k := range []string{"self", "online", "status", "signed", "fingerprint", "code", "favorite", "manifest"} {
 			if _, ok := got[k]; !ok {
 				t.Errorf("a world view must ship %q — the UI reads it", k)
+			}
+		}
+	})
+
+	t.Run("install view", func(t *testing.T) {
+		// The Join panel says which client it would serve and how many mods that
+		// tree really has applied, so the key has to be there (and the count has
+		// to come from the tree, not from the record's last apply).
+		in := fullInstall(t, "289", "main", []string{"control-panel", "gpu"})
+		raw, err := json.Marshal(installView{Install: in})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got map[string]any
+		if err := json.Unmarshal(raw, &got); err != nil {
+			t.Fatal(err)
+		}
+		for _, k := range []string{"id", "rev_label", "mods_available", "mods_applied", "client_bundle", "has_engine", "missing"} {
+			if _, ok := got[k]; !ok {
+				t.Errorf("an install view must ship %q — the UI reads it", k)
 			}
 		}
 	})

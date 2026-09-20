@@ -145,6 +145,13 @@
   .row.wrap{flex-wrap:wrap}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .hint{color:var(--dim2);font-size:12px;margin-top:8px;line-height:1.55}
+  /* Two ways to name the same target: an address, or an invite code that carries
+     one. The rule between them is what makes them read as alternatives rather
+     than as two fields that both want filling in — so it is a visible line, not
+     a whisper. */
+  .orline{display:flex;align-items:center;gap:10px;margin:13px 0 0;color:var(--dim);font-size:10.5px;
+    letter-spacing:.14em;text-transform:uppercase}
+  .orline::before,.orline::after{content:"";flex:1;height:1px;background:var(--line)}
   details.block{border-top:1px solid var(--line-soft);margin-top:12px;padding-top:10px}
   details.block > summary{cursor:pointer;color:var(--dim);font-size:12.5px;list-style:none;display:flex;align-items:center;gap:7px}
   details.block > summary::-webkit-details-marker{display:none}
@@ -798,12 +805,12 @@ function mainHTML(){
 
       <div>
         <section class="panel" data-sec="server">
-          <h2>Server<span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">this machine</span>${secToggle("server")}</h2>
+          <h2>Host Server<span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">this machine</span>${secToggle("server")}</h2>
           ${serverHTML()}
         </section>
 
         <section class="panel" data-sec="join">
-          <h2>Join server<span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">somewhere else</span>${secToggle("join")}</h2>
+          <h2>Join Server<span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">somewhere else</span>${secToggle("join")}</h2>
           ${joinHTML()}
         </section>
 
@@ -811,8 +818,6 @@ function mainHTML(){
           <h2>Worlds<span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">player hosted</span>${secToggle("worlds")}</h2>
           <div class="sub" id="worldssub">worlds you have been invited to — kept on this machine</div>
           <div id="worlds"><div class="skeleton"></div></div>
-          <div id="worldgate"></div>
-          ${worldToolsHTML()}
         </section>
       </div>
     </main>
@@ -1082,41 +1087,131 @@ function serverHTML(){
         ports — the web port above, the game port (43594) and the setup page (8898) — and the launcher moves the last two out of the way if
         they're taken, which is how two revisions can run side by side. The first boot repacks the game cache and can take a minute.</div>
       </details>
-    </div>`;
+    </div>
+    ${hostWorldHTML()}`;
 }
 
-// Joining someone else's world is a different job from running your own, so it
-// gets its own panel instead of being a footnote under the local server.
-// The everyday path is one field and one button; the bridge port and whose
-// client to serve are real choices but not first-run ones, so they fold away.
+// Listing your own world belongs with the world you run, not with the list of
+// everybody else's — this is the host's half of the feature.
+function hostWorldHTML(){
+  const i = currentInstall();
+  const mods = (i && (i.mods_available || []).length ? i.mods_available : (S.installs || [])[0] && (S.installs || [])[0].mods_available) || [];
+  return `
+    <details class="block" id="myworld">
+      <summary>List my world — you run the server, others join</summary>
+      <div class="inner">
+        <div class="grid2">
+          <div><label class="f">World name</label><input type="text" id="myname" maxlength="${48}" placeholder="Bob's 289"></div>
+          <div><label class="f">Your name (the host)</label><input type="text" id="myhost" maxlength="40" placeholder="Bob"></div>
+        </div>
+        <label class="f">One-line description</label>
+        <input type="text" id="mydesc" maxlength="${240}" placeholder="slow xp, no teleports, wipes on Sundays">
+        <label class="f">Address to advertise (blank = work it out from this machine)</label>
+        <input type="text" id="myaddr" placeholder="192.168.1.20:8080">
+        <div class="hint" id="myaddrhint"></div>
+
+        <label class="f">Mod rules</label>
+        <div class="hint" style="margin-top:0">
+          <b>wanted</b> = recommended. A player missing it is warned and may still join.
+          <b>banned</b> = not allowed. A player running it is asked to turn it off first.
+          Neither can be enforced against a client that lies — this is an honest handshake, not a wall.
+        </div>
+        <div class="modlist" id="myrules">${myRulesHTML(mods)}</div>
+
+        <label class="f" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text)">
+          <input type="checkbox" id="mysave" style="width:15px;height:15px;accent-color:#c9a44f">
+          Let players bring an existing character into this world
+        </label>
+        <div class="hint" style="margin-top:4px">A character is a file on <b>your</b> disk (<span class="path">engine/data/players/…</span>).
+        Allowing imports means you will accept one from a player. It is a trust decision between people who already chose to play together —
+        a save carries no proof that it was earned.</div>
+
+        <div class="row wrap" style="margin-top:11px">
+          <button class="primary" onclick="publishWorld()">List my world</button>
+          <button class="ghost" onclick="copyInviteCode()">Copy invite code</button>
+        </div>
+        <div id="myworldout"></div>
+      </div>
+    </details>`;
+}
+
+// Joining somewhere else is one job with two ways to name the target: type the
+// address, or paste an invite code that carries one. Both end in the same place —
+// your own built client, your mods, tunnelled to that server — so there is one
+// button, and no "whose client" to choose.
+//
+// Deliberately absent: an "open directly" escape hatch and a stop button. A
+// player who wants a plain browser tab has a browser; a player who wants to
+// join somewhere else presses Join, and pressing it again retargets the tunnel.
+// If a server will not take an LCLite client at all, the answer is the server's
+// own webclient in a browser, not a second button in here.
 function joinHTML(){
   return `
     <div class="card">
       <label class="f">Server address</label>
       <input type="text" id="remoteurl" placeholder="play.example.com:443">
       <div class="hint" style="margin-top:5px">Hostname, IP or full URL — <span class="path">192.168.1.20:8888</span> and <span class="path">https://play.example.com</span> both work.</div>
-      <div class="row wrap" style="margin-top:11px">
-        <button class="primary" id="bridgebtn" onclick="startProxy()">Bridge &amp; play</button>
-        <button onclick="openDirect()">Open directly</button>
-        <button id="stopbridgebtn" onclick="stopProxy()">Stop bridge</button>
+
+      <div class="orline"><span>or</span></div>
+
+      <label class="f">Invite code</label>
+      <input type="text" id="worldcode" placeholder="lclw1:H4sIAAAA…">
+      <div class="hint" style="margin-top:5px">A code is a host's <b>signed</b> description of their world — name, address, revision and mod
+      rules. Paste one instead of an address and the launcher fills the address in, checks those rules against what you have applied,
+      and adds the world to your list.</div>
+
+      <div class="row wrap" style="margin-top:12px">
+        <button class="primary" id="joinbtn" onclick="joinServer()">Join</button>
       </div>
+      <div class="hint" id="joinwhat"></div>
       <div class="hint" id="bridgehint"></div>
-      <details class="block"><summary>Advanced — bridge port and whose client to serve</summary>
+
+      <details class="block"><summary>Advanced — the port your client listens on</summary>
         <div class="inner">
           <div class="grid2">
-            <div><label class="f">Bridge port</label><input type="number" id="proxyport" min="1" max="65535" value="${S.proxy_port || 8890}"></div>
-            <div><label class="f">Serve my build</label>
-              <select id="proxylocal">
-                <option value="0">no — use their client</option>
-                <option value="1">yes — my client, their world</option>
-              </select></div>
+            <div><label class="f">Local port</label><input type="number" id="proxyport" min="1" max="65535" value="${S.proxy_port || 8890}"></div>
           </div>
-          <div class="hint">The client dials whatever host served it, so the bridge tunnels both the page and the game socket to that address.
-          <b>Serve my build</b> swaps in your own built client, which is how your mods follow you onto someone else's world.
-          A server that pins <b>allowedOrigin</b> can refuse a bridged socket — open it directly instead.</div>
+          <div class="hint">The client dials whatever host served it, so the launcher listens here and bridges both the page and the game
+          socket to the address above. Your own built client answers <span class="path">/client/*</span> and <span class="path">/lclite/*</span>
+          — that is how your mods follow you onto someone else's world. A server that pins <b>allowedOrigin</b> can refuse a bridged socket;
+          that server is one to open in a browser instead.</div>
         </div>
       </details>
-    </div>`;
+    </div>
+    <div id="worldgate"></div>
+    ${vaultHTML()}`;
+}
+
+// Your characters travel as files, not as game state: the client never sees a
+// save, so "keep your character" is the launcher copying a file for you.
+function vaultHTML(){
+  return `
+    <details class="block" id="saves" ontoggle="if(this.open && !SV) loadSaves(false)">
+      <summary>Your characters — the save vault</summary>
+      <div class="inner">
+        <div class="hint" style="margin-top:0">
+          Your progress lives on the <b>server's</b> disk, not in the client — the game never sends a character to you.
+          So "keep your character" means the launcher copying a file for you. The vault is that copy, kept on this machine
+          and named after the world it came from.
+        </div>
+        <div id="savelist"><div class="empty">open this to load your characters</div></div>
+        <div class="row wrap" style="margin-top:9px">
+          <button class="ghost" onclick="loadSaves(true)">Refresh characters</button>
+        </div>
+        <label class="f">Bring a character in</label>
+        <div class="grid2">
+          <div><input type="text" id="impname" placeholder="character name (blank = from the file)"></div>
+          <div><input type="text" id="imppath" placeholder="C:\\path\\to\\alice.sav"></div>
+        </div>
+        <div class="row wrap" style="margin-top:9px">
+          <button onclick="importSave()">Import into this install</button>
+          <button class="ghost" onclick="pickSaveFile()">Browse…</button>
+        </div>
+        <div class="hint">The file is checked against the engine's own rule (magic, version, checksum) before it is
+        written, so a corrupt or foreign file is refused here instead of breaking the world. If the world already has a
+        <b>newer</b> character of that name, the import stops and asks — the launcher can only compare timestamps, not playtime.</div>
+      </div>
+    </details>`;
 }
 
 /* ---- worlds ---------------------------------------------------------------
@@ -1178,8 +1273,12 @@ function renderWorlds(force){
 function worldsHTML(){
   if (!W) return '<div class="empty">reading your world list…</div>';
   const all = W.worlds || [];
+  // The list is the whole of this panel: worlds you have been handed, in the
+  // order a player reads them. Adding one happens in Join Server, by joining it.
+  const check = `<div class="row wrap" style="margin-top:9px">
+    <button class="ghost" onclick="refreshWorlds(true)">Check which are online</button></div>`;
   if (!all.length) {
-    return `<div class="empty">No worlds yet. Paste an invite code below, or run a world on this machine and press <b>List my world</b>.</div>`;
+    return `<div class="empty">No worlds yet. Paste an invite code in <b>Join Server</b> to add one, or list your own world under <b>Host Server</b>.</div>${check}`;
   }
   // A favorite is pinned: it stays in the list while offline, because a world you
   // care about going down is exactly when you want to see it.
@@ -1193,7 +1292,7 @@ function worldsHTML(){
         `<div class="row" style="margin-top:8px"><button class="ghost" onclick="worldsShowOffline=false;renderWorlds(true)">Hide ${hidden.length} offline</button></div>`
       : `<div class="row" style="margin-top:8px"><button class="ghost" onclick="worldsShowOffline=true;renderWorlds(true)">${hidden.length} offline world${hidden.length === 1 ? "" : "s"} hidden — show</button></div>`;
   }
-  return out;
+  return out + check;
 }
 
 function worldCardHTML(v){
@@ -1256,91 +1355,6 @@ function worldCardHTML(v){
   </div>`;
 }
 
-// The host's own tools: paste a code, describe your world, and the save vault.
-// Rendered ONCE (not from the poll) because everything in here is an input.
-function worldToolsHTML(){
-  const i = currentInstall();
-  const mods = (i && (i.mods_available || []).length ? i.mods_available : (S.installs || [])[0] && (S.installs || [])[0].mods_available) || [];
-  return `
-    <details class="block" id="worldadd">
-      <summary>Add a world from an invite code</summary>
-      <div class="inner">
-        <label class="f">Invite code</label>
-        <input type="text" id="worldcode" placeholder="lclw1:H4sIAAAA…">
-        <div class="row" style="margin-top:9px">
-          <button class="primary" onclick="addWorldCode()">Add world</button>
-          <button class="ghost" onclick="refreshWorlds(true)">Check which are online</button>
-        </div>
-        <div class="hint">A code carries the host's name for the world, its address, its revision and its mod rules,
-        and it is <b>signed by the host</b> — so a code that was edited on its way to you is refused rather than trusted.
-        There is no public directory: a world is something somebody hands you.</div>
-      </div>
-    </details>
-
-    <details class="block" id="myworld">
-      <summary>List my world — you run the server, others join</summary>
-      <div class="inner">
-        <div class="grid2">
-          <div><label class="f">World name</label><input type="text" id="myname" maxlength="${48}" placeholder="Bob's 289"></div>
-          <div><label class="f">Your name (the host)</label><input type="text" id="myhost" maxlength="40" placeholder="Bob"></div>
-        </div>
-        <label class="f">One-line description</label>
-        <input type="text" id="mydesc" maxlength="${240}" placeholder="slow xp, no teleports, wipes on Sundays">
-        <label class="f">Address to advertise (blank = work it out from this machine)</label>
-        <input type="text" id="myaddr" placeholder="192.168.1.20:8080">
-        <div class="hint" id="myaddrhint"></div>
-
-        <label class="f">Mod rules</label>
-        <div class="hint" style="margin-top:0">
-          <b>wanted</b> = recommended. A player missing it is warned and may still join.
-          <b>banned</b> = not allowed. A player running it is asked to turn it off first.
-          Neither can be enforced against a client that lies — this is an honest handshake, not a wall.
-        </div>
-        <div class="modlist" id="myrules">${myRulesHTML(mods)}</div>
-
-        <label class="f" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text)">
-          <input type="checkbox" id="mysave" style="width:15px;height:15px;accent-color:#c9a44f">
-          Let players bring an existing character into this world
-        </label>
-        <div class="hint" style="margin-top:4px">A character is a file on <b>your</b> disk (<span class="path">engine/data/players/…</span>).
-        Allowing imports means you will accept one from a player. It is a trust decision between people who already chose to play together —
-        a save carries no proof that it was earned.</div>
-
-        <div class="row wrap" style="margin-top:11px">
-          <button class="primary" onclick="publishWorld()">List my world</button>
-          <button class="ghost" onclick="copyInviteCode()">Copy invite code</button>
-        </div>
-        <div id="myworldout"></div>
-      </div>
-    </details>
-
-    <details class="block" id="saves" ontoggle="if(this.open && !SV) loadSaves(false)">
-      <summary>Your characters — the save vault</summary>
-      <div class="inner">
-        <div class="hint" style="margin-top:0">
-          Your progress lives on the <b>server's</b> disk, not in the client — the game never sends a character to you.
-          So "keep your character" means the launcher copying a file for you. The vault is that copy, kept on this machine
-          and named after the world it came from.
-        </div>
-        <div id="savelist"><div class="empty">open this to load your characters</div></div>
-        <div class="row wrap" style="margin-top:9px">
-          <button class="ghost" onclick="loadSaves(true)">Refresh characters</button>
-        </div>
-        <label class="f">Bring a character in</label>
-        <div class="grid2">
-          <div><input type="text" id="impname" placeholder="character name (blank = from the file)"></div>
-          <div><input type="text" id="imppath" placeholder="C:\\path\\to\\alice.sav"></div>
-        </div>
-        <div class="row wrap" style="margin-top:9px">
-          <button onclick="importSave()">Import into this install</button>
-          <button class="ghost" onclick="pickSaveFile()">Browse…</button>
-        </div>
-        <div class="hint">The file is checked against the engine's own rule (magic, version, checksum) before it is
-        written, so a corrupt or foreign file is refused here instead of breaking the world. If the world already has a
-        <b>newer</b> character of that name, the import stops and asks — the launcher can only compare timestamps, not playtime.</div>
-      </div>
-    </details>`;
-}
 
 // A mod row with a three-way choice. Deliberately not a pair of multi-selects:
 // the difference between "wanted" and "banned" is the whole point of the feature
@@ -1410,26 +1424,115 @@ function fillWorldsForm(){
 
 /* ---- world actions --------------------------------------------------------- */
 
-async function addWorldCode(){
-  const el = $("worldcode");
-  const code = ((el || {}).value || "").trim();
-  if (!code) { toast("Paste an invite code first.", "bad"); return; }
-  try {
-    const r = await api("worlds/add", { code });
-    if (el) el.value = "";
-    if (r.warning) toast(r.warning, "bad"); else toast(`Added ${r.world.name}.`, "good");
-    await loadWorlds();
-    refreshWorlds(true);
-  } catch (e) { toast(e.message, "bad"); }
+/* ---- joining ---------------------------------------------------------------- */
+
+// One verb, two ways to name the target. The address is what the tunnel points
+// at; an invite code is the same thing plus the host's signed description of it,
+// so a code wins when both fields are filled (the address it carries overwrites
+// the typed one — an either/or that never leaves stale input behind).
+async function joinServer(){
+  const i = currentInstall();
+  if (!i) { toast("Install a revision first — you need a client to play with.", "bad"); return; }
+
+  const codeEl = $("worldcode");
+  const code = ((codeEl || {}).value || "").trim();
+  const addr = (($("remoteurl") || {}).value || "").trim();
+  if (!code && !addr) { toast("Type a server address, or paste an invite code — either one.", "bad"); return; }
+
+  let target = { addr };
+  if (code) {
+    let r;
+    try { r = await api("worlds/add", { code }); }
+    catch (e) { toast(e.message, "bad"); return; }
+    if (codeEl) codeEl.value = "";
+    const m = r.world || {};
+    if (r.warning) toast(r.warning, "bad");
+    const urlEl = $("remoteurl"); if (urlEl) urlEl.value = m.addr || "";
+
+    if (r.self) {
+      // Your own code: the list already leads with that world, and joining it is
+      // just playing on the server this machine runs.
+      toast(`${m.name || "That world"} is this machine's world — joining your own server.`, "good");
+      if (((S.engine || {}).state) !== "running") {
+        if (!confirm(`${m.name || "Your world"} is not running on this machine yet.\n\n` +
+          `Start it under Host Server first. Join anyway?`)) return;
+      }
+      target = { id: "self" };
+    } else {
+      target = { id: m.id };
+      // A world you cannot reach is worth saying before the client opens a blank
+      // page. The probe is one HTTP request, and it also fills the card's status in.
+      const results = await refreshWorlds(false);
+      const st = (results.find(x => x.id === m.id) || {}).status;
+      if (st && st !== "online") {
+        if (!confirm(`${m.name || "That world"} is not answering at ${m.addr || "its address"} right now.\n\n` +
+          `The host may be offline. Join anyway?`)) return;
+      }
+    }
+  }
+
+  await joinTarget(target, i);
+}
+
+// The gate, then the tunnel. Identical whether the target came from a card, a
+// pasted code or a typed address: what you bring is your own built client, and
+// what it is checked against is the tree's own applied set.
+async function joinTarget(target, i){
+  let r;
+  try { r = await api("worlds/check", Object.assign({ install: i.id }, target)); }
+  catch (e) { toast(e.message, "bad"); return; }
+
+  const rep = r.report || {};
+  const world = r.world || {};
+  lastGate = { id: target.id || "", install: i.id, rep, world };
+  renderGate(r);
+
+  if (rep.blocked) {
+    toast(`That world does not allow: ${(rep.refused || []).join(", ")}. Turn them off and try again.`, "bad");
+    return;
+  }
+  if ((rep.missing || []).length) {
+    const ok = confirm(`That world wants mods you do not have:\n\n  ${rep.missing.join(", ")}\n\n` +
+      `You can still join — it may just look or behave differently from what the host expects.\n\nJoin anyway?`);
+    if (!ok) return;
+  }
+  if (!r.rev_ok) {
+    const ok = confirm(`That world runs revision ${world.rev} and your install is ${r.install_rev}.\n\n` +
+      `Different revisions can differ in content and item ids. Join anyway?`);
+    if (!ok) return;
+  }
+  await bridgeToWorld(world, i);
+}
+
+// Joining from a world card is the same join, with the target already known.
+async function joinWorld(id){
+  const i = currentInstall();
+  if (!i) { toast("Install a revision first — you need a client to play with.", "bad"); return; }
+  const v = ((W || {}).worlds || []).find(x => (x.manifest || {}).id === id);
+  const urlEl = $("remoteurl");
+  if (urlEl && v) urlEl.value = (v.manifest || {}).addr || "";
+  await joinTarget({ id }, i);
+}
+
+async function bridgeToWorld(m, i){
+  // The manifest's field is `addr` — the card reads it as m.addr, and so must this.
+  const addr = (m && (m.addr || m.address)) || (($("remoteurl") || {}).value || "").trim();
+  if (!addr) { toast("That server has no address — ask the host for one.", "bad"); return; }
+  const urlEl = $("remoteurl"); if (urlEl) urlEl.value = addr;
+  toast(`Joining ${m && m.name ? m.name : addr} with your own build…`);
+  try { await startProxy(); }
+  catch (e) { toast("Could not join: " + e.message, "bad"); }
 }
 
 async function refreshWorlds(loud){
   try {
     const r = await api("worlds/refresh", {});
-    const up = (r.results || []).filter(x => x.status === "online").length;
-    if (loud) toast(`Checked ${(r.results || []).length} worlds — ${up} online.`);
+    const res = r.results || [];
+    const up = res.filter(x => x.status === "online").length;
+    if (loud) toast(`Checked ${res.length} worlds — ${up} online.`);
     await loadWorlds();
-  } catch (e) { if (loud) toast(e.message, "bad"); }
+    return res;
+  } catch (e) { if (loud) toast(e.message, "bad"); return []; }
 }
 
 async function toggleWorldFav(id, fav){
@@ -1444,57 +1547,20 @@ async function forgetWorld(id){
   catch (e) { toast(e.message, "bad"); }
 }
 
-// Joining is gated by the world's own mod rules, checked against the tree.
-async function joinWorld(id){
-  const i = currentInstall();
-  if (!i) { toast("Install a revision first — you need a client to play with.", "bad"); return; }
-  let r;
-  try { r = await api("worlds/check", { id, install: i.id }); }
-  catch (e) { toast(e.message, "bad"); return; }
-
-  const rep = r.report || {};
-  lastGate = { id, install: i.id, rep, world: r.world };
-  renderGate(r);
-
-  if (rep.blocked) {
-    toast(`This world does not allow: ${(rep.refused || []).join(", ")}. Turn them off and try again.`, "bad");
-    return;
-  }
-  if ((rep.missing || []).length) {
-    const ok = confirm(`This world wants mods you do not have:\n\n  ${rep.missing.join(", ")}\n\n` +
-      `You can still join — it may just look or behave differently from what the host expects.\n\nJoin anyway?`);
-    if (!ok) return;
-  }
-  if (!r.rev_ok) {
-    const ok = confirm(`This world runs revision ${r.world.rev} and your install is ${r.install_rev}.\n\n` +
-      `Different revisions can differ in content and item ids. Join anyway?`);
-    if (!ok) return;
-  }
-  await bridgeToWorld(r.world, i);
-}
-
-async function bridgeToWorld(m, i){
-  // The manifest's field is `addr` — the card reads it as m.addr, and so must this.
-  const addr = (m && (m.addr || m.address)) || "";
-  if (!addr) { toast("That world has no address — ask the host for one.", "bad"); return; }
-  const urlEl = $("remoteurl"); if (urlEl) urlEl.value = addr;
-  const localEl = $("proxylocal"); if (localEl) localEl.value = "1";
-  toast(`Bridging to ${m.name} with your own build…`);
-  try { await startProxy(); }
-  catch (e) { toast("Bridge failed: " + e.message, "bad"); }
-}
-
 // The gate's verdict, shown in its own container so a list refresh cannot wipe it.
+// The target may have a name (a saved world, a code that carried one) or just be
+// an address someone typed, so every sentence works with either.
 function renderGate(r){
   const el = $("worldgate");
   if (!el) return;
   const rep = r.report || {};
   const m = r.world || {};
+  const who = m.name || m.addr || "That server";
   const bits = [];
 
   if (rep.blocked) {
     bits.push(`<div class="gate block">
-      <h4>${esc(m.name || "That world")} does not allow mods you have on</h4>
+      <h4>${esc(who)} does not allow mods you have on</h4>
       <ul>${(rep.refused || []).map(n => `<li><code>${esc(n)}</code> is applied in <b>${esc(r.install)}</b></li>`).join("")}</ul>
       <div class="hint">Turn ${(rep.refused || []).length === 1 ? "it" : "them"} off and rebuild, then join again.</div>
       <div class="row wrap" style="margin-top:9px">
@@ -1504,7 +1570,7 @@ function renderGate(r){
     </div>`);
   } else if ((rep.missing || []).length) {
     bits.push(`<div class="gate warn">
-      <h4>${esc(m.name || "That world")} wants mods you do not have</h4>
+      <h4>${esc(who)} wants mods you do not have</h4>
       <ul>${(rep.missing || []).map(n => `<li><code>${esc(n)}</code> — not applied here</li>`).join("")}</ul>
       <div class="hint">You are allowed in regardless: a "wanted" mod is a recommendation the host is telling you about.</div>
       <div class="row wrap" style="margin-top:9px"><button class="ghost" onclick="clearGate()">Dismiss</button></div>
@@ -1514,6 +1580,7 @@ function renderGate(r){
   const digest = rep.digest ? `<span title="fingerprint of the client build you would serve">build <span class="mono">${esc(rep.digest)}</span></span>` : "";
   bits.push(`<div class="hint">Checked <b>${esc(r.install)}</b> against what is actually applied (not what the mods panel had ticked).
     ${(rep.applied || []).length} mods applied${digest ? " · " + digest : ""}.
+    ${m.req || m.ban ? "" : "Nobody has described this server to you, so there are no rules to check — your build is what it is."}
     ${(rep.unknown || []).length ? `This world names mods this overlay does not have: <code>${(rep.unknown || []).map(esc).join("</code>, <code>")}</code>.` : ""}</div>`);
 
   el.innerHTML = bits.join("");
@@ -1785,14 +1852,27 @@ function renderServerLive(){
   }
   const pb = $("playbtn"); if (pb) pb.disabled = state === "running" || state === "starting";
   const sb = $("stopbtn"); if (sb) sb.disabled = !(state === "running" || state === "starting");
-  const bb = $("bridgebtn"); if (bb) bb.disabled = !!p.running;
-  const sbb = $("stopbridgebtn"); if (sbb) sbb.disabled = !p.running;
-  // The bridge has no card title to carry its state any more, so say it here —
-  // and say it live, or the panel claims "not bridging" while it is.
+
+  // What joining would send: the install you picked, and the mods its tree really
+  // has applied (the same source the join gate reads — not the ticked boxes, which
+  // can describe a set that was never built).
+  const i = currentInstall();
+  const jw = $("joinwhat");
+  if (jw) {
+    const applied = (i && i.mods_applied) || [];
+    jw.innerHTML = i
+      ? `Joining serves <b>${esc(i.id)}</b> — your own client, with the ${applied.length} mod${applied.length === 1 ? "" : "s"} applied in it${applied.length ? `: ${applied.map(esc).join(", ")}` : ""}.`
+      : "Pick an install on the left first — that is the client you join with.";
+  }
+
+  // The tunnel says where it points, and offers the one thing a single Join button
+  // cannot: letting go of it. It stays a line of text, not a third button.
   const bh = $("bridgehint");
   if (bh) bh.innerHTML = p.running
-    ? `<span class="pill good">bridging</span> ${esc(p.target || "")} — <a href="${p.url || "#"}" target="_blank">open your client</a>`
-    : "Not bridging. <b>Bridge &amp; play</b> gives a remote server a localhost address so your browser can reach it.";
+    ? `<span class="pill good">joined</span> ${esc(p.target || "")} — <a href="${p.url || "#"}" target="_blank">open your client</a>
+       <button class="ghost" style="padding:2px 8px;font-size:11.5px;margin-left:6px" onclick="stopProxy()">Leave</button>`
+    : "Not joined to anywhere yet. Join bridges your client — a localhost address — to the server above.";
+
   const port = $("port");
   if (port && !port.dataset.touched && (state === "running" || state === "starting") && e.port) port.value = e.port;
 }
@@ -1861,17 +1941,21 @@ async function removeInstall(id, wipe){
   toast(wipe ? `${i.id} deleted — the folder is gone.` : `${i.id} removed from the list — files left in place.`, "good");
   await refresh();
 }
+// One button, one meaning. Joining always serves YOUR build: the install you
+// picked, with the mods its tree has applied. Pressing Join again retargets the
+// tunnel rather than asking the player to stop it first.
 async function startProxy(){
   const i = currentInstall();
-  const url = ($("remoteurl") || {}).value || "";
+  if (!i) { toast("Pick an install on the left — that is the client you join with.", "bad"); return; }
+  const url = (($("remoteurl") || {}).value || "").trim();
+  if (!url) { toast("Type a server address, or paste an invite code.", "bad"); return; }
   const port = parseInt(($("proxyport") || {}).value || "8890", 10);
-  const local = ($("proxylocal") || {}).value === "1";
-  const r = await act(() => api("proxy/start", { url: url.trim(), port, local_client: local, id: local && i ? i.id : "" }), "bridge", true);
-  if (r) { setLog("proxy"); toast(`Bridge up — your client opens at ${r.url}`, "good"); }
+  if (S.proxy && S.proxy.running) { try { await api("proxy/stop", {}); } catch (e) { /* retarget anyway */ } }
+  const r = await act(() => api("proxy/start", { url, port, local_client: true, id: i.id }), "join", true);
+  if (r) { setLog("proxy"); toast(`Joined ${url} — your client opens at ${r.url}`, "good"); }
   await refresh();
 }
-async function stopProxy(){ await act(() => api("proxy/stop", {}), "bridge", true); toast("Bridge stopped."); await refresh(); }
-async function openDirect(){ const url = (($("remoteurl") || {}).value || "").trim(); if (!url) { toast("Type a server address first.", "bad"); return; } await act(() => api("open", { url }), "open", true); }
+async function stopProxy(){ await act(() => api("proxy/stop", {}), "join", true); toast("Left that server."); await refresh(); }
 function showTools(){
   const list = (S.tools || [])
     .map(t => `${t.name} ${String(t.version || "").replace(/^v/, "").replace(new RegExp("^" + t.name + "\\s*", "i"), "").replace(/^git version\s*/i, "").trim()}`)

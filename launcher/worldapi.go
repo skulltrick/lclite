@@ -10,6 +10,8 @@ package main
 // rather than papered over.
 
 import (
+	"crypto/ed25519"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net"
@@ -298,6 +300,21 @@ func (l *Launcher) runningRev() string {
 	return ""
 }
 
+// hostWorldID is the id this launcher's own world carries — derived from the host
+// key, exactly as any world's id is, so a code for your own world can be
+// recognized instead of stored twice.
+func (l *Launcher) hostWorldID() string {
+	priv, err := l.store.hostKey()
+	if err != nil {
+		return ""
+	}
+	pub, ok := priv.Public().(ed25519.PublicKey)
+	if !ok {
+		return ""
+	}
+	return worldIDFor(base64.StdEncoding.EncodeToString(pub))
+}
+
 func (l *Launcher) hostFingerprint() string {
 	priv, err := l.store.hostKey()
 	if err != nil {
@@ -338,6 +355,13 @@ func (l *Launcher) handleWorldAdd(w http.ResponseWriter, r *http.Request) {
 	m, err := DecodeWorldCode(req.Code)
 	if err != nil {
 		fail(w, err)
+		return
+	}
+	// A code for the world THIS launcher hosts is not a new world: the list already
+	// leads with it. Storing it would show the same server twice, and gate the
+	// player against their own rules — so it is recognized instead.
+	if own := l.hostWorldID(); own != "" && m.ID == own {
+		ok(w, map[string]any{"world": m, "self": true, "updated": false})
 		return
 	}
 	// A code is only worth trusting if the host signed it. An unsigned manifest is
@@ -429,11 +453,18 @@ func (l *Launcher) handleWorldRefresh(w http.ResponseWriter, r *http.Request) {
 
 // handleWorldCheck answers "can I join this with what I have?" — the mod-rule gate.
 //
+// The target is named one of two ways: an id (a saved world, or "self"), or an
+// address the player typed. An address that belongs to a saved world is gated by
+// that world's rules; an address nobody described has no rules to apply, so the
+// answer is just "here is what your build would serve" — the same question, asked
+// about a server nobody has handed you a description of.
+//
 // The answer describes the build the install would REALLY serve (read from the
 // tree's own installed.json), not what the UI had ticked.
 func (l *Launcher) handleWorldCheck(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		ID      string `json:"id"`
+		Addr    string `json:"addr"`
 		Install string `json:"install"`
 	}
 	if err := decode(r, &req); err != nil {
@@ -442,16 +473,23 @@ func (l *Launcher) handleWorldCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cfg := l.store.snapshot()
+	addr := strings.TrimSpace(req.Addr)
 	var m WorldManifest
-	if req.ID == "" || req.ID == "self" {
-		m = l.localWorldManifest()
-	} else {
+	switch {
+	case req.ID != "" && req.ID != "self":
 		x := cfg.worldByID(req.ID)
 		if x == nil {
 			fail(w, fmt.Errorf("no world with that id"))
 			return
 		}
 		m = x.Manifest
+	case addr != "":
+		m = WorldManifest{Address: addr}
+		if x := cfg.worldByAddr(addr); x != nil {
+			m = x.Manifest
+		}
+	default:
+		m = l.localWorldManifest()
 	}
 
 	in := cfg.findInstall(req.Install)

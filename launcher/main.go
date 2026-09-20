@@ -175,7 +175,6 @@ func (l *Launcher) routes() http.Handler {
 	api("remove", l.handleRemove)
 	api("run", l.handleRun)
 	api("stop", l.handleStop)
-	api("open", l.handleOpen)
 	api("browse", l.handleBrowse)
 	api("bun", l.handleBun)
 	api("proxy/start", l.handleProxyStart)
@@ -256,7 +255,12 @@ type installView struct {
 	EngineDeps    bool      `json:"engine_deps"`
 	ClientBundle  bool      `json:"client_bundle"`
 	Mods          []ModInfo `json:"mods_available"`
-	Missing       bool      `json:"missing"`
+	// ModsApplied is what the TREE really has, read from the install's own
+	// installed.json — the same source the join gate reads. Install.Mods is the
+	// record's memory of the last apply, which a hand-imported folder never had,
+	// so the two can disagree and only this one is safe to show as fact.
+	ModsApplied []string `json:"mods_applied"`
+	Missing     bool     `json:"missing"`
 }
 
 func (l *Launcher) viewInstall(in *Install) installView {
@@ -275,6 +279,7 @@ func (l *Launcher) viewInstall(in *Install) installView {
 	if st, err := os.Stat(in.Path); err != nil || !st.IsDir() {
 		v.Missing = true
 		v.Mods = []ModInfo{}
+		v.ModsApplied = []string{}
 		v.ModsAllowed = false
 		v.OverlayPath = ""
 		v.OverlaySource = ""
@@ -294,6 +299,10 @@ func (l *Launcher) viewInstall(in *Install) installView {
 	}
 	if v.Mods == nil {
 		v.Mods = []ModInfo{}
+	}
+	v.ModsApplied = appliedMods(in)
+	if v.ModsApplied == nil {
+		v.ModsApplied = []string{}
 	}
 	return v
 }

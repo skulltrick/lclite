@@ -461,6 +461,17 @@ func (c Config) worldByID(id string) *World {
 	return nil
 }
 
+// worldByAddr finds the saved world a typed address belongs to, so a player who
+// pastes an address instead of a code still gets that world's mod rules.
+func (c Config) worldByAddr(addr string) *World {
+	for _, w := range c.Worlds {
+		if sameWorldAddr(w.Manifest.Address, addr) {
+			return w
+		}
+	}
+	return nil
+}
+
 func (c Config) installIDs() []string {
 	out := make([]string, 0, len(c.Installs))
 	for _, in := range c.Installs {

@@ -286,29 +286,6 @@ func (l *Launcher) handleStop(w http.ResponseWriter, r *http.Request) {
 	ok(w, nil)
 }
 
-func (l *Launcher) handleOpen(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		URL string `json:"url"`
-	}
-	if err := decode(r, &req); err != nil {
-		fail(w, err)
-		return
-	}
-	u := strings.TrimSpace(req.URL)
-	if u == "" {
-		fail(w, fmt.Errorf("no url"))
-		return
-	}
-	if !strings.HasPrefix(u, "http") {
-		u = "http://" + u
-	}
-	if err := openBrowser(u); err != nil {
-		fail(w, err)
-		return
-	}
-	ok(w, map[string]any{"opened": u})
-}
-
 func (l *Launcher) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Start string `json:"start"`

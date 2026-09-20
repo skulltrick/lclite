@@ -87,6 +87,23 @@ type WorldManifest struct {
 	CreatedAt time.Time `json:"at,omitempty"`
 }
 
+// normWorldAddr is the comparable form of an advertised address: a person typing
+// "https://Play.Example.com:443/" and a host advertising "play.example.com:443"
+// mean the same machine.
+func normWorldAddr(a string) string {
+	a = strings.ToLower(strings.TrimSpace(a))
+	a = strings.TrimPrefix(a, "http://")
+	a = strings.TrimPrefix(a, "https://")
+	return strings.TrimSuffix(a, "/")
+}
+
+// sameWorldAddr answers "is this the same server?" for a typed address and an
+// advertised one. Two blanks are never the same address.
+func sameWorldAddr(a, b string) bool {
+	na, nb := normWorldAddr(a), normWorldAddr(b)
+	return na != "" && na == nb
+}
+
 // normMods trims, drops empties, dedupes and sorts — the canonical form used both
 // for signing and for display, so two launchers always agree on the bytes.
 func normMods(in []string) []string {
