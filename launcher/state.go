@@ -57,13 +57,6 @@ type Install struct {
 	AddedAt time.Time `json:"added_at"`
 }
 
-// Remote is a saved custom-server target.
-type Remote struct {
-	Name        string `json:"name"`
-	URL         string `json:"url"`
-	LocalClient bool   `json:"local_client"`
-}
-
 // World is one entry in the local world list: somebody's signed description of their
 // server, plus what this launcher knows about it. There is no directory service, so
 // the list is built by pasting invite codes and is kept locally.
@@ -78,14 +71,11 @@ type World struct {
 	// when it was last up instead of just vanishing.
 	LastSeen   time.Time `json:"last_seen,omitempty"`
 	LastStatus string    `json:"last_status,omitempty"`
-	// Note is the player's own reminder ("Bob's test world, wipes on Sundays").
-	Note string `json:"note,omitempty"`
 }
 
 type Config struct {
 	DataDir   string     `json:"data_dir"`
 	Installs  []*Install `json:"installs"`
-	Remotes   []*Remote  `json:"remotes"`
 	Worlds    []*World   `json:"worlds"`
 	Revs      []Rev      `json:"revs"`
 	RevsAt    time.Time  `json:"revs_at"`
@@ -158,9 +148,6 @@ func openStore(dataDir string) (*Store, error) {
 	if s.cfg.Installs == nil {
 		s.cfg.Installs = []*Install{}
 	}
-	if s.cfg.Remotes == nil {
-		s.cfg.Remotes = []*Remote{}
-	}
 	if s.cfg.Worlds == nil {
 		s.cfg.Worlds = []*World{}
 	}
@@ -190,7 +177,6 @@ func (s *Store) snapshot() Config {
 	defer s.mu.Unlock()
 	cp := s.cfg
 	cp.Installs = append([]*Install(nil), s.cfg.Installs...)
-	cp.Remotes = append([]*Remote(nil), s.cfg.Remotes...)
 	cp.Worlds = append([]*World(nil), s.cfg.Worlds...)
 	cp.Revs = append([]Rev(nil), s.cfg.Revs...)
 	return cp
@@ -305,33 +291,6 @@ func (s *Store) setLastRev(rev string) {
 	_ = s.save()
 }
 
-func (s *Store) addRemote(r Remote) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for i, ex := range s.cfg.Remotes {
-		if ex.URL == r.URL {
-			s.cfg.Remotes[i] = &r
-			_ = s.save()
-			return
-		}
-	}
-	s.cfg.Remotes = append(s.cfg.Remotes, &r)
-	_ = s.save()
-}
-
-func (s *Store) removeRemote(url string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	out := s.cfg.Remotes[:0]
-	for _, r := range s.cfg.Remotes {
-		if r.URL != url {
-			out = append(out, r)
-		}
-	}
-	s.cfg.Remotes = out
-	_ = s.save()
-}
-
 func (s *Store) installDir(rev string) string {
 	return filepath.Join(s.cfg.DataDir, "installs", safeName(rev))
 }
@@ -350,7 +309,6 @@ func (s *Store) addWorld(w World) bool {
 			// Keep the player's own state; take the host's new description.
 			w.AddedAt = ex.AddedAt
 			w.Favorite = ex.Favorite
-			w.Note = ex.Note
 			w.LastSeen = ex.LastSeen
 			w.LastStatus = ex.LastStatus
 			s.cfg.Worlds[i] = &w
@@ -438,15 +396,6 @@ func (c Config) findInstall(id string) *Install {
 	for _, in := range c.Installs {
 		if strings.EqualFold(in.ID, id) {
 			return in
-		}
-	}
-	return nil
-}
-
-func (c Config) findRemote(url string) *Remote {
-	for _, r := range c.Remotes {
-		if r.URL == url {
-			return r
 		}
 	}
 	return nil

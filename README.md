@@ -179,8 +179,14 @@ a terminal can't do:
   or forbids.
 - **Join somebody else's with your client** — a localhost bridge answers
   `/client/*` from *your* install and bridges everything else to the remote, so
-  your mods follow you onto their world. Paste an address or an invite code, and
-  the **save vault** carries your character across.
+  your mods follow you onto their world. Paste an address or an invite code, your
+  client opens by itself, and the panel tells you whose server you are on: their
+  name, description, revision and mod rules.
+
+The world's characters are listed under **Your Server**, with one button to open
+the save folder. A character is a file on the **host's** disk — the client never
+sees one — so that is all the launcher honestly offers; the old "save vault" that
+copied characters between worlds is gone (see `launcher/README.md`).
 
 There is no directory service: a world travels as an invite code, and the
 **Worlds** list lives entirely in your own `launcher.json`.

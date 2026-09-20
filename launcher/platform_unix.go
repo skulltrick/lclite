@@ -42,6 +42,17 @@ func openBrowser(url string) error {
 	return fmt.Errorf("no browser opener found (install xdg-open)")
 }
 
+// openPath opens a FOLDER in the desktop's file manager (xdg-open handles
+// directories, and macOS's `open` does too).
+func openPath(path string) error {
+	for _, opener := range []string{"xdg-open", "open"} {
+		if p, err := exec.LookPath(opener); err == nil {
+			return exec.Command(p, path).Start()
+		}
+	}
+	return fmt.Errorf("no file manager opener found (install xdg-open)")
+}
+
 // pickFolder shows a native folder picker when one of the usual helpers exists.
 func pickFolder(startDir string) (string, error) {
 	if p, err := exec.LookPath("zenity"); err == nil {

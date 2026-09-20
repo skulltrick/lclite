@@ -313,12 +313,24 @@ func (l *Launcher) handleBun(w http.ResponseWriter, r *http.Request) {
 
 // ---- proxy mode -------------------------------------------------------------
 
+// handleProxyStart bridges the picked install's built client to another server and
+// opens THAT client — the localhost address the bridge serves — never the host's own
+// URL. Serving your own build is the only reason this panel exists, so it is the
+// default and the only thing the UI asks for: local_client is optional here and means
+// "serve my build" unless a script says otherwise.
 func (l *Launcher) handleProxyStart(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		URL         string `json:"url"`
-		Port        int    `json:"port"`
-		LocalClient bool   `json:"local_client"`
+		URL  string `json:"url"`
+		Port int    `json:"port"`
+		// LocalClient is a pointer so an absent field means "yes, my client": the
+		// zero value of a bool would quietly mean "their client", which is the
+		// opposite of what this panel promises.
+		LocalClient *bool  `json:"local_client"`
 		ID          string `json:"id"`
+		// WorldID names which world this is, so the joined panel can describe it.
+		// "self" is this machine's own world; blank means "work it out from the
+		// address, or admit that nobody has described it".
+		WorldID string `json:"world_id"`
 	}
 	if err := decode(r, &req); err != nil {
 		fail(w, err)
@@ -331,15 +343,25 @@ func (l *Launcher) handleProxyStart(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if err := l.StartProxy(req.URL, req.Port, req.LocalClient, in); err != nil {
+	localClient := true
+	if req.LocalClient != nil {
+		localClient = *req.LocalClient
+	}
+	if err := l.StartProxy(req.URL, req.Port, localClient, in); err != nil {
 		fail(w, err)
 		return
 	}
+	l.proxy.SetJoined(l.describeJoin(req.WorldID, req.URL, in))
+
 	port := l.proxy.Status()["port"].(int)
 	url := fmt.Sprintf("http://localhost%s/rs2.cgi", portSuffix(port))
-	_ = openBrowser(url)
-	l.store.addRemote(Remote{Name: req.URL, URL: req.URL, LocalClient: req.LocalClient})
-	ok(w, map[string]any{"url": url, "port": port})
+	// Joining opens YOUR client. It is the whole point of the bridge, and asking a
+	// player to then find the right link is how you end up playing somebody else's
+	// build without noticing.
+	if !l.noBrowser {
+		_ = openBrowser(url)
+	}
+	ok(w, map[string]any{"url": url, "port": port, "joined": l.proxy.Status()["joined"]})
 }
 
 func (l *Launcher) handleProxyStop(w http.ResponseWriter, r *http.Request) {

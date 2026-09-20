@@ -39,6 +39,18 @@ func openBrowser(url string) error {
 	return cmd.Start()
 }
 
+// openPath opens a FOLDER in the desktop's file manager.
+//
+// explorer.exe is the only dependency-free way to do this on Windows (ShellExecute
+// would need cgo). It is deliberately fire-and-forget: explorer frequently exits
+// with a non-zero status even when it opened the window, so the exit code says
+// nothing about whether the folder appeared.
+func openPath(path string) error {
+	cmd := exec.Command("explorer.exe", path)
+	hideWindow(cmd)
+	return cmd.Start()
+}
+
 // pickFolder shows a native folder picker on the user's desktop.
 func pickFolder(startDir string) (string, error) {
 	script := `Add-Type -AssemblyName System.Windows.Forms | Out-Null; ` +

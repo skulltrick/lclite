@@ -73,8 +73,8 @@ automatic.
 The dashboard is two columns and one rule: **set up on the left, run it on the
 right.** Left: *Lost City revisions* → *Installs* (with the selected install's
 card — path, ready/needs-setup, *Update from GitHub*, *Rebuild client*) →
-*LCLite mods*. Right: *Host Server* (the world on this machine), *Join Server*
-(everything about somebody else's — including your characters), then *Worlds*
+*LCLite mods*. Right: *Your Server* (the world on this machine, and the characters
+on it), *Join Server* (somewhere else), then *Worlds*
 (the list — see 7 below). Anything that is real but not first-run — an existing
 folder instead of a fresh install, reset-to-pristine, the local port, the
 three-socket port story, the tree's internals — sits behind a disclosure with a
@@ -132,7 +132,7 @@ one scroll for the page).
    It lives behind *Use an existing folder instead*, because it is the exception
    rather than the way in.
 4. **Mods** — their own panel, under the install list (the right-hand column leads
-   with the two things you press every day: **Host Server** and **Join Server**). Tick
+   with the two things you press every day: **Your Server** and **Join Server**). Tick
    boxes, *Apply mods & build*. The required mod (the panel — LCLite itself) shows
    as a locked gold tick rather than a disabled checkbox, because a
    greyed-out box reads as "not included". The list **starts folded to two rows**
@@ -195,25 +195,43 @@ own bun on that process's PATH so a world doesn't die with
 `'bun' is not recognized`.
 
 6. **Join Server** (the RSProx trick) — running your own world and joining
-   somebody else's are separate jobs, so they get separate panels: **Host Server**
+   somebody else's are separate jobs, so they get separate panels: **Your Server**
    (*this machine*, first in the column) and **Join Server** (*somewhere else*).
 
    The panel has **one verb and two ways to name the target**. Type the address —
    or paste an invite code, which is the same thing plus the host's signed
-   description of it. Both end in the same place: your own built client, mods and
-   all, bridged to that server. There is no "whose client" choice, no *Open
-   directly* and no stop button, because none of them is a decision a player wants
-   to make here:
+   description of it. Both end in the same place: **your own built client**, mods
+   and all, bridged to that server, opened for you in your browser. There is no
+   "whose client" choice, no *Open directly* and no stop button, because none of
+   them is a decision a player wants to make here:
 
-   - **your client is always the one served.** The webclient dials
-     `window.location.host`, so the launcher listens on a localhost port and
-     answers `/client/*` and `/lclite/*` from **your** install while everything
-     else (cache crcs, the game socket) is bridged to the remote. That is how your
-     mods follow you onto someone else's world, and it is the only reason to use
-     this panel instead of a browser tab.
-   - **Join again to retarget.** Pressing *Join* while a bridge is up points it at
-     the new address rather than asking you to stop the old one first. Letting go
-     is the *Leave* link on the status line — one line of text, not a third button.
+   - **your client is always the one served — and it is the default, not an
+     option.** The webclient dials `window.location.host`, so the launcher listens
+     on a localhost port and answers `/client/*` and `/lclite/*` from **your**
+     install while everything else (cache crcs, the game socket) is bridged to the
+     remote. That is how your mods follow you onto someone else's world, and it is
+     the only reason to use this panel instead of a browser tab. `proxy/start`
+     takes `local_client` as an optional field that means *yes* when it is absent,
+     so a script cannot accidentally serve the host's build; passing `false` is
+     still possible and the bridge log says so out loud.
+   - **joining opens YOUR client, automatically.** The bridge's own address
+     (`http://localhost:<port>/rs2.cgi`) is handed to the browser as soon as the
+     tunnel is up — never the host's URL, which is what the pre-one-verb launcher
+     did when *Serve my build* was left on "no". `--no-browser` turns the
+     launcher's own window-opening off, including this one.
+   - **while you are joined, the setup is folded away.** The address field, the
+     invite-code field, the *Join* button and the local-port block disappear — an
+     address box next to a live connection asks a question you have already
+     answered. What replaces them is the **joined card**: the host's own name and
+     description, their revision, host name and mod rules, the signature
+     fingerprint when there is one, plus what you are serving (the install and the
+     mods its tree really has applied), an *Open your client* button and *Leave*.
+     A server nobody has described shows its address and says **undescribed**
+     rather than inventing a name for it.
+   - **Join again to retarget.** A *Join* on a world card (or a pasted code) while
+     a bridge is up points it at the new address rather than asking you to stop the
+     old one first; *Leave* on the joined card closes the tunnel and brings the
+     setup back.
    - **A server that refuses LCLite clients is a browser job, not a launcher job.**
      The engine's `web.allowedOrigin` can pin which Origin a socket may come from,
      and a bridged socket arrives as `localhost:<port>`, so a server that sets it
@@ -223,20 +241,15 @@ own bun on that process's PATH so a world doesn't die with
    What the panel tells you before you press *Join*: which install it would serve
    and **how many mods that tree really has applied** (read from the install's own
    `installed.json`, not from the ticked boxes). What it tells you after: the
-   mod-rule verdict, the build digest, and — if you named a world — whether the
-   revisions match. Pasting a code **adds that world to your list** as part of
-   joining it, and a code for **your own** world is recognised rather than stored
-   (the list already leads with it, and you are not a guest on your own server).
+   mod-rule verdict, the build digest, whether the revisions match, and the joined
+   card above. Pasting a code **adds that world to your list** as part of joining
+   it, and a code for **your own** world is recognised rather than stored (the list
+   already leads with it, and you are not a guest on your own server).
 
-   *Your characters — the save vault* lives here too, because "join somewhere and
-   keep your character" is one job: a character is a file on the **host's** disk
-   (the client never sees it), so the launcher copies it into a vault on this
-   machine, named after the world it came from, and imports one back when a world
-   accepts it. Importing checks the file against the engine's own rule (magic
-   `0x2004`, version, CRC-32) and refuses a corrupt or foreign file before it can
-   reach a world; if the world already has a **newer** character of that name it
-   stops and asks rather than going backwards. Import also requires that world
-   stopped, because a running login server rewrites the save on logout.
+   *Your characters — the save vault* lives under **Your Server**, next to the
+   world it describes. It shows the characters that world has, flags a file the
+   engine would refuse (magic `0x2004`, version, CRC-32), and gives you one button:
+   **Open save folder**. See 8 below for why there is nothing else.
 7. **Worlds** — the list, and nothing else: a world is somebody's Lost City server
    plus a small **signed description** of it (a name, a one-line description, an
    address, the revision, which mods it wants or forbids). There is **no directory
@@ -253,7 +266,7 @@ own bun on that process's PATH so a world doesn't die with
    panel above), *Copy code* and *Forget*; *Check which are online* probes them all
    on demand — never on the 2.5 s state poll.
 
-   **Listing your own world** (*List my world*) sits under **Host Server**, with
+   **Listing your own world** (*List my world*) sits under **Your Server**, with
    the world you run: fill in a name, a description, an address and its mod rules,
    then hand out a signed code. The signature is what makes a code worth trusting:
    a code edited on its way to you is **refused**, not trusted (verified — editing
@@ -291,6 +304,32 @@ own bun on that process's PATH so a world doesn't die with
    additionally **refuses to list a world** while that page answers on a LAN
    address (dialling the real interface addresses — a bind probe lies on Windows).
    `MANAGEMENT_HOST=0.0.0.0` opts back in deliberately.
+
+8. **Your characters** — the save section, under **Your Server**, and deliberately
+   almost nothing: the characters that world has, whether each file passes the
+   engine's own integrity rule, and **Open save folder**.
+
+   **The vault is gone, on purpose.** It used to copy a character out of a world
+   into `%LOCALAPPDATA%\LCLite\saves\<world>` and import one back. That was never
+   really a feature: a character is a file on the **host's** disk
+   (`engine/data/players/<profile>/<username>.sav`, written by their login server),
+   the client never sees it, and a copy only means anything on a world that already
+   has your name on it — with that world's revision and item ids. Offering "bring
+   your character" invited people to overwrite live progress with a stale backup,
+   which is exactly the accident the guard rails were there to catch. So the honest
+   version is what shipped: **show the files, hand you the folder.** Copying,
+   restoring, deleting and backing up are Explorer's job, and a launcher that
+   deletes a player's character is a bug waiting to happen.
+
+   The integrity rule stayed, because it is genuinely useful: magic `0x2004`, the
+   version, and the CRC-32 trailer, so a damaged file is flagged in the list before
+   a world has to deal with it. It says "not corrupt", never "earned".
+
+   The world's own `allow_save_import` flag is now **legacy**: nothing sets it, the
+   host form no longer offers it, and the worlds cards no longer advertise it. The
+   field stays in the manifest struct *and in the signed payload* on purpose —
+   removing it would change the canonical field set inside the signature and
+   invalidate every invite code already handed out.
 
 ## Building
 
@@ -347,9 +386,8 @@ installation.
 
 | Path | What |
 | --- | --- |
-| `%LOCALAPPDATA%\LCLite\launcher.json` | installs, saved servers, **worlds + the host's own draft + its signing key**, cached branch list, folded sections |
+| `%LOCALAPPDATA%\LCLite\launcher.json` | installs, saved worlds + the host's own draft + its signing key, cached branch list, folded sections |
 | `%LOCALAPPDATA%\LCLite\installs\<rev>\` | managed revision checkouts |
-| `%LOCALAPPDATA%\LCLite\saves\<worldID>\` | the save vault: `<user>.sav` plus the `world.json` of the world it came from |
 | `%LOCALAPPDATA%\LCLite\tools\bun\bun.exe` | bun fetched on demand |
 
 A world's signing key lives in `launcher.json` and is created on first *List my
@@ -357,12 +395,18 @@ world*. It is the world's identity — re-listing under a new key would make eve
 shared code point at a world nobody has, so a damaged key is reported rather than
 silently replaced.
 
+A character is **not** here: it lives in the world's own tree
+(`installs/<rev>/engine/data/players/<profile>/`), which is why the launcher shows
+you the folder instead of keeping a copy. `%LOCALAPPDATA%\LCLite\saves\` may still
+hold folders from the removed vault; nothing reads them any more, and they are left
+alone rather than deleted.
+
 `--data <folder>` moves the whole tree above (the way to test the launcher without
 touching real installs).
 
-Override with `--data <folder>`. Flags: `--port`, `--no-browser`,
-`--play <rev>` (install if needed, then launch — handy for a desktop shortcut),
-`--version`.
+Override with `--data <folder>`. Flags: `--port`, `--no-browser` (the launcher opens
+no window at all — its own dashboard *and* your client after a join), `--play <rev>`
+(install if needed, then launch — handy for a desktop shortcut), `--version`.
 
 ## A note on how the UI renders
 
@@ -371,6 +415,12 @@ data behind it changed (a signature check) and the server card is patched in
 place. That is not an optimisation — it is what keeps a poll from un-ticking your
 mod boxes or eating a half-typed port. Anything that turns into an input must
 respect that, or move to a signature of its own.
+
+The Join panel is the sharpest case of it, because it is the one block that holds
+an input *and* changes shape: the setup half (address, invite code, Join button,
+local port) is only ever shown or hidden, never re-rendered, so a half-typed
+address survives the poll; the joined card is rebuilt only when the proxy state
+behind it changes, keyed on its own signature.
 
 ## API (for scripting)
 
@@ -383,21 +433,31 @@ deletes the folder and is refused for a hand-added install or one outside
 `browse`, `bun`, `proxy/start`, `proxy/stop`, `job`, `log`, `quit`. Long tasks return a job id; poll
 `job?id=&since=` for incremental log lines.
 
+`proxy/start` takes `{url, port, id, local_client?, world_id?}`. `local_client` is
+**optional and means yes** — your build is served unless a script explicitly says
+`false` (a plain bool would have made "absent" mean "serve theirs"). `world_id`
+names the world so `/api/state`'s `proxy.joined` can describe it: a saved world's
+id, or `"self"` for this machine's own; blank falls back to the address, and a
+server nobody has described comes back with an empty name rather than a made-up
+one.
+
 Worlds and saves:
 
 | Endpoint | What |
 | --- | --- |
 | `worlds` | the list: this machine first, then favorites, then online, then the rest. Never probes — the panel's 2.5s poll must stay cheap |
 | `worlds/add` | `{code}` — import an invite code. A signed code that fails verification is refused; an unsigned one is accepted with a warning; a code for **this launcher's own** world comes back `{"self":true}` and is not stored (the list already leads with it) |
-| `worlds/remove` `worlds/favorite` `worlds/note` | `{id}` (and `{favorite}` / `{note}`) |
+| `worlds/remove` `worlds/favorite` | `{id}` / `{id, favorite}` |
 | `worlds/refresh` | probes every world (TCP dial, then read the page, so "something answered" is not mistaken for "a Lost City world") |
 | `worlds/check` | `{id, install}` **or** `{addr, install}` → the mod-rule verdict, the build digest, and whether the revisions match. An address that belongs to a saved world is gated by that world's rules; an address nobody has described has no rules and answers with the build alone |
-| `world/publish` | `{name, description, host_name, address, mods_required, mods_forbidden, allow_save_import}` → a signed manifest + invite code. Refused while the management page answers on a LAN address unless `{allow_exposed:true}` |
-| `world/unpublish` | drops the host's own listing flag |
-| `saves` | `?install=` — the characters in an install, each checked for integrity |
-| `saves/import` `saves/export` | `{install, path, username, force, world_allows}` / `{install, username, dest, vault}` |
-| `saves/browse` | `?dir=` — lists `.sav` files so the import field is usable without typing a path |
-| `vault` | every character the vault holds, with the world it came from |
+| `world/publish` | `{name, description, host_name, address, mods_required, mods_forbidden}` → a signed manifest + invite code. Refused while the management page answers on a LAN address unless `{allow_exposed:true}` |
+| `saves` | `?install=` — the characters in an install, each checked for integrity, plus the folder they live in |
+| `saves/reveal` | `?install=` — open that folder in the desktop's file manager (creates it if the world has never been logged into) |
+
+Removed with the vault: `saves/import`, `saves/export`, `saves/browse`, `vault`
+(the endpoints are gone, not hidden — they answer 404). `worlds/note` and
+`world/unpublish` went too: nothing in the UI ever read a note or cleared the
+listing flag, so both were surface with no user.
 
 ## Verified
 
@@ -422,9 +482,8 @@ against real bytes rather than mocks:
   rejected by the bounded inflate.
 - **Saves** — the integrity rule was derived from the engine's reader and then
   **checked against every save in the live installs (19/19 pass)**; edited, truncated,
-  wrong-magic, future-version and corrupted-trailer files are each refused; importing an
-  older file over newer progress stops and asks, and a forced replace keeps the file it
-  displaced.
+  wrong-magic, future-version and corrupted-trailer files are each refused, and the
+  listing reports the folder a character really lives in.
 - **The management-port detector** is tested against a **real listener** on a real
   interface address, not a mocked one — and the loopback default itself was proven by
   booting a world and reading `netstat`: `:80` and `:43594` on `0.0.0.0`, `:8898` on
@@ -437,7 +496,7 @@ against real bytes rather than mocks:
   online → rest), an offline non-favorite folds away, a star re-pins it, a world that
   bans an applied mod **blocks** with a one-click repair, a world that merely wants a
   missing mod **warns and still joins**, publishing signs and returns a code, and the
-  vault lists characters with their integrity and provenance. Every `onclick` in the
+  save list reports characters with their integrity. Every `onclick` in the
   rendered panel was swept and checked to name a real function.
 - **Joining, both ways, against a live launcher** (not a mock): a typed address runs
   the gate (`{addr}` → the build digest and "nobody has described this server"), and a
@@ -446,6 +505,34 @@ against real bytes rather than mocks:
   the panel then reports as `joined <target>` with the *Leave* link. A code for the
   launcher's own world comes back `{"self":true}`, is not stored twice, and joins as
   `self`.
+
+The join/your-server pass added its own, against a running launcher and a world signed
+by a **different** key (so the panel was describing somebody else's server, not its own):
+
+- **The joined card** renders the host's name, description, revision, host name, mod
+  rules and signature fingerprint from the launcher's own state, plus the install and
+  the mods that tree really has applied; a bridge to a bare typed address comes back
+  **undescribed** with the address and nothing invented. Checked in the DOM, and pinned
+  by `TestJSONKeysTheUIActuallyReads` (which also asserts a stopped bridge reports no
+  `joined` at all).
+- **The setup is hidden while joined, and comes back on *Leave*** — verified in the DOM
+  (`display:none` → `block`, card emptied, `proxy.joined` gone), and a world card's
+  *Join* retargets a live bridge to the new name without leaving.
+- **Joining opens YOUR client, not the host's.** Proven by running the launcher with a
+  `cmd.exe` test double first on `PATH`: on startup it asks to open its own dashboard,
+  and on a join it asks to open `http://localhost:<bridge>/rs2.cgi` — the bridge's
+  address. With `--no-browser` the same join asks for nothing at all. (The launcher
+  only ever *asks*; the OS opens it.)
+- **`local_client` defaults to your build**: a `proxy/start` with no such field logs
+  *serving the local client bundle from …* and reports `local_client: true`; an explicit
+  `false` logs *serving the REMOTE's own client* and says so in the bridge log.
+- **The removed endpoints 404** rather than lingering (`saves/import`, `saves/export`,
+  `saves/browse`, `vault`, `worlds/note`, `world/unpublish`), and `saves/reveal` was
+  driven against a real install — it returns the folder it opened, and creates it on a
+  world nobody has logged into yet (`TestEnsureSaveDirCreatesTheFolder`).
+- The panel's own save list was read in the DOM with a **deliberately damaged** save
+  beside a good one: the good one lists clean, the damaged one carries a `damaged` tag
+  and the checksum reason.
 
 The overlay gate for the new `web.ts` hunk was the full one: `apply --check` ✗0,
 `regen` twice byte-identical, `doctor` 0, **only `control-panel`'s patch JSON changed**,
@@ -478,21 +565,25 @@ The overlay gate for the new `web.ts` hunk was the full one: `apply --check` ✗
   server will not take my client" is that server's own webclient in a browser, not a
   second button in the launcher pretending to be a mode. Everything the launcher's
   Join does is bridge *your* build; if that is not wanted, the launcher is the wrong
-  tool for that server.
+  tool for that server. (The bridge can still be told to serve the host's build with
+  `local_client:false` on `/api/proxy/start`, for a script that wants the raw tunnel —
+  the panel never asks for it.)
 - **There is no world directory.** A world is shared by handing somebody an invite
   code; there is no public list, no server, and no discovery. The manifest format is
   versioned (`v:1`) and signed so a hosted directory can be added later without
   invalidating codes already shared.
-- **A save is bound to a username and to a revision.** Importing one means playing
-  that character's name on that world, and item ids/varps can differ between
-  revisions — so a save is only really portable between compatible worlds. The
-  launcher warns when a world's revision differs from your install, but it cannot read
-  a save's contents to check compatibility.
-- **The launcher compares save timestamps, not playtime.** The engine's own guard
-  (`wouldResetSaveFile`) refuses a save whose playtime went backwards; reading playtime
-  in Go would mean reimplementing a revision-specific binary layout upstream is free to
-  change. So the launcher stops an *older file* from silently replacing a newer one and
-  says so, which is a weaker rule than the engine's.
+- **A save is a file on the host's disk and the launcher does not move it.** It used
+  to (the vault), and that was the wrong shape: a character is bound to a username
+  *and* to a revision (item ids and varps differ between branches), so a copy only
+  means anything on a world that already has your name on it. The launcher shows you
+  the characters a world has, tells you when a file is damaged, and opens the folder;
+  copying a character between worlds is a manual file operation between hosts, and
+  the engine's own rules (a save whose playtime went backwards is refused) apply when
+  you do it.
+- **The integrity check is a checksum, not a signature.** It says a file is not
+  corrupt; it cannot say a character was earned. `%LOCALAPPDATA%\LCLite\saves\` may
+  still hold folders from the removed vault — nothing reads them, and they are left
+  alone.
 - **One install carries one mod set**, so two worlds with different rules can mean a
   full apply-and-rebuild between them. The bridge already chooses which bundle to serve
   (`/client/*`), so per-world built bundles are the obvious next step; a mod that

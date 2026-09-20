@@ -26,13 +26,49 @@ type Proxy struct {
 	localRoot string
 	useLocal  bool
 	port      int
+	joined    JoinedWorld
 	log       LogRing
+}
+
+// JoinedWorld is the server a bridge is currently pointing at, described the way the
+// panel has to show it.
+//
+// A bridge started from an invite code or a world card has a NAME, a description, a
+// revision and mod rules — all of it the host's own signed words. A bridge to a bare
+// typed address has none of that, and the field being empty is the honest answer: the
+// panel says "nobody has described this server" rather than inventing a name for it.
+//
+// Install/Mods are this end's half of the join: which build is being served, and what
+// that tree really has applied (read from the tree, not from ticked boxes).
+type JoinedWorld struct {
+	ID          string    `json:"id,omitempty"`
+	Name        string    `json:"name,omitempty"`
+	Description string    `json:"desc,omitempty"`
+	Host        string    `json:"host,omitempty"`
+	Address     string    `json:"addr,omitempty"`
+	Rev         string    `json:"rev,omitempty"`
+	Required    []string  `json:"req,omitempty"`
+	Forbidden   []string  `json:"ban,omitempty"`
+	Self        bool      `json:"self,omitempty"`
+	Signed      bool      `json:"signed,omitempty"`
+	Fingerprint string    `json:"fingerprint,omitempty"`
+	Install     string    `json:"install,omitempty"`
+	Mods        []string  `json:"mods,omitempty"`
+	Since       time.Time `json:"since,omitempty"`
 }
 
 func (p *Proxy) Running() bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.srv != nil
+}
+
+// SetJoined records which world this bridge is serving. Called after StartProxy (a
+// start builds a fresh Proxy), so a stale description can never outlive its bridge.
+func (p *Proxy) SetJoined(j JoinedWorld) {
+	p.mu.Lock()
+	p.joined = j
+	p.mu.Unlock()
 }
 
 func (p *Proxy) Status() map[string]any {
@@ -42,6 +78,11 @@ func (p *Proxy) Status() map[string]any {
 	if p.target != nil {
 		st["target"] = p.target.String()
 		st["url"] = fmt.Sprintf("http://localhost%s/rs2.cgi", portSuffix(p.port))
+	}
+	// The detail only exists while a bridge is up: "joined" describes a live tunnel,
+	// and leaving must take the description with it.
+	if p.srv != nil {
+		st["joined"] = p.joined
 	}
 	return st
 }
@@ -126,6 +167,8 @@ func (l *Launcher) StartProxy(targetURL string, port int, localClient bool, in *
 		} else {
 			p.log.logf("serving the local client bundle from %s", p.localRoot)
 		}
+	} else {
+		p.log.logf("serving the REMOTE's own client (local_client was set false)")
 	}
 	return nil
 }

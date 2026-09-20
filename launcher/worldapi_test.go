@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,7 +48,7 @@ func fullInstall(t *testing.T, rev, profile string, mods []string) *Install {
 }
 
 func TestAddWorldUpdatesRatherThanDuplicating(t *testing.T) {
-	l, err := newLauncher(t.TempDir(), "test")
+	l, err := newLauncher(t.TempDir(), "test", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +57,7 @@ func TestAddWorldUpdatesRatherThanDuplicating(t *testing.T) {
 	if updated := l.store.addWorld(World{Manifest: m, AddedAt: time.Now()}); updated {
 		t.Fatal("the first add is not an update")
 	}
-	l.store.updateWorld(m.ID, func(w *World) { w.Favorite = true; w.Note = "bob's test world" })
+	l.store.updateWorld(m.ID, func(w *World) { w.Favorite = true })
 
 	// A fresh code for the same world (same host key) must UPDATE, not duplicate.
 	m2 := m
@@ -76,13 +77,10 @@ func TestAddWorldUpdatesRatherThanDuplicating(t *testing.T) {
 	if !got.Favorite {
 		t.Fatal("updating a world must not lose the player's favorite")
 	}
-	if got.Note != "bob's test world" {
-		t.Fatalf("updating a world must not lose the player's note, got %q", got.Note)
-	}
 }
 
 func TestWorldLookupIsCaseInsensitiveAndRemovalWorks(t *testing.T) {
-	l, _ := newLauncher(t.TempDir(), "test")
+	l, _ := newLauncher(t.TempDir(), "test", false)
 	m, _ := testManifest(t)
 	l.store.addWorld(World{Manifest: m, AddedAt: time.Now()})
 
@@ -102,7 +100,7 @@ func TestWorldLookupIsCaseInsensitiveAndRemovalWorks(t *testing.T) {
 }
 
 func TestHandleWorldsLeadsWithThisMachineAndSortsFavoritesUp(t *testing.T) {
-	l, _ := newLauncher(t.TempDir(), "test")
+	l, _ := newLauncher(t.TempDir(), "test", false)
 	l.store.setMyWorld(LocalWorld{Name: "My World"})
 
 	online, _ := testManifest(t)
@@ -147,7 +145,7 @@ func TestHandleWorldsLeadsWithThisMachineAndSortsFavoritesUp(t *testing.T) {
 }
 
 func TestHandleWorldAddRejectsATamperedCode(t *testing.T) {
-	l, _ := newLauncher(t.TempDir(), "test")
+	l, _ := newLauncher(t.TempDir(), "test", false)
 	m, _ := testManifest(t)
 
 	// Re-encode the manifest with a changed address but the ORIGINAL signature: this
@@ -170,7 +168,7 @@ func TestHandleWorldAddRejectsATamperedCode(t *testing.T) {
 }
 
 func TestHandleWorldAddAcceptsAGoodCodeAndWarnsOnUnsigned(t *testing.T) {
-	l, _ := newLauncher(t.TempDir(), "test")
+	l, _ := newLauncher(t.TempDir(), "test", false)
 
 	signed, _ := testManifest(t)
 	code, err := EncodeWorldCode(signed)
@@ -209,7 +207,7 @@ func TestHandleWorldAddAcceptsAGoodCodeAndWarnsOnUnsigned(t *testing.T) {
 }
 
 func TestHandleWorldCheckGatesOnTheTreeNotTheTickedBoxes(t *testing.T) {
-	l, _ := newLauncher(t.TempDir(), "test")
+	l, _ := newLauncher(t.TempDir(), "test", false)
 	// The tree says anti-cheat is applied, even if the UI would claim otherwise.
 	in := fullInstall(t, "289", "main", []string{"control-panel", "gpu", "anti-cheat"})
 	l.store.upsertInstall(in)
@@ -244,7 +242,7 @@ func TestHandleWorldCheckGatesOnTheTreeNotTheTickedBoxes(t *testing.T) {
 }
 
 func TestHandleWorldCheckPassesACleanSet(t *testing.T) {
-	l, _ := newLauncher(t.TempDir(), "test")
+	l, _ := newLauncher(t.TempDir(), "test", false)
 	in := fullInstall(t, "289", "main", []string{"control-panel", "gpu", "true-tile"})
 	l.store.upsertInstall(in)
 	world, _ := testManifest(t)
@@ -268,7 +266,7 @@ func TestHandleWorldCheckPassesACleanSet(t *testing.T) {
 // An address nobody has described carries no rules — but the gate must still
 // answer the question it can answer: which build would this install serve?
 func TestHandleWorldCheckAcceptsATypedAddress(t *testing.T) {
-	l, _ := newLauncher(t.TempDir(), "test")
+	l, _ := newLauncher(t.TempDir(), "test", false)
 	in := fullInstall(t, "289", "main", []string{"control-panel", "gpu", "anti-cheat"})
 	l.store.upsertInstall(in)
 	world, _ := testManifest(t) // requires true-tile+gpu, forbids anti-cheat
@@ -343,7 +341,7 @@ func TestSameWorldAddrIgnoresSchemeCaseAndTrailingSlash(t *testing.T) {
 // world, so storing it again would show one server twice — and the join gate would
 // then check you against your own rules as if you were a guest.
 func TestHandleWorldAddRecognisesYourOwnCode(t *testing.T) {
-	l, _ := newLauncher(t.TempDir(), "test")
+	l, _ := newLauncher(t.TempDir(), "test", false)
 	priv, err := l.store.hostKey()
 	if err != nil {
 		t.Fatalf("host key: %v", err)
@@ -384,20 +382,19 @@ func TestHandleWorldAddRecognisesYourOwnCode(t *testing.T) {
 }
 
 func TestHandleWorldPublishSignsAndRefusesContradictions(t *testing.T) {
-	l, _ := newLauncher(t.TempDir(), "test")
+	l, _ := newLauncher(t.TempDir(), "test", false)
 
 	rec := httptest.NewRecorder()
 	l.handleWorldPublish(rec, jsonReq(t, map[string]any{
 		"name": "Bob's 289", "description": "slow xp",
 		"mods_required": []string{"gpu"}, "mods_forbidden": []string{"anti-cheat"},
-		"allow_save_import": true,
 	}))
 	var out struct {
-		OK         bool          `json:"ok"`
-		Manifest   WorldManifest `json:"manifest"`
-		Code       string        `json:"code"`
-		Fingerprint string       `json:"fingerprint"`
-		Error      string        `json:"error"`
+		OK          bool          `json:"ok"`
+		Manifest    WorldManifest `json:"manifest"`
+		Code        string        `json:"code"`
+		Fingerprint string        `json:"fingerprint"`
+		Error       string        `json:"error"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("decode: %v (%s)", err, rec.Body.String())
@@ -414,8 +411,8 @@ func TestHandleWorldPublishSignsAndRefusesContradictions(t *testing.T) {
 	if out.Manifest.Rev != "" {
 		t.Fatalf("no world is running, so no revision should be claimed, got %q", out.Manifest.Rev)
 	}
-	if !out.Manifest.AllowSaveImport {
-		t.Fatal("the save-import flag should survive publishing")
+	if out.Manifest.AllowSaveImport {
+		t.Fatal("the save-import flag is legacy: nothing may set it any more")
 	}
 
 	// The code round-trips through the real import path.
@@ -477,8 +474,8 @@ func TestManagementExposedFindsAListenerOnALanAddress(t *testing.T) {
 	}
 }
 
-func TestHandleSavesListsCharactersAndVaultState(t *testing.T) {
-	l, _ := newLauncher(t.TempDir(), "test")
+func TestHandleSavesListsTheWorldsCharacters(t *testing.T) {
+	l, _ := newLauncher(t.TempDir(), "test", false)
 	in := fullInstall(t, "289", "main", []string{"control-panel"})
 	l.store.upsertInstall(in)
 	if err := os.WriteFile(filepath.Join(saveDir(in.engineDir()), "alice.sav"), makeSave([]byte("alice")), 0o644); err != nil {
@@ -492,6 +489,7 @@ func TestHandleSavesListsCharactersAndVaultState(t *testing.T) {
 		Install string     `json:"install"`
 		Saves   []SaveFile `json:"saves"`
 		Profile string     `json:"profile"`
+		Dir     string     `json:"dir"`
 		Running bool       `json:"running"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
@@ -506,55 +504,32 @@ func TestHandleSavesListsCharactersAndVaultState(t *testing.T) {
 	if out.Profile != "main" {
 		t.Fatalf("expected the profile reported, got %q", out.Profile)
 	}
-
-	// Vault the character, then the listing should say so.
-	if _, err := l.VaultStore(in, "local", "This machine", "alice", nil); err != nil {
-		t.Fatalf("vault: %v", err)
-	}
-	rec2 := httptest.NewRecorder()
-	l.handleSaves(rec2, httptest.NewRequest("GET", "/api/saves?install=289", nil))
-	var out2 struct {
-		Saves []SaveFile `json:"saves"`
-	}
-	_ = json.Unmarshal(rec2.Body.Bytes(), &out2)
-	if !out2.Saves[0].InVault {
-		t.Fatal("a character that has been vaulted should say so")
+	// The folder is what the panel's one button opens, so it has to be the real one.
+	if out.Dir != saveDir(in.engineDir()) {
+		t.Fatalf("expected the save folder reported, got %q", out.Dir)
 	}
 }
 
-func TestHandleSaveImportHonoursTheWorldsPolicy(t *testing.T) {
-	l, _ := newLauncher(t.TempDir(), "test")
+// "Open save folder" must work on a world nobody has logged into yet — an empty
+// folder is the honest thing to show, and refusing to open anything is not.
+func TestEnsureSaveDirCreatesTheFolder(t *testing.T) {
 	in := fullInstall(t, "289", "main", nil)
-	l.store.upsertInstall(in)
+	os.RemoveAll(saveDir(in.engineDir()))
 
-	src := filepath.Join(t.TempDir(), "alice.sav")
-	if err := os.WriteFile(src, makeSave([]byte("alice")), 0o644); err != nil {
-		t.Fatal(err)
+	dir, err := ensureSaveDir(in)
+	if err != nil {
+		t.Fatalf("ensureSaveDir: %v", err)
 	}
-
-	// A world that does not allow imports must be respected.
-	rec := httptest.NewRecorder()
-	l.handleSaveImport(rec, jsonReq(t, map[string]any{
-		"install": "289", "path": src, "username": "alice", "world_allows": false,
-	}))
-	var refused map[string]any
-	_ = json.Unmarshal(rec.Body.Bytes(), &refused)
-	if refused["ok"] == true {
-		t.Fatal("importing into a world that does not accept characters must be refused")
+	if dir != saveDir(in.engineDir()) {
+		t.Fatalf("expected the save folder, got %q", dir)
 	}
-
-	// And allowed when the world says so.
-	rec2 := httptest.NewRecorder()
-	l.handleSaveImport(rec2, jsonReq(t, map[string]any{
-		"install": "289", "path": src, "username": "alice", "world_allows": true,
-	}))
-	var allowed map[string]any
-	_ = json.Unmarshal(rec2.Body.Bytes(), &allowed)
-	if allowed["ok"] != true {
-		t.Fatalf("an allowed import should succeed: %s", rec2.Body.String())
+	st, err := os.Stat(dir)
+	if err != nil || !st.IsDir() {
+		t.Fatalf("the folder must exist after ensureSaveDir: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(saveDir(in.engineDir()), "alice.sav")); err != nil {
-		t.Fatalf("the character should be on disk: %v", err)
+	// Idempotent: a second call on an existing folder is a no-op, not an error.
+	if again, err := ensureSaveDir(in); err != nil || again != dir {
+		t.Fatalf("second call: %q, %v", again, err)
 	}
 }
 
@@ -578,9 +553,10 @@ func TestJSONKeysTheUIActuallyReads(t *testing.T) {
 		if err := json.Unmarshal(raw, &got); err != nil {
 			t.Fatal(err)
 		}
-		// The page reads: m.name, m.desc, m.addr, m.rev, m.req, m.ban, m.save, m.host,
-		// m.id, and v.fingerprint off the view.
-		for _, k := range []string{"id", "name", "desc", "addr", "rev", "req", "ban", "save", "host", "key", "sig"} {
+		// The page reads: m.name, m.desc, m.addr, m.rev, m.req, m.ban, m.host, m.id,
+		// and v.fingerprint off the view. (`save` is still shipped but nothing reads
+		// it any more — the field is kept only so old codes keep verifying.)
+		for _, k := range []string{"id", "name", "desc", "addr", "rev", "req", "ban", "host", "key", "sig"} {
 			if _, ok := got[k]; !ok {
 				t.Errorf("a world manifest must ship %q — the UI reads it", k)
 			}
@@ -630,7 +606,7 @@ func TestJSONKeysTheUIActuallyReads(t *testing.T) {
 		// The host form posts these names to /api/world/publish.
 		raw, err := json.Marshal(LocalWorld{
 			Name: "n", Description: "d", HostName: "h", Address: "a:1",
-			ModsRequired: []string{"x"}, ModsForbidden: []string{"y"}, AllowSaveImport: true,
+			ModsRequired: []string{"x"}, ModsForbidden: []string{"y"},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -639,10 +615,51 @@ func TestJSONKeysTheUIActuallyReads(t *testing.T) {
 		if err := json.Unmarshal(raw, &got); err != nil {
 			t.Fatal(err)
 		}
-		for _, k := range []string{"name", "description", "host_name", "address", "mods_required", "mods_forbidden", "allow_save_import"} {
+		for _, k := range []string{"name", "description", "host_name", "address", "mods_required", "mods_forbidden"} {
 			if _, ok := got[k]; !ok {
 				t.Errorf("the host draft must ship %q — the form posts it", k)
 			}
+		}
+		if _, ok := got["allow_save_import"]; ok {
+			t.Error("the host draft must not offer allow_save_import — the feature is gone")
+		}
+	})
+
+	t.Run("proxy status and the joined world", func(t *testing.T) {
+		// The Join panel decides what to show from /api/state's proxy block, and the
+		// joined card is rendered straight off these keys.
+		p := &Proxy{srv: &http.Server{}, port: 8890, useLocal: true}
+		p.target = &url.URL{Scheme: "http", Host: "play.example.com:443"}
+		p.SetJoined(JoinedWorld{
+			ID: "w1", Name: "n", Description: "d", Host: "h", Address: "a:1", Rev: "289",
+			Required: []string{"gpu"}, Forbidden: []string{"anti-cheat"}, Self: true,
+			Signed: true, Fingerprint: "fp", Install: "289", Mods: []string{"gpu"}, Since: time.Now(),
+		})
+		st := p.Status()
+		for _, k := range []string{"running", "port", "local_client", "target", "url", "joined"} {
+			if _, ok := st[k]; !ok {
+				t.Errorf("the proxy status must ship %q — the UI reads it", k)
+			}
+		}
+		raw, err := json.Marshal(st["joined"])
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got map[string]any
+		if err := json.Unmarshal(raw, &got); err != nil {
+			t.Fatal(err)
+		}
+		for _, k := range []string{"id", "name", "desc", "host", "addr", "rev", "req", "ban", "self", "signed", "fingerprint", "install", "mods"} {
+			if _, ok := got[k]; !ok {
+				t.Errorf("the joined world must ship %q — the panel renders it", k)
+			}
+		}
+
+		// And a stopped bridge must not claim to be joined to anything: the detail
+		// describes a live tunnel.
+		stopped := &Proxy{port: 8890}
+		if _, ok := stopped.Status()["joined"]; ok {
+			t.Error("a stopped proxy must not report a joined world")
 		}
 	})
 
@@ -665,7 +682,7 @@ func TestJSONKeysTheUIActuallyReads(t *testing.T) {
 
 	t.Run("save file", func(t *testing.T) {
 		raw, err := json.Marshal(SaveFile{Username: "u", Profile: "p", Path: "x", Size: 1,
-			Modified: time.Now(), Intact: true, InVault: true})
+			Modified: time.Now(), Intact: true})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -673,7 +690,7 @@ func TestJSONKeysTheUIActuallyReads(t *testing.T) {
 		if err := json.Unmarshal(raw, &got); err != nil {
 			t.Fatal(err)
 		}
-		for _, k := range []string{"username", "profile", "path", "size", "modified", "intact", "in_vault"} {
+		for _, k := range []string{"username", "profile", "path", "size", "modified", "intact"} {
 			if _, ok := got[k]; !ok {
 				t.Errorf("a save file must ship %q — the UI reads it", k)
 			}

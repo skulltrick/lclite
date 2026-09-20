@@ -37,6 +37,10 @@ type Launcher struct {
 	// localOverlay = the lclite checkout this exe lives in, when there is one
 	// (mods are edited there, so it wins over an install's cloned copy).
 	localOverlay string
+	// noBrowser is --no-browser: the launcher opens nothing on its own. It still
+	// honours an explicit request from the page (pressing Play), but the things it
+	// would do unasked — the dashboard, opening your client after a join — stay shut.
+	noBrowser bool
 }
 
 // ownSize reports the size of the running executable — the UI shows it because
@@ -53,7 +57,7 @@ func ownSize() int64 {
 	return st.Size()
 }
 
-func newLauncher(dataDir, version string) (*Launcher, error) {
+func newLauncher(dataDir, version string, noBrowser bool) (*Launcher, error) {
 	store, err := openStore(dataDir)
 	if err != nil {
 		return nil, err
@@ -74,6 +78,7 @@ func newLauncher(dataDir, version string) (*Launcher, error) {
 		token:        hex.EncodeToString(buf),
 		localOverlay: localOverlay,
 		httpClient:   &http.Client{Timeout: 25 * time.Second},
+		noBrowser:    noBrowser,
 	}, nil
 }
 
@@ -90,7 +95,7 @@ func main() {
 		return
 	}
 
-	l, err := newLauncher(*dataDir, launcherVersion)
+	l, err := newLauncher(*dataDir, launcherVersion, *noBrowser)
 	if err != nil {
 		fatal("could not open the launcher data folder: %v", err)
 	}
@@ -183,16 +188,11 @@ func (l *Launcher) routes() http.Handler {
 	api("worlds/add", l.handleWorldAdd)
 	api("worlds/remove", l.handleWorldRemove)
 	api("worlds/favorite", l.handleWorldFavorite)
-	api("worlds/note", l.handleWorldNote)
 	api("worlds/refresh", l.handleWorldRefresh)
 	api("worlds/check", l.handleWorldCheck)
 	api("world/publish", l.handleWorldPublish)
-	api("world/unpublish", l.handleWorldUnpublish)
 	api("saves", l.handleSaves)
-	api("saves/import", l.handleSaveImport)
-	api("saves/export", l.handleSaveExport)
-	api("saves/browse", l.handleSaveBrowse)
-	api("vault", l.handleVault)
+	api("saves/reveal", l.handleSaveReveal)
 	api("job", l.handleJob)
 	api("log", l.handleLog)
 	api("quit", l.handleQuit)
@@ -329,7 +329,6 @@ func (l *Launcher) handleState(w http.ResponseWriter, r *http.Request) {
 		"installs":            views,
 		"revs":                revs,
 		"revs_at":             cfg.RevsAt,
-		"remotes":             cfg.Remotes,
 		"last_rev":            cfg.LastRev,
 		"overlay_path":        l.localOverlay,
 		"recommended":         recommended,

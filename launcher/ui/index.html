@@ -296,6 +296,14 @@
   .wtag.ok{color:var(--good);border-color:#36462c}
   .wtag.self{color:var(--accent);border-color:var(--accent-dim)}
   .wmods{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
+  /* The joined card lives in a .gate box rather than a .worldcard, so it needs the
+     same parts under its own parent — otherwise the description and tags render as
+     unstyled text and the card reads as broken. */
+  .gate h4{display:flex;align-items:center;gap:8px}
+  .gate .wdesc{color:var(--dim);font-size:12.5px;margin-top:4px;line-height:1.5}
+  .gate .wmeta{color:var(--dim2);font-size:11.5px;margin-top:7px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .gate .wmeta .mono{font-family:var(--mono)}
+  .gate .wmods{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
   .gate{border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin-top:10px;background:#1b1714}
   .gate.block{border-color:#4a2f2c;background:#211413}
   .gate.warn{border-color:#4a3d2c;background:#201b13}
@@ -321,7 +329,7 @@ let folder = "";
 // Section signatures: a poll must never stomp on what you're doing (tick boxes,
 // typed ports, a selected checkbox), so each block re-renders only when the
 // data behind it actually changed.
-let sig = { revs: "", installs: "", mods: "", worlds: "" };
+let sig = { revs: "", installs: "", mods: "", worlds: "", join: "" };
 // How many mod rows show while the mod list is folded (the list is a fold of its
 // own, inside the LCLite mods section).
 const MOD_PREVIEW = 2;
@@ -414,7 +422,7 @@ function render(){
   const want = showWizard ? "wizard" : "main";
   if ($("root").dataset.view !== want) {
     $("root").dataset.view = want;
-    sig = { revs: "", installs: "", mods: "", worlds: "" };
+    sig = { revs: "", installs: "", mods: "", worlds: "", join: "" };
     sigWiz = "";
     // The whole dashboard is being rebuilt, so the host form's "already filled"
     // flag has to go with it — otherwise a view flip leaves empty inputs behind.
@@ -805,7 +813,7 @@ function mainHTML(){
 
       <div>
         <section class="panel" data-sec="server">
-          <h2>Host Server<span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">this machine</span>${secToggle("server")}</h2>
+          <h2>Your Server<span class="grow"></span><span class="chip" style="text-transform:none;letter-spacing:0">this machine</span>${secToggle("server")}</h2>
           ${serverHTML()}
         </section>
 
@@ -1088,7 +1096,8 @@ function serverHTML(){
         they're taken, which is how two revisions can run side by side. The first boot repacks the game cache and can take a minute.</div>
       </details>
     </div>
-    ${hostWorldHTML()}`;
+    ${hostWorldHTML()}
+    ${vaultHTML()}`;
 }
 
 // Listing your own world belongs with the world you run, not with the list of
@@ -1145,71 +1154,137 @@ function hostWorldHTML(){
 // join somewhere else presses Join, and pressing it again retargets the tunnel.
 // If a server will not take an LCLite client at all, the answer is the server's
 // own webclient in a browser, not a second button in here.
+//
+// While a bridge is UP the setup is hidden rather than left sitting there: an
+// address field, a code field and a Join button next to a live connection ask a
+// question you have already answered. What replaces them is the joined card — the
+// host's own name and description, what it wants of your client, and the two things
+// you still need: the way in, and the way out.
 function joinHTML(){
   return `
-    <div class="card">
-      <label class="f">Server address</label>
-      <input type="text" id="remoteurl" placeholder="play.example.com:443">
-      <div class="hint" style="margin-top:5px">Hostname, IP or full URL — <span class="path">192.168.1.20:8888</span> and <span class="path">https://play.example.com</span> both work.</div>
+    <div class="card" id="joinbox">
+      <div id="joinsetup">
+        <label class="f">Server address</label>
+        <input type="text" id="remoteurl" placeholder="play.example.com:443">
+        <div class="hint" style="margin-top:5px">Hostname, IP or full URL — <span class="path">192.168.1.20:8888</span> and <span class="path">https://play.example.com</span> both work.</div>
 
-      <div class="orline"><span>or</span></div>
+        <div class="orline"><span>or</span></div>
 
-      <label class="f">Invite code</label>
-      <input type="text" id="worldcode" placeholder="lclw1:H4sIAAAA…">
-      <div class="hint" style="margin-top:5px">A code is a host's <b>signed</b> description of their world — name, address, revision and mod
-      rules. Paste one instead of an address and the launcher fills the address in, checks those rules against what you have applied,
-      and adds the world to your list.</div>
+        <label class="f">Invite code</label>
+        <input type="text" id="worldcode" placeholder="lclw1:H4sIAAAA…">
+        <div class="hint" style="margin-top:5px">A code is a host's <b>signed</b> description of their world — name, address, revision and mod
+        rules. Paste one instead of an address and the launcher fills the address in, checks those rules against what you have applied,
+        and adds the world to your list.</div>
 
-      <div class="row wrap" style="margin-top:12px">
-        <button class="primary" id="joinbtn" onclick="joinServer()">Join</button>
-      </div>
-      <div class="hint" id="joinwhat"></div>
-      <div class="hint" id="bridgehint"></div>
-
-      <details class="block"><summary>Advanced — the port your client listens on</summary>
-        <div class="inner">
-          <div class="grid2">
-            <div><label class="f">Local port</label><input type="number" id="proxyport" min="1" max="65535" value="${S.proxy_port || 8890}"></div>
-          </div>
-          <div class="hint">The client dials whatever host served it, so the launcher listens here and bridges both the page and the game
-          socket to the address above. Your own built client answers <span class="path">/client/*</span> and <span class="path">/lclite/*</span>
-          — that is how your mods follow you onto someone else's world. A server that pins <b>allowedOrigin</b> can refuse a bridged socket;
-          that server is one to open in a browser instead.</div>
+        <div class="row wrap" style="margin-top:12px">
+          <button class="primary" id="joinbtn" onclick="joinServer()">Join</button>
         </div>
-      </details>
+        <div class="hint" id="joinwhat"></div>
+
+        <details class="block"><summary>Advanced — the port your client listens on</summary>
+          <div class="inner">
+            <div class="grid2">
+              <div><label class="f">Local port</label><input type="number" id="proxyport" min="1" max="65535" value="${S.proxy_port || 8890}"></div>
+            </div>
+            <div class="hint">The client dials whatever host served it, so the launcher listens here and bridges both the page and the game
+            socket to the address above. Your own built client answers <span class="path">/client/*</span> and <span class="path">/lclite/*</span>
+            — that is how your mods follow you onto someone else's world. A server that pins <b>allowedOrigin</b> can refuse a bridged socket;
+            that server is one to open in a browser instead.</div>
+          </div>
+        </details>
+      </div>
+      <div id="joinedcard"></div>
     </div>
-    <div id="worldgate"></div>
-    ${vaultHTML()}`;
+    <div id="worldgate"></div>`;
 }
 
-// Your characters travel as files, not as game state: the client never sees a
-// save, so "keep your character" is the launcher copying a file for you.
+// The joined card: what you are playing, and on whose server.
+//
+// Every field here comes from the launcher's own state — the host's signed manifest
+// when there is one, and the tree you are serving — so the panel cannot describe a
+// world differently from the card you clicked. A server nobody has described shows
+// its address and says so, which is the honest version of "unknown world".
+function joinedHTML(p){
+  const j = p.joined || {};
+  const cur = currentInstall();
+  const who = j.name || j.addr || p.target || "that server";
+
+  const tags = [];
+  if (j.self) tags.push('<span class="wtag self">this machine</span>');
+  if (j.rev) tags.push(`<span class="wtag">revision ${esc(j.rev)}</span>`);
+  if (j.signed) tags.push(`<span class="wtag ok" title="signed by the host — this description was not edited on its way to you">signed ${esc(j.fingerprint || "")}</span>`);
+  else if (!j.self) tags.push('<span class="wtag" title="nobody has handed you a signed description of this server">undescribed</span>');
+
+  const rules = [];
+  (j.req || []).forEach(n => rules.push(`<span class="wtag req" title="the host recommends this; you are playing without it">wants ${esc(n)}</span>`));
+  (j.ban || []).forEach(n => rules.push(`<span class="wtag ban" title="the host does not allow this — turn it off and rebuild if you have it">bans ${esc(n)}</span>`));
+
+  const mine = [];
+  if (j.install) mine.push(`serving <b>${esc(j.install)}</b>`);
+  if ((j.mods || []).length) mine.push(`${(j.mods || []).length} mod${(j.mods || []).length === 1 ? "" : "s"} applied`);
+  else mine.push("no mods applied");
+
+  const revWarn = (j.rev && cur && cur.rev_label && j.rev !== cur.rev_label)
+    ? `<div class="hint" style="color:var(--warn)">This world runs revision ${esc(j.rev)} and your client is ${esc(cur.rev_label)} —
+       different revisions can differ in content and item ids.</div>`
+    : "";
+
+  return `
+    <div class="gate">
+      <h4><span class="pill good">joined</span> ${esc(who)}</h4>
+      ${j.desc ? `<div class="wdesc">${esc(j.desc)}</div>` : ""}
+      <div class="wmeta">
+        ${j.addr || p.target ? `<span class="mono">${esc(j.addr || p.target)}</span>` : ""}
+        ${j.host ? `<span>host ${esc(j.host)}</span>` : ""}
+        <span>${mine.join(" · ")}</span>
+      </div>
+      ${tags.length ? `<div class="wmods">${tags.join("")}</div>` : ""}
+      ${rules.length ? `<div class="wmods">${rules.join("")}</div>` : ""}
+      ${revWarn}
+      <div class="row wrap" style="margin-top:10px">
+        <button class="primary" onclick="openBridgeClient()">Open your client</button>
+        <button class="ghost" onclick="stopProxy()">Leave</button>
+      </div>
+      <div class="hint" style="margin-top:8px">Your own build answers <span class="path">${esc(p.url || "")}</span> and everything else is tunnelled
+      to <span class="path">${esc(p.target || "")}</span>. <b>Leave</b> closes the tunnel and brings the setup back — a <b>Join</b> on a world card
+      retargets it without leaving.</div>
+    </div>`;
+}
+
+// "Open your client" is the bridge's own localhost address — the one serving YOUR
+// build — never the host's URL. That is the whole point of joining through the
+// launcher instead of opening a browser tab.
+function openBridgeClient(){
+  const p = S.proxy || {};
+  if (p.url) window.open(p.url, "_blank");
+}
+
+// Your characters — what is left of the save vault.
+//
+// A character is a file on the WORLD's disk, written by that world's login server;
+// the client never sees one, so "bring your character to another server" was never
+// a thing the launcher could honestly do — the file only means anything on a world
+// that already has your name on it. That feature (copy a character out to a vault,
+// import one in) is gone. See launcher/README.md.
+//
+// What is genuinely useful, and what this is: see who is on this world, notice a
+// damaged file before a world has to deal with it, and get to the folder so you can
+// copy or back up a character with tools that are better at it than a launcher is.
 function vaultHTML(){
   return `
     <details class="block" id="saves" ontoggle="if(this.open && !SV) loadSaves(false)">
       <summary>Your characters — the save vault</summary>
       <div class="inner">
         <div class="hint" style="margin-top:0">
-          Your progress lives on the <b>server's</b> disk, not in the client — the game never sends a character to you.
-          So "keep your character" means the launcher copying a file for you. The vault is that copy, kept on this machine
-          and named after the world it came from.
-        </div>
-        <div id="savelist"><div class="empty">open this to load your characters</div></div>
-        <div class="row wrap" style="margin-top:9px">
-          <button class="ghost" onclick="loadSaves(true)">Refresh characters</button>
-        </div>
-        <label class="f">Bring a character in</label>
-        <div class="grid2">
-          <div><input type="text" id="impname" placeholder="character name (blank = from the file)"></div>
-          <div><input type="text" id="imppath" placeholder="C:\\path\\to\\alice.sav"></div>
+          Every character lives on the <b>world's</b> disk (<span class="path">engine/data/players/…</span>), not in the client — the game
+          never sends one to you. So this is what a save folder is for: seeing who is on this world, spotting a damaged file, and opening
+          the folder to copy, back up or clean up a character yourself.
         </div>
         <div class="row wrap" style="margin-top:9px">
-          <button onclick="importSave()">Import into this install</button>
-          <button class="ghost" onclick="pickSaveFile()">Browse…</button>
+          <button class="primary" onclick="openSaveFolder()">Open save folder</button>
+          <button class="ghost" onclick="loadSaves(true)">Refresh</button>
         </div>
-        <div class="hint">The file is checked against the engine's own rule (magic, version, checksum) before it is
-        written, so a corrupt or foreign file is refused here instead of breaking the world. If the world already has a
-        <b>newer</b> character of that name, the import stops and asks — the launcher can only compare timestamps, not playtime.</div>
+        <div id="savelist" style="margin-top:9px"><div class="empty">open this to load your characters</div></div>
       </div>
     </details>`;
 }
@@ -1226,9 +1301,9 @@ function vaultHTML(){
       reads what YOUR launcher actually applied (from the tree's own
       installed.json, not from ticked boxes) and refuses/warns honestly — which
       stops accidents, which is the case that actually happens.
-   2. A save does not travel on its own. It is a file on the HOST's disk; the
-      client never sees it. The vault is the launcher moving that file for you,
-      and the copy says so.
+   2. A save does not travel at all. It is a file on the HOST's disk; the client
+      never sees it, and the launcher no longer pretends to move it between worlds
+      (see the save section in launcher/README.md).
 
    The worlds payload is fetched separately from /api/state, on purpose: the state
    poll runs every 2.5s and probing every world on that cadence would be both slow
@@ -1278,7 +1353,7 @@ function worldsHTML(){
   const check = `<div class="row wrap" style="margin-top:9px">
     <button class="ghost" onclick="refreshWorlds(true)">Check which are online</button></div>`;
   if (!all.length) {
-    return `<div class="empty">No worlds yet. Paste an invite code in <b>Join Server</b> to add one, or list your own world under <b>Host Server</b>.</div>${check}`;
+    return `<div class="empty">No worlds yet. Paste an invite code in <b>Join Server</b> to add one, or list your own world under <b>Your Server</b>.</div>${check}`;
   }
   // A favorite is pinned: it stays in the list while offline, because a world you
   // care about going down is exactly when you want to see it.
@@ -1321,7 +1396,6 @@ function worldCardHTML(v){
   const mods = [];
   (m.req || []).forEach(n => mods.push(`<span class="wtag req" title="recommended: you are warned if you are missing it, and may still join">wants ${esc(n)}</span>`));
   (m.ban || []).forEach(n => mods.push(`<span class="wtag ban" title="not allowed here: you are asked to turn it off before joining">bans ${esc(n)}</span>`));
-  if (m.save) mods.push('<span class="wtag ok" title="this world accepts a character file you bring from another world">accepts imported characters</span>');
 
   const seen = v.last_seen && !String(v.last_seen).startsWith("0001")
     ? `last seen ${ago(v.last_seen)}` : "";
@@ -1455,7 +1529,7 @@ async function joinServer(){
       toast(`${m.name || "That world"} is this machine's world — joining your own server.`, "good");
       if (((S.engine || {}).state) !== "running") {
         if (!confirm(`${m.name || "Your world"} is not running on this machine yet.\n\n` +
-          `Start it under Host Server first. Join anyway?`)) return;
+          `Start it under Your Server first. Join anyway?`)) return;
       }
       target = { id: "self" };
     } else {
@@ -1501,7 +1575,7 @@ async function joinTarget(target, i){
       `Different revisions can differ in content and item ids. Join anyway?`);
     if (!ok) return;
   }
-  await bridgeToWorld(world, i);
+  await bridgeToWorld(world, i, target.id || "");
 }
 
 // Joining from a world card is the same join, with the target already known.
@@ -1514,13 +1588,13 @@ async function joinWorld(id){
   await joinTarget({ id }, i);
 }
 
-async function bridgeToWorld(m, i){
+async function bridgeToWorld(m, i, worldId){
   // The manifest's field is `addr` — the card reads it as m.addr, and so must this.
   const addr = (m && (m.addr || m.address)) || (($("remoteurl") || {}).value || "").trim();
   if (!addr) { toast("That server has no address — ask the host for one.", "bad"); return; }
   const urlEl = $("remoteurl"); if (urlEl) urlEl.value = addr;
   toast(`Joining ${m && m.name ? m.name : addr} with your own build…`);
-  try { await startProxy(); }
+  try { await startProxy(worldId || (m && m.id) || ""); }
   catch (e) { toast("Could not join: " + e.message, "bad"); }
 }
 
@@ -1669,7 +1743,7 @@ async function copyText(s, what){
   ta.remove();
 }
 
-/* ---- the save vault -------------------------------------------------------- */
+/* ---- your characters ------------------------------------------------------- */
 
 async function loadSaves(loud){
   const i = currentInstall();
@@ -1690,69 +1764,29 @@ function renderSaves(){
     el.innerHTML = `<div class="empty">No characters in <b>${esc(SV.install)}</b> yet — log in once and one appears here.</div>`;
     return;
   }
+  // Read-only on purpose: the launcher shows you the file and hands you the folder.
+  // Copying, restoring and deleting a character are Explorer's job, and a launcher
+  // that deletes a player's progress is a bug waiting to happen.
   const rows = list.map(s => `
     <div class="modrow">
       <div style="flex:1">
-        <div class="mname">${esc(s.username)} ${s.in_vault ? '<span class="wtag ok" title="a copy is in your vault">in vault</span>' : ""}</div>
+        <div class="mname">${esc(s.username)} ${s.intact ? "" : '<span class="wtag ban" title="the engine would refuse this file — the checksum does not match its contents">damaged</span>'}</div>
         <div class="mdesc">${(s.size / 1024).toFixed(1)} KB · ${ago(s.modified)}${s.problem ? ` · <span style="color:var(--bad)">${esc(s.problem)}</span>` : ""}</div>
-      </div>
-      <div class="row" style="gap:5px">
-        <button class="ghost" style="padding:4px 10px;font-size:12px" ${s.intact ? "" : "disabled"}
-          title="${s.intact ? "copy this character into your vault on this machine" : "this file is damaged — vaulting it would make the vault a trap"}"
-          onclick="vaultSave('${esc(s.username)}')">Vault</button>
       </div>
     </div>`).join("");
   el.innerHTML = `<div class="hint" style="margin-top:0">${list.length} character${list.length === 1 ? "" : "s"} in
-    <span class="path">${esc(SV.dir)}</span>${SV.running ? ' — <b>this world is running</b>, so imports are refused until you stop it' : ""}</div>
+    <span class="path">${esc(SV.dir)}</span>${SV.running ? ' — <b>this world is running</b>, so a character is rewritten when it logs out' : ""}</div>
     <div class="modlist">${rows}</div>`;
 }
 
-async function vaultSave(username){
-  const i = currentInstall(); if (!i) return;
-  try {
-    const r = await api("saves/export", { install: i.id, username, vault: true });
-    toast(`Vaulted ${username} — ${r.path}`, "good");
-    await loadSaves();
-  } catch (e) { toast(e.message, "bad"); }
-}
-
-async function importSave(){
+// The one action: hand the folder to the desktop. The launcher makes the folder if
+// this world has never been logged into, so the button is never a dead end.
+async function openSaveFolder(){
   const i = currentInstall();
   if (!i) { toast("Pick an install first.", "bad"); return; }
-  const path = (($("imppath") || {}).value || "").trim();
-  const username = (($("impname") || {}).value || "").trim();
-  if (!path) { toast("Give a path to a character file.", "bad"); return; }
   try {
-    const r = await api("saves/import", { install: i.id, path, username, world_allows: true });
-    const res = r.result || {};
-    toast(`Imported ${res.username}${res.replaced ? " (the previous character was kept beside it)" : ""}.`, "good");
-    (res.warnings || []).forEach(w => toast(w));
-    await loadSaves();
-  } catch (e) {
-    // The "newer character already there" case is the one worth offering a way past.
-    if (/newer save/i.test(e.message) && confirm(e.message + "\n\nImport anyway?")) {
-      try {
-        await api("saves/import", { install: i.id, path, username, force: true, world_allows: true });
-        toast("Imported over it — the old character was kept beside it.", "good");
-        await loadSaves();
-      } catch (e2) { toast(e2.message, "bad"); }
-      return;
-    }
-    toast(e.message, "bad");
-  }
-}
-
-async function pickSaveFile(){
-  const d = $("imppath");
-  const dir = (d && d.value) || "";
-  try {
-    const r = await api("saves/browse" + (dir ? "?dir=" + encodeURIComponent(dir) : ""));
-    const files = (r.entries || []).filter(e => !e.dir);
-    if (!files.length) { toast(`No .sav files in ${r.dir}.`, "bad"); return; }
-    const pick = files[0];
-    const name = prompt(`Character file in ${r.dir}:\n\n${files.map(f => f.name).join("\n")}\n\nType the file name to use:`, pick.name);
-    if (!name) return;
-    if (d) d.value = r.dir + (r.dir.endsWith("\\") || r.dir.endsWith("/") ? "" : "\\") + name;
+    const r = await api("saves/reveal?install=" + encodeURIComponent(i.id));
+    toast(`Opened ${r.dir}`, "good");
   } catch (e) { toast(e.message, "bad"); }
 }
 
@@ -1865,16 +1899,40 @@ function renderServerLive(){
       : "Pick an install on the left first — that is the client you join with.";
   }
 
-  // The tunnel says where it points, and offers the one thing a single Join button
-  // cannot: letting go of it. It stays a line of text, not a third button.
-  const bh = $("bridgehint");
-  if (bh) bh.innerHTML = p.running
-    ? `<span class="pill good">joined</span> ${esc(p.target || "")} — <a href="${p.url || "#"}" target="_blank">open your client</a>
-       <button class="ghost" style="padding:2px 8px;font-size:11.5px;margin-left:6px" onclick="stopProxy()">Leave</button>`
-    : "Not joined to anywhere yet. Join bridges your client — a localhost address — to the server above.";
+  // The tunnel is the join panel's own business: renderJoinLive hides the setup
+  // while a bridge is up and fills the joined card in. It is a separate function so
+  // the poll can patch that panel without touching the address field you are typing in.
+  renderJoinLive();
 
   const port = $("port");
   if (port && !port.dataset.touched && (state === "running" || state === "starting") && e.port) port.value = e.port;
+}
+
+// The Join panel, patched in place like the server card.
+//
+// Two rules, both from the same reason: this panel holds inputs.
+//
+//  1. The setup block is only ever hidden/shown, never re-rendered — rebuilding it
+//     would throw away a half-typed address on every 2.5s poll.
+//  2. The joined card is rebuilt only when what it says has changed, keyed on the
+//     proxy state rather than the whole /api/state payload.
+function renderJoinLive(){
+  const p = S.proxy || {};
+  const setup = $("joinsetup");
+  if (setup) setup.style.display = p.running ? "none" : "";
+  const card = $("joinedcard");
+  if (!card) return;
+
+  // Nothing to describe once the tunnel is down, and the setup is back.
+  if (!p.running) {
+    if (sig.join) { sig.join = ""; card.innerHTML = ""; }
+    return;
+  }
+  const cur = currentInstall();
+  const s = JSON.stringify([p.running, p.joined || null, p.url || "", p.target || "", cur ? cur.id : ""]);
+  if (s === sig.join) return;
+  sig.join = s;
+  card.innerHTML = joinedHTML(p);
 }
 
 /* ---------------------------------------------------------------- actions */
@@ -1944,14 +2002,18 @@ async function removeInstall(id, wipe){
 // One button, one meaning. Joining always serves YOUR build: the install you
 // picked, with the mods its tree has applied. Pressing Join again retargets the
 // tunnel rather than asking the player to stop it first.
-async function startProxy(){
+//
+// worldId is how the launcher knows WHICH world this is, so the joined card can say
+// its name and description instead of just an address. "self" means the world this
+// machine runs; blank means "work it out from the address".
+async function startProxy(worldId){
   const i = currentInstall();
   if (!i) { toast("Pick an install on the left — that is the client you join with.", "bad"); return; }
   const url = (($("remoteurl") || {}).value || "").trim();
   if (!url) { toast("Type a server address, or paste an invite code.", "bad"); return; }
   const port = parseInt(($("proxyport") || {}).value || "8890", 10);
   if (S.proxy && S.proxy.running) { try { await api("proxy/stop", {}); } catch (e) { /* retarget anyway */ } }
-  const r = await act(() => api("proxy/start", { url, port, local_client: true, id: i.id }), "join", true);
+  const r = await act(() => api("proxy/start", { url, port, local_client: true, id: i.id, world_id: worldId || "" }), "join", true);
   if (r) { setLog("proxy"); toast(`Joined ${url} — your client opens at ${r.url}`, "good"); }
   await refresh();
 }

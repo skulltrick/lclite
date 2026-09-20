@@ -317,8 +317,8 @@ func (s *EngineServer) State() string {
 }
 
 // InstallID is the install the running world belongs to ("" when nothing runs).
-// The save vault needs it: importing into the world that is currently serving
-// would be overwritten by that world's own autosave.
+// The save list needs it: a running world rewrites its characters on logout and
+// autosave, so the panel says so instead of letting somebody poke at a file mid-session.
 func (s *EngineServer) InstallID() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()

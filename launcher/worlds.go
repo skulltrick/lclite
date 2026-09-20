@@ -16,9 +16,10 @@ package main
 //     and refuse/warn honestly — which stops accidents (the wrong mod set, the
 //     wrong revision), not adversaries.
 //  2. A PLAYER'S SAVE NEVER TOUCHES THE CLIENT. It lives on the host's disk
-//     (engine/data/players/<profile>/<username>.sav, written by the login server).
-//     So "bring your save" is a FILE operation the launcher performs against an
-//     install it owns — never a game-protocol feature. See saveVault.go.
+//     (engine/data/players/<profile>/<username>.sav, written by the login server),
+//     so nothing about a save can travel over the game protocol, and the launcher
+//     no longer pretends otherwise: it can SHOW a world's characters and open the
+//     folder, and that is all. See saves.go.
 //
 // The one thing that IS provable is the paperwork: a manifest is Ed25519-signed by
 // the host, so a pasted invite code cannot be edited in transit, and a save file can
@@ -75,7 +76,12 @@ type WorldManifest struct {
 	// is asked to turn it off first.
 	ModsRequired  []string `json:"req,omitempty"`
 	ModsForbidden []string `json:"ban,omitempty"`
-	// AllowSaveImport lets a player bring their own character file into this world.
+	// AllowSaveImport is a LEGACY field: it used to mean "this world accepts a
+	// character file you bring from another world", and the launcher no longer
+	// offers that at all (see saves.go). It stays in the struct and in the signed
+	// payload on purpose — removing it would change the canonical field set, which
+	// is inside the signature, and invalidate every invite code already handed out.
+	// Nothing sets it any more, so newly listed worlds always carry false.
 	AllowSaveImport bool   `json:"save,omitempty"`
 	Host            string `json:"host,omitempty"`
 	// PubKey is the host's Ed25519 public key (base64) — the world's identity. The
@@ -418,9 +424,6 @@ type LocalWorld struct {
 	// Address is what to advertise. Blank = derive it from the machine's LAN
 	// address and the running world's web port.
 	Address string `json:"address,omitempty"`
-	// Listed is the host's own "publish me" switch. It is local state only: there
-	// is no directory, so listing means "keep a signed card ready to hand out".
-	Listed bool `json:"listed,omitempty"`
 }
 
 // HostKey is the launcher's signing identity. One key per launcher (not per world)

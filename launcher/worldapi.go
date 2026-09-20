@@ -181,13 +181,12 @@ func (l *Launcher) localWorldManifest() WorldManifest {
 	cfg := l.store.snapshot()
 	lw := cfg.MyWorld
 	m := WorldManifest{
-		Name:            lw.Name,
-		Description:     lw.Description,
-		Host:            lw.HostName,
-		ModsRequired:    lw.ModsRequired,
-		ModsForbidden:   lw.ModsForbidden,
-		AllowSaveImport: lw.AllowSaveImport,
-		Address:         lw.Address,
+		Name:          lw.Name,
+		Description:   lw.Description,
+		Host:          lw.HostName,
+		ModsRequired:  lw.ModsRequired,
+		ModsForbidden: lw.ModsForbidden,
+		Address:       lw.Address,
 	}
 	// The revision is a fact about the running install, not something to type.
 	if id := l.engine.InstallID(); id != "" {
@@ -234,6 +233,61 @@ func (l *Launcher) localWorldView() worldView {
 	return v
 }
 
+// describeJoin works out which world a bridge is serving, so the panel can say
+// something better than an address.
+//
+// The order is deliberate: an explicit id first (a world card, or "self" for the
+// world this machine runs), then the address the player typed — which may well be a
+// world already in the list, in which case its name, description and rules apply.
+// An address nobody has described leaves the name empty on purpose: the panel says
+// "nobody has described this server" rather than inventing one.
+func (l *Launcher) describeJoin(worldID, addr string, in *Install) JoinedWorld {
+	cfg := l.store.snapshot()
+	worldID = strings.TrimSpace(worldID)
+	addr = strings.TrimSpace(addr)
+
+	var m WorldManifest
+	self := false
+	switch {
+	case strings.EqualFold(worldID, "self"):
+		m, self = l.localWorldManifest(), true
+		// This machine's own world is signed like any other, so its card and the
+		// joined panel agree about its identity.
+		if priv, err := l.store.hostKey(); err == nil {
+			_ = m.Sign(priv)
+		}
+	case worldID != "":
+		if x := cfg.worldByID(worldID); x != nil {
+			m = x.Manifest
+		}
+	default:
+		if x := cfg.worldByAddr(addr); x != nil {
+			m = x.Manifest
+		}
+	}
+	// A world id nobody knows (its card was forgotten between the click and the
+	// request) still gets the address, so the panel can at least name the server.
+	if m.Address == "" {
+		m.Address = addr
+	}
+
+	j := JoinedWorld{
+		ID: m.ID, Name: m.Name, Description: m.Description, Host: m.Host,
+		Address: m.Address, Rev: m.Rev,
+		Required: m.ModsRequired, Forbidden: m.ModsForbidden,
+		Self: self, Since: time.Now(),
+	}
+	if m.Signed() && m.Verify() == nil {
+		j.Signed = true
+		j.Fingerprint = m.KeyFingerprint()
+	}
+	if in != nil {
+		j.Install = in.ID
+		j.Mods = appliedMods(in)
+	}
+	return j
+}
+
 // sortWorlds orders the list the way a player reads it: this machine, then the
 // favorites they pinned, then whatever is up, then the rest.
 func sortWorlds(list []worldView) {
@@ -275,18 +329,17 @@ func (l *Launcher) handleWorlds(w http.ResponseWriter, r *http.Request) {
 		"ok":     true,
 		"worlds": views,
 		"my_world": map[string]any{
-			"draft":    cfg.MyWorld,
-			"manifest": l.localWorldManifest(),
+			"draft":     cfg.MyWorld,
+			"manifest":  l.localWorldManifest(),
 			"addresses": lanAddrs(),
-			"rev":      l.runningRev(),
+			"rev":       l.runningRev(),
 		},
 		"host_key_fingerprint": l.hostFingerprint(),
 		"management": map[string]any{
-			"port":     l.engineManagementPort(),
-			"exposed":  mgmtExposed,
-			"where":    mgmtWhere,
+			"port":    l.engineManagementPort(),
+			"exposed": mgmtExposed,
+			"where":   mgmtWhere,
 		},
-		"vault": len(l.VaultList()),
 	})
 }
 
@@ -409,26 +462,6 @@ func (l *Launcher) handleWorldFavorite(w http.ResponseWriter, r *http.Request) {
 	ok(w, nil)
 }
 
-func (l *Launcher) handleWorldNote(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		ID   string `json:"id"`
-		Note string `json:"note"`
-	}
-	if err := decode(r, &req); err != nil {
-		fail(w, err)
-		return
-	}
-	note := strings.TrimSpace(req.Note)
-	if len([]rune(note)) > 200 {
-		note = string([]rune(note)[:200])
-	}
-	if !l.store.updateWorld(req.ID, func(x *World) { x.Note = note }) {
-		fail(w, fmt.Errorf("no world with that id"))
-		return
-	}
-	ok(w, nil)
-}
-
 // handleWorldRefresh probes every saved world and remembers what it saw.
 func (l *Launcher) handleWorldRefresh(w http.ResponseWriter, r *http.Request) {
 	cfg := l.store.snapshot()
@@ -525,7 +558,6 @@ func (l *Launcher) handleWorldCheck(w http.ResponseWriter, r *http.Request) {
 		"install_rev": in.Rev,
 		"rev_match":   matching,
 		"rev_ok":      m.Rev == "" || m.Rev == in.Rev,
-		"save_import": m.AllowSaveImport,
 	})
 }
 
@@ -597,14 +629,6 @@ func (l *Launcher) handleWorldPublish(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (l *Launcher) handleWorldUnpublish(w http.ResponseWriter, r *http.Request) {
-	cfg := l.store.snapshot()
-	lw := cfg.MyWorld
-	lw.Listed = false
-	l.store.setMyWorld(lw)
-	ok(w, nil)
-}
-
 // ---- saves -----------------------------------------------------------------
 
 func (l *Launcher) saveInstall(w http.ResponseWriter, r *http.Request, id string) *Install {
@@ -625,122 +649,51 @@ func (l *Launcher) handleSaves(w http.ResponseWriter, r *http.Request) {
 	if in == nil {
 		return
 	}
-	vault := map[string]bool{}
-	for _, v := range l.VaultList() {
-		vault[v.Username] = true
-	}
-	list := ListSaves(in)
-	for i := range list {
-		list[i].InVault = vault[list[i].Username]
-	}
 	writeJSON(w, map[string]any{
-		"ok": true, "install": in.ID, "saves": list,
+		"ok": true, "install": in.ID, "saves": ListSaves(in),
 		"profile": saveProfile(in.engineDir()),
 		"dir":     saveDir(in.engineDir()),
+		// A running world rewrites these files on logout and autosave, so the panel
+		// says so rather than letting somebody poke at them mid-session.
 		"running": l.engine.Busy() && strings.EqualFold(l.engine.InstallID(), in.ID),
 	})
 }
 
-func (l *Launcher) handleVault(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, map[string]any{"ok": true, "entries": l.VaultList(), "root": vaultRoot(l.dataDir)})
-}
-
-func (l *Launcher) handleSaveImport(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Install  string `json:"install"`
-		Path     string `json:"path"`
-		Username string `json:"username"`
-		Force    bool   `json:"force"`
-		// AllowSaveImport mirrors the world's own flag. When importing into a world
-		// you are about to join, honouring its stated policy is the honest default.
-		AllowSaveImport bool `json:"world_allows"`
-	}
-	if err := decode(r, &req); err != nil {
-		fail(w, err)
-		return
-	}
-	if !req.AllowSaveImport {
-		fail(w, fmt.Errorf("that world does not accept imported characters"))
-		return
-	}
-	in := l.saveInstall(w, r, req.Install)
+// handleSaveReveal opens the world's save folder in the desktop's file manager.
+//
+// This is the whole of "manage your saves": the launcher shows you the files and
+// hands you the folder, because Explorer/Finder is better at copying, deleting and
+// restoring than a 8 MB launcher will ever be — and a launcher deleting a player's
+// character is a bug waiting to happen.
+func (l *Launcher) handleSaveReveal(w http.ResponseWriter, r *http.Request) {
+	in := l.saveInstall(w, r, r.URL.Query().Get("install"))
 	if in == nil {
 		return
 	}
-	res, err := l.ImportSave(in, req.Path, req.Username, req.Force)
+	dir, err := ensureSaveDir(in)
 	if err != nil {
 		fail(w, err)
 		return
 	}
-	ok(w, map[string]any{"result": res})
+	if err := openPath(dir); err != nil {
+		fail(w, fmt.Errorf("could not open %s: %v", dir, err))
+		return
+	}
+	ok(w, map[string]any{"dir": dir})
 }
 
-func (l *Launcher) handleSaveExport(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Install  string `json:"install"`
-		Username string `json:"username"`
-		Dest     string `json:"dest"`
-		Vault    bool   `json:"vault"`
-	}
-	if err := decode(r, &req); err != nil {
-		fail(w, err)
-		return
-	}
-	in := l.saveInstall(w, r, req.Install)
-	if in == nil {
-		return
-	}
-	if req.Vault {
-		p, err := l.VaultStore(in, "local", "This machine", req.Username, nil)
-		if err != nil {
-			fail(w, err)
-			return
-		}
-		ok(w, map[string]any{"path": p, "vaulted": true})
-		return
-	}
-	p, err := l.ExportSave(in, req.Username, req.Dest)
-	if err != nil {
-		fail(w, err)
-		return
-	}
-	ok(w, map[string]any{"path": p})
-}
-
-// handleSaveVault lists a folder a player can pick a character file out of, so the
-// import field is usable without knowing a path by heart.
-func (l *Launcher) handleSaveBrowse(w http.ResponseWriter, r *http.Request) {
-	start := strings.TrimSpace(r.URL.Query().Get("dir"))
-	if start == "" {
-		start = vaultRoot(l.dataDir)
-	}
-	if _, err := os.Stat(start); err != nil {
-		start = l.dataDir
-	}
-	entries, err := os.ReadDir(start)
-	if err != nil {
-		fail(w, err)
-		return
-	}
-	type entry struct {
-		Name string `json:"name"`
-		Path string `json:"path"`
-		Dir  bool   `json:"dir"`
-		Size int64  `json:"size,omitempty"`
-	}
-	out := []entry{}
-	for _, e := range entries {
-		info, err := e.Info()
-		if err != nil {
-			continue
-		}
-		if e.IsDir() {
-			out = append(out, entry{Name: e.Name(), Path: start, Dir: true})
-			continue
-		}
-		if strings.HasSuffix(strings.ToLower(e.Name()), saveExt) {
-			out = append(out, entry{Name: e.Name(), Path: start, Size: info.Size()})
+// ensureSaveDir makes sure a world has a save folder and returns it.
+//
+// A world nobody has logged into yet has no players/ folder; making it beats
+// refusing to open anything, and it is the same path the engine creates on first
+// login. Split out from the handler so the "where" is testable without a test run
+// launching a file manager window.
+func ensureSaveDir(in *Install) (string, error) {
+	dir := saveDir(in.engineDir())
+	if _, err := os.Stat(dir); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return "", fmt.Errorf("could not create %s: %v", dir, err)
 		}
 	}
-	writeJSON(w, map[string]any{"ok": true, "dir": start, "entries": out})
+	return dir, nil
 }
