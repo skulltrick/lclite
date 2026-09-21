@@ -27,7 +27,7 @@ if exist "LCLite.exe" (
     start "LCLite launcher" /min "LCLite.exe"
     goto :done
   )
-  rem flags pass through:  --play 289  --port 9000  --no-browser  --data D:\lclite
+  rem flags pass through:  --play 289  --port 9000  --browser  --no-browser  --data D:\lclite
   "LCLite.exe" %*
   goto :done
 )

@@ -18,10 +18,11 @@ launcher/          <- this source (Go, stdlib only)
 | Electron | 150 MB+ | bundled Chromium | no — the thing we're avoiding |
 | Tauri/WebView2 | ~5 MB | WebView2, Rust toolchain | fine, but a second toolchain for one small app |
 | .NET WinForms | 60 MB+ self-contained | SDK (this box only has the 6.0 *runtime*) | no |
-| **Go + embedded page, opened in the browser** | **8.4 MB** | **none (static binary)** | **chosen** |
+| **Go + embedded page, opened in its own app window** | **8.4 MB** | **none (static binary)** | **chosen** |
 
 The launcher is a single static executable. It serves its own UI from
-`127.0.0.1` on a random port and opens your default browser at it; the UI is one
+`127.0.0.1` on a random port and opens it in its own window — a Chromium-family
+browser's `--app` mode, no tabs and no address bar (see below); the UI is one
 HTML file baked into the binary (`go:embed`), no CDN, no npm, no framework. Only
 this launcher's own page can drive the API — every `/api/*` call needs the
 per-run token that gets injected into the page.
@@ -30,6 +31,35 @@ It does *not* bundle Node, npm, bun or git: it detects them (chips in the header
 and installs **bun** on demand if the build needs it (bun is a single ~35 MB zip,
 cached under the launcher's data folder). Running a Lost City server needs Node
 24+ regardless — that's upstream's requirement, not ours.
+
+**The dashboard opens in its own window.** It is a web page, so a standalone window is
+a Chromium-family browser's own `--app` mode: no new dependency, no cgo, no second
+toolchain, and the same 8.4 MB static binary — the honest middle ground between "a
+tab" and a WebView2/Tauri rebuild. A tab is one flag away (`--browser`), and the
+fallback whenever there is no Edge or Chrome to be found.
+
+### Its own window (the default)
+
+`LCLite.exe` opens the dashboard in a window with no tabs and no address bar, its own
+taskbar entry and its own icon. Nothing else changes: the same page, the same `/api`
+surface, the same single binary.
+
+| | |
+| --- | --- |
+| Which browser | Edge first (it ships with Windows), then Chrome, then a portable one on `PATH`; the macOS app bundles, then `microsoft-edge`/`google-chrome`/`chromium`/… on Linux |
+| Profile | `<data>/window` — private to the launcher, so the window is its own browser process: it never touches your real profile, and quitting it can never close your tabs |
+| Size | 1180×800, wide enough for the two columns |
+| Override | `LCLITE_APP_BROWSER=<path>` for a portable browser — a wrong path is an error, never a silent fallback |
+| No Edge/Chrome at all | says so, then opens your default browser — the app window is the default, not a promise |
+| `--browser` | a browser tab instead (`-window=false` says the same thing) |
+| `--no-browser` | nothing at all, and it beats both of the above — the headless recipe depends on it |
+
+**Closing the window closes the launcher — but only when nothing is running.** The
+page's own polls (`/api/state` every 2.5s, `/api/log` every 0.9s) are the heartbeat,
+so a window counts as gone after ~25 seconds of silence, and a world, a bridge or a
+job in flight keeps the launcher alive regardless: closing a window must never stop a
+server you asked for. When that happens the console says so once — the console is the
+way back to that UI (it prints the URL), and Ctrl-C there stops everything.
 
 ## First run (the setup wizard)
 
@@ -403,8 +433,10 @@ alone rather than deleted.
 touching real installs).
 
 Override with `--data <folder>`. Flags: `--port`, `--no-browser` (the launcher opens
-no window at all — its own dashboard *and* your client after a join), `--play <rev>`
-(install if needed, then launch — handy for a desktop shortcut), `--version`.
+no window at all — its own dashboard *and* your client after a join), `--browser` (the
+dashboard in a browser tab instead of its own app window — see above; `--window` is on
+by default), `--play <rev>` (install if needed, then launch — handy for a desktop
+shortcut), `--version`.
 
 ## A note on how the UI renders
 

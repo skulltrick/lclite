@@ -4,10 +4,42 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 )
+
+// appWindowCandidates lists the browsers that can open a chromeless app window, in
+// the order we would rather have them: the macOS bundles first (that is where a Mac
+// keeps them), then whatever the PATH offers.
+func appWindowCandidates() []string {
+	var out []string
+	if runtime.GOOS == "darwin" {
+		bases := []string{"/Applications"}
+		if home := os.Getenv("HOME"); home != "" {
+			bases = append(bases, filepath.Join(home, "Applications"))
+		}
+		for _, app := range []string{"Microsoft Edge", "Google Chrome", "Chromium", "Brave Browser"} {
+			for _, base := range bases {
+				out = append(out, filepath.Join(base, app+".app", "Contents", "MacOS", app))
+			}
+		}
+	}
+	for _, name := range []string{
+		"microsoft-edge", "microsoft-edge-stable",
+		"google-chrome", "google-chrome-stable",
+		"chromium", "chromium-browser",
+		"brave-browser", "vivaldi",
+	} {
+		if p, err := exec.LookPath(name); err == nil {
+			out = append(out, p)
+		}
+	}
+	return out
+}
 
 // hideWindow puts the child in its own process group so it can be killed with
 // its children later; there is no console flash to suppress off Windows.

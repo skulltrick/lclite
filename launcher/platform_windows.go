@@ -4,10 +4,37 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 )
+
+// appWindowCandidates lists the browsers that can open a chromeless app window, in
+// the order we would rather have them. Edge first: it ships with Windows, so it is
+// the one that is always there. The install folders are checked rather than the PATH
+// because that is where Windows puts them (and a per-user install is real too).
+// PATH comes last, for a portable browser.
+func appWindowCandidates() []string {
+	var out []string
+	for _, env := range []string{"ProgramFiles(x86)", "ProgramFiles", "LOCALAPPDATA"} {
+		if base := os.Getenv(env); base != "" {
+			out = append(out, filepath.Join(base, "Microsoft", "Edge", "Application", "msedge.exe"))
+		}
+	}
+	for _, env := range []string{"ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA"} {
+		if base := os.Getenv(env); base != "" {
+			out = append(out, filepath.Join(base, "Google", "Chrome", "Application", "chrome.exe"))
+		}
+	}
+	for _, name := range []string{"msedge.exe", "chrome.exe", "brave.exe", "vivaldi.exe"} {
+		if p, err := exec.LookPath(name); err == nil {
+			out = append(out, p)
+		}
+	}
+	return out
+}
 
 // hideWindow starts the process without flashing a console window.
 func hideWindow(cmd *exec.Cmd) {

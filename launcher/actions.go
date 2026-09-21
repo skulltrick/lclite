@@ -379,10 +379,8 @@ func (l *Launcher) handleProxyStop(w http.ResponseWriter, r *http.Request) {
 func (l *Launcher) handleQuit(w http.ResponseWriter, r *http.Request) {
 	ok(w, map[string]any{"bye": true})
 	go func() {
-		time.Sleep(250 * time.Millisecond)
-		_ = l.StopServer()
-		_ = l.StopProxy()
-		os.Exit(0)
+		time.Sleep(250 * time.Millisecond) // let the response land first
+		l.shutdown()
 	}()
 }
 

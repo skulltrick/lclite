@@ -48,6 +48,10 @@ type Launcher struct {
 	// honours an explicit request from the page (pressing Play), but the things it
 	// would do unasked — the dashboard, opening your client after a join — stay shut.
 	noBrowser bool
+	// page is the app window's heartbeat: the served page's own polls hit it, and
+	// --window uses it to notice that its window is gone (see appwindow.go). It is
+	// recorded in both modes; only window mode ever reads it.
+	page *pageWatch
 }
 
 func newLauncher(dataDir, version string, noBrowser bool) (*Launcher, error) {
@@ -69,6 +73,7 @@ func newLauncher(dataDir, version string, noBrowser bool) (*Launcher, error) {
 		localOverlay: localOverlay,
 		httpClient:   &http.Client{Timeout: 25 * time.Second},
 		noBrowser:    noBrowser,
+		page:         &pageWatch{},
 	}
 	// One console, wired into every producer before anything can write: a job, the
 	// world it starts and a bridge all report into the same feed.
@@ -89,7 +94,9 @@ func (l *Launcher) consoleRing(src string) LogRing {
 func main() {
 	dataDir := flag.String("data", "", "data folder (default: per-user app data)")
 	uiPort := flag.Int("port", 0, "UI port (0 = pick a free one)")
-	noBrowser := flag.Bool("no-browser", false, "don't open the browser window")
+	noBrowser := flag.Bool("no-browser", false, "don't open any window at all (the UI is still served)")
+	browser := flag.Bool("browser", false, "open the UI in a browser tab instead of its own app window")
+	appWindow := flag.Bool("window", true, "open the UI in its own app window (no tabs, no address bar); falls back to your default browser when no Edge/Chrome is installed")
 	play := flag.String("play", "", "install/launch a revision straight away, e.g. -play 289")
 	showVersion := flag.Bool("version", false, "print the launcher version and exit")
 	flag.Parse()
@@ -112,11 +119,12 @@ func main() {
 	url := fmt.Sprintf("http://127.0.0.1:%d/", uiPortActual)
 
 	fmt.Printf("LCLite launcher %s\n  data: %s\n  ui:   %s\n", l.version, l.dataDir, url)
-	if !*noBrowser {
+	// --no-browser wins over --browser and --window: it is the flag that means "open
+	// nothing", and the headless recipe (--no-browser --port N --data D) must stay
+	// silent. The precedence itself is uiModeFor's, so it is testable.
+	if mode := uiModeFor(*noBrowser, *browser, *appWindow); mode != uiNone {
 		time.Sleep(250 * time.Millisecond)
-		if err := openBrowser(url); err != nil {
-			fmt.Printf("  (could not open a browser automatically: %v)\n", err)
-		}
+		l.openUI(url, mode)
 	}
 
 	srv := &http.Server{Handler: l.routes()}
@@ -196,7 +204,14 @@ func (l *Launcher) routes() http.Handler {
 	api("log", l.handleLog)
 	api("quit", l.handleQuit)
 
-	return mux
+	// Every request the page makes is the app window's heartbeat (see appwindow.go).
+	// Wrapping the whole surface rather than just /api/state means a page whose poll
+	// failed or got throttled still counts as alive; the per-run token keeps the port
+	// from being a way for anything else to hold the launcher open.
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		l.page.hit()
+		mux.ServeHTTP(w, r)
+	})
 }
 
 // guard requires the per-run token, so only this launcher's own page can drive it.
