@@ -18,7 +18,7 @@ widget is painted by this mod too (see *The stone strip* below), so the readouts
 pushed out until they sit flush against the sidebar's edge. Every setting applies on the
 next frame — nothing here needs a rebuild or a reload.
 
-Four of the orbs' own behaviours sit on top of that readout:
+Five of the orbs' own behaviours sit on top of that readout:
 
 - **Number size** — the HP/Prayer/Run readouts are drawn at 1x, 1.5x, 2x, 2.5x or 3x.
   Bigger digits need more of the panel strip, so the column shifts further right and
@@ -31,22 +31,32 @@ Four of the orbs' own behaviours sit on top of that readout:
   the minimap: all fifteen prayers in the tab's own 3x5 grid, drawn with the game's own
   prayer icons and glow. Click a prayer to toggle it, the orb or anywhere on the panel
   to close. The orb column stays visible (and keeps updating) while the book is open.
+- **Click the special attack orb to arm your special attack** — the same click the combat
+  tab's own special attack bar sends. The orb takes a gold rim and a yellow readout while
+  the attack is armed, so the state is readable at a glance; a second click disarms it.
 - **The special attack orb** — a red orb with a green depleting fill (the 2004 spec bar's
   own colour scheme) reading out your special attack energy as a percentage, which turns
-  plain grey while the wielded weapon has no special attack. See *The special attack orb*
+  a dead grey while the wielded weapon has no special attack. See *The special attack orb*
   below.
+
+The three stat marks are drawn at the **largest odd size the orb's glass can carry** —
+15px at the shipped orb size, **2.1x** the 7px marks this mod shipped first — so a heart
+reads as a heart rather than as the same smudge as a star. They are the HP heart, the
+game's own **2004 prayer star** and the **run boot** every RuneScape player reads as run
+energy (a lightning bolt was never that). See *Art* below.
 
 ## What's in the box
 
 - `files/webclient/src/client/StatOrbs.ts` — the mod's **pure core**: this mod's settings
-  parse, the readout font (both tables and their rasterizer), the orb marks, the
-  STRUCTURAL lookup of the prayer book, the run/walk buttons and the special-attack bar in
-  the loaded interface list, the quick-prayer panel's and the spec orb's geometry and hit
-  tests, and the placement geometry the strip hangs off (`OrbLayout`, `ORB_STRIP_*`,
-  `statOrbsClampX/Y`, `statOrbsInStrip`). Nothing in it touches client state, the DOM or
-  Pix2D, so `mods/stat-orbs/tools/stat_orbs_test.ts` runs the REAL shipped logic
-  headlessly. `apply` copies it verbatim; one import hunk in `Client.ts` pulls it into the
-  bundle.
+  parse, the readout font (both tables and their rasterizer), the **orb marks** (the
+  heart, the 2004 prayer star and the run boot, with the size ladder and the symmetric
+  down-sample), the orb geometry (`statOrbsGlassRadius`), the STRUCTURAL lookup of the
+  prayer book, the run/walk buttons and the special-attack bar in the loaded interface
+  list, the quick-prayer panel's and the spec orb's geometry and hit tests, and the
+  placement geometry the strip hangs off (`OrbLayout`, `ORB_STRIP_*`, `statOrbsClampX/Y`,
+  `statOrbsInStrip`). Nothing in it touches client state, the DOM or Pix2D, so
+  `mods/stat-orbs/tools/stat_orbs_test.ts` runs the REAL shipped logic headlessly. `apply`
+  copies it verbatim; one import hunk in `Client.ts` pulls it into the bundle.
 - `patches/289/Client_ts.json` — SIX hunks into `webclient/src/client/Client.ts`:
   1. the payload import, parked under the `IfType` imports (clear of every other mod's
      import islands, and nowhere near `import JagFX` — whose neighbourhood carries the
@@ -63,18 +73,20 @@ Four of the orbs' own behaviours sit on top of that readout:
      mod is switched off mid-session (the widget buffer AND the stone strip);
   5. the hidden-minimap branch of `minimapDraw()` (`minimapState == 2`);
   6. the end of `minimapDraw()` — the normal draw.
-- Panel rows: `MOD_REGISTRY` + fourteen `MODS[]` rows for `stat-orbs` in
+- Panel rows: `MOD_REGISTRY` + fifteen `MODS[]` rows for `stat-orbs` in
   `mods/control-panel/files/engine/public/lclite/panel.js` (size, number size, numbers,
-  fill style, low-HP warning, run click, prayer book, five colours, two reset positions).
-  The `panel.js?v=` key in `client.ejs` was bumped for this change (24 → 25), and so was
-  `panel.css?v=` (10 → 11) — the house rule for any panel edit.
+  fill style, low-HP warning, run click, spec click, prayer book, five colours, two reset
+  positions). The `panel.js?v=` key in `client.ejs` was bumped for this change (30 → 31).
+  `panel.css` did NOT change, so its own key was left alone — the house rule is to bump
+  the key of every page asset whose bytes moved.
 - `lcmStatOrbsBounds` is the only cross-realm *global* this mod adds, and it is reserved in
   `bundle.ts` (control-panel's island). The spec orb registers a second surface with a
   closure instead, so it needs no new reserve; its keys
   (`lcmStatOrbsSpecAnchor`/`Offset`) are plain localStorage strings.
-- `tools/stat_orbs_test.ts` — 142-check bun harness (see *Verified*), and
-  `tools/apply_spec_orb.py`, the idempotent one-shot script that made this change to the
-  live tree (kept because it documents the edit and can be re-run).
+- `tools/stat_orbs_test.ts` — 202-check bun harness (see *Verified*), and
+  `tools/apply_spec_orb.py`, the idempotent one-shot script that made the FIRST version of
+  this change to the live tree (kept because it documents that edit and can be re-run; the
+  spec-orb click and the bigger marks were made by hand on top of it).
 
 ## Where it draws, and why there
 
@@ -164,23 +176,53 @@ ring against the stone, and the first colours were too close to the stone to see
 → a dark glass body → the fill. The fill is shaded in three **hard** bands (a radial
 bevel), never a gradient: that gradient was what made the old orbs read as modern vector
 art. The liquid fill draws a 1px lighter meniscus at the surface; the pie fill sweeps
-clockwise from 12 o'clock. On top sit the stat's 7×7 glyph (heart / four-point star /
-**lightning bolt**) with a 1px outline so it stays legible over both the liquid and the
-dark glass, and the 2004 gloss glint (a small rounded blob on the upper-left shoulder).
+clockwise from 12 o'clock. On top sits the stat's mark with a 1px outline so it stays
+legible over both the liquid and the dark glass, plus the 2004 gloss glint (a small
+rounded blob on the upper-left shoulder).
 
 The spec orb passes `drawOrb` a **background** as well as a fill: `0` is the dark glass
 every other orb has (byte for byte what it always was), and the spec orb hands in its own
 red — or grey, for a weapon without a special attack — which gets the same two hard bands
 as the dark glass, at the same two radii.
 
-**The bolt is the mark the run orb was always meant to carry**, and it is the one thing
-this mod shipped *wrong* for a while: the glyph table entry was 52 characters instead of
-49, `drawOrb` only inks a complete 7×7, and the run orb therefore drew **nothing in the
-middle** — with no error anywhere to say why. The tables now live in the pure core with a
-`statOrbsGlyphOk()` guard, and the harness checks all three marks are complete 7×7s. 2004
-has **no run icon of its own to borrow** (the options tab's run button is a plain button
-graphic), so the orb carries the one mark that reads as "energy" at 7×7: a bolt, bar
-across the middle row.
+### The marks, and how big they are
+
+The marks are **authored once at 15x15** (`ORB_MARK_SIZE`) and drawn at the **largest odd
+size the orb's glass can carry** (`statOrbsMarkSize`): 15px at the shipped 22px orb, 13px
+on the smallest orb the panel offers, and nothing at all below that (a mark that cannot
+have its outline is a smudge, not a small mark). At the shipped size that is **2.1x** the
+7x7 mark this mod shipped first — which was the whole problem: at 7px a heart, a star and
+a bolt are three blobs that read as the same smudge.
+
+Two mechanics make the ladder safe:
+
+- **The down-sample is symmetric.** A 13px mark samples the master with
+  `floor((d + 0.5) * 15 / 13)` (`statOrbsMarkSource`), which drops the two outermost
+  columns from BOTH sides at once. The obvious `d * 15 / 13` drops them from one side
+  only and quietly breaks the mark's own symmetry, and the harness checks the mirrored
+  columns against each other.
+- **The mark is clipped to the glass.** The glass is a CIRCLE, so a square mark's corners
+  have nowhere to go: `orbPixel` takes an optional clip disc and the mark passes the
+  orb's own glass radius. Without it a 15px mark's corners would be plotted straight over
+  the orb's metal rim — and every mark is authored with empty corners anyway, which the
+  harness asserts.
+
+The art is hand-drawn in the 2004 idiom: hard pixels, no anti-aliasing, no shading inside
+a mark. Each one is checked for what it IS, not just for its length:
+
+- **Hitpoints — a heart.** Two lobes with a notch between them, the widest part in the
+  middle, coming to a single-pixel point at the bottom.
+- **Prayer — the game's OWN prayer icon.** 2004Scape's Prayer skill icon (`staticons,4` in
+  the media jag) is a **concave four-pointed star**: a single-pixel tip, arms that flare
+  out late, and a full-width bar on the centre row. The mark is a redraw of exactly that,
+  so the orb carries the symbol the game itself uses rather than an invented one. (The old
+  mark was a 7x7 star that at that size read as a plus sign with bumps.)
+- **Run energy — a boot.** The shaft (ankle) runs down the left from the top row, the
+  instep widens into a foot reaching right, and the sole runs the width of the bottom row.
+  This replaced a **lightning bolt**, which is not the icon anyone reads as "run energy":
+  every RuneScape player knows the boot, and 2004 has no run icon of its own to borrow (the
+  options tab's run button is a plain button graphic), so the boot is the one to draw. The
+  old bolt's table is asserted *gone* so it cannot creep back.
 
 ### The readout font, and why there are two of them
 
@@ -278,18 +320,70 @@ set. So this orb reads the game's own numbers rather than inventing a parallel s
   params reach the client (`ObjType` has none), so the honest source is the layer the
   server just hid: `statOrbsSpecWeapon()` reads `IfType.list[layer].hide` **live, every
   frame**, because the weapon — and with it the whole combat interface — can change on any
-  tick. Grey orb, same percentage.
+  tick. Dead grey orb, same percentage.
 - **Only the combat tab is searched.** Every other category's spec bar keeps whatever
   hidden state it had when it was last on screen, so a stale one must never be mistaken
   for the wielded weapon's. The lookup is re-run whenever `sideIcon[0]` changes, and the
   FULLEST bar wins if a second, shorter run of `gt` segments exists elsewhere in the same
   interface.
 
+### The layer is the segments' PARENT — the bug this fixed
+
+For a while this orb showed **red for every weapon**, special attack or not, and the cause
+is worth writing down because the code looked right:
+
+> **`IfType.layerId` is the interface's ROOT, not the named layer a component sits in.**
+> The interface packer writes the root's own id into every component's layer slot
+> (`client.p2(getByName(com.root))` in `PackShared.ts`), and a `layer=` line only *moves*
+> a component into that layer's `children`. So the segments' `layerId` is the **combat
+> tab**, and `IfType.list[layerId].hide` answers "is the combat tab hidden" — a flag
+> nothing ever sets, i.e. always `false`, i.e. **every weapon has a special attack**.
+
+The component `if_sethide($specbar_layer, …)` actually targets is the one that *contains*
+the segments, and only the tree walk can say which that is — so the walk now records each
+component's **parent** and the bar's layer is the segments' parent (`statOrbsSpec`). The
+harness fixture had the same mistake in the other direction (it put `specLayer` into
+`layerId`, because that is what the `.if` *source* says), which is exactly why the harness
+stayed green while the live feature was wrong: a fixture built from a source format rather
+than from the runtime shape proves nothing. It now builds `layerId` the way the client
+hands it over, and asserts that hiding the ROOT layer is **not** what answers the question
+— that assertion fails against the old code.
+
+### Clicking it arms the special attack
+
+2004Scape's special attack is a **toggle**, not a per-attack modifier: the player clicks
+the bar's own `Use @gre@Special Attack` option, the server flips `%sa_attack`, and the next
+attack spends the energy (`[if_button,combat_axe:specbar]` … `@toggle_sa` in
+`skill_combat/scripts/player/specwep.rs2`, driven from `player_special_attack.rs2`). So
+this orb sends **that same click**:
+
+- `statOrbsSpec()` also resolves the bar's own **clickable rect** — the BUTTON_OK child of
+  the bar layer that carries an option, which is the component the client's own right-click
+  menu offers (`buttonText` is where the packer puts `option=`). `click` is -1 when this
+  revision's bar has none, and the orb then does nothing.
+- Clicking the orb sends `IF_BUTTON` for that component (`orbsSpecToggle`) — the same
+  packet the player's own click sends, so there is nothing for the server to special-case.
+  A weapon with no special attack has nothing to arm: the dead grey orb swallows the click
+  exactly like the Hitpoints orb does.
+- **Nothing is flipped optimistically**, unlike run and the prayers. `sa_attack` has no
+  `%sa_attack = %sa_attack;` resync at the end of its trigger, so a flip the server refused
+  (`sa_enough_energy` clears the flag when you are out of energy) would have no correction
+  arriving afterwards and the orb would sit armed over a server that disagrees. The varp is
+  `transmit=yes`, so the orb lights up from the server's own update instead, a tick later.
+- **Armed is visible.** While the attack is armed the orb gets a hard 1px **gold ring**
+  (`orbRing`) on its own metal rim and its readout turns **yellow** — which is precisely
+  what the combat tab does to its own label (`activetext=@yel@S P E C I A L  A T T A C K`),
+  and the varp behind both is the one that label reads (`gt,0`), resolved structurally as
+  `spec.armed`. Nothing about the armed state is invented.
+
 **The look** is the 2004 spec bar's own colour scheme: a **red background** with a
 **green depleting fill** (both are settings — `Special attack color` and `Special attack
 fill`), drawn with the same rim, outline, hard fill bands and meniscus as every other orb.
-A weapon with no special attack gets a **plain grey orb** that still reads the energy out,
-so the orb never becomes a lie about your energy — only about whether you can spend it.
+A weapon with no special attack gets a **dead grey orb**: a flat dark glass, a mid-grey
+fill and a dim grey readout, so "you cannot spend this" is unmistakable at a glance. (The
+first grey palette was a light grey that read as a perfectly normal orb — the other half
+of why this orb looked wrong on every weapon.) The orb still reads the energy out, so it
+never becomes a lie about your energy — only about whether you can spend it.
 
 **It is a bit bigger than the rest** (+2px of radius: 26px against 22px at the shipped
 size) and it sits at the panel's **bottom left**, bottom-aligned with the column and 4px
@@ -302,9 +396,9 @@ map's left edge at the default size.
 (`lcmStatOrbsSpecAnchor`/`Offset`), its own Alt+drag ghost and its own *Reset special orb
 position* row, so it can be moved somewhere else entirely without dragging the column with
 it — and until it IS dragged it follows the column, so resizing the orbs or growing the
-readouts can never land it on top of one. It consumes clicks that land on it (its disc
-straddles the map window's rim, so half of it would otherwise set a walk flag) and does
-nothing with them, like the Hitpoints orb.
+readouts can never land it on top of one. It always swallows a click that lands on it (its
+disc straddles the map window's rim, so half of it would otherwise set a walk flag) and
+arms the special attack with it.
 
 **The percentage is always drawn inside it**, at the largest scale that still fits its
 glass (`statOrbsSpecTextScale`: 1.5x at the shipped size, 2x on a 28px orb). The *Orb
@@ -345,7 +439,9 @@ would otherwise set. Two reasons it is there and not next to the wiki button's h
 
 All three orbs consume the click, including the Hitpoints orb, which does nothing: the
 orbs straddle the map window's own left edge, so half of each one would otherwise set a
-walk flag under the cursor. A click anywhere else on the panel is left to the engine.
+walk flag under the cursor. The **spec orb** does the same and *then* acts on the click —
+it arms the special attack (see *Clicking it arms the special attack*). A click anywhere
+else on the panel is left to the engine.
 
 ## Settings contract
 
@@ -361,6 +457,7 @@ no hub, no other mod's key, and every change lands on the next frame.
 | `statOrbsFill` | `liquid`/`pie` | `liquid` | Fill style (select) |
 | `statOrbsPulse` | `'true'`/`'false'` | `'true'` | Low HP warning (toggle) |
 | `statOrbsRunClick` | `'true'`/`'false'` | `'true'` | Run orb toggles run (toggle) |
+| `statOrbsSpecClick` | `'true'`/`'false'` | `'true'` | Special orb arms the attack (toggle) |
 | `statOrbsPrayerPanel` | `'true'`/`'false'` | `'true'` | Prayer book on the orb (toggle) |
 | `statOrbsHpColor` | `'#rrggbb'` | `'#e82623'` | Hitpoints color |
 | `statOrbsPrayerColor` | `'#rrggbb'` | `'#d9a318'` | Prayer color |
@@ -431,13 +528,14 @@ Two traps found while wiring this up, both now fixed platform-wide:
   panel's inner edge — and the numbers are what force the column that far right.
 - **The wipe is content-keyed, not per-frame.** Moving, resizing, recolouring, a changed
   readout, the number scale, the spec orb's percentage (or its weapon state, which
-  recolours it), the book opening or closing, a prayer toggling, the prayer level unlocking
-  an icon, or the cursor crossing onto another cell all re-plot the mapback once. While
-  nothing changes, no wipe runs at all.
+  recolours it, or its armed state, which lights it), the book opening or closing, a prayer
+  toggling, the prayer level unlocking an icon, or the cursor crossing onto another cell all
+  re-plot the mapback once. While nothing changes, no wipe runs at all.
 - **The spec orb is not a fourth stat.** It is special attack energy — 2004Scape's own
   `sa_energy` varp, read off the combat interface's spec bar — and it is a *separate
   surface* from the column: a bit bigger, at the panel's bottom left, with its own drag and
-  its own reset. Its percentage is always drawn inside it, and it has no click action.
+  its own reset. Its percentage is always drawn inside it. Its one click action is the
+  special attack toggle, which is the bar's own click; it has no other.
 - **No tooltips or right-click on the orbs**, and the book has no level-requirement
   readout: the 2004 tab shows it as a hover overlay layer, and the panel's unlit icons
   already say the same thing at a glance. The book's hover feedback is one lit box.
@@ -453,15 +551,15 @@ Two traps found while wiring this up, both now fixed platform-wide:
   (50% ⇒ the boundary is the centre column, filled clockwise from 12 o'clock), the
   low-HP flash, the `inside`/`hidden` number modes, the 28px size, and the tiny font
   glyphs pixel-for-pixel.
-- Verified **headlessly, against the applied tree's own copy**: the run orb's **bolt** is
-  a complete 7x7 and rasters (it drew nothing at all before the 49-character fix), the
-  spec bar resolves off a combat_axe-shaped interface, the spec orb's box clears the
-  column and the wiki button at every size, and the half-step ladder's metrics and rasters
-  (see the harness line below).
-- **Still to be looked at in-game** — the one thing a headless harness cannot answer:
-  how the bolt reads at 1x and at the larger sizes, how the spec orb's red/green and grey
-  states look against the stone and the map, and whether each of the five number sizes is
-  worth its own notch.
+- **The 15px marks, the spec orb's click and its armed state are NOT yet verified
+  in-game** — every claim below about them is headless (the harness, the byte-compare,
+  tsc, the bundle grep). What needs an eye in the client is listed at the end of this
+  section.
+- Verified **headlessly, against the applied tree's own copy**: the three marks are
+  complete 15x15s and raster at every size the orbs draw, the spec bar resolves off a
+  combat_axe-shaped interface *in the shape the client actually hands over*, the spec
+  orb's box clears the column and the wiki button at every size, and the half-step
+  ladder's metrics and rasters (see the harness line below).
 - Alt+drag moves the column and writes the keys; the position survives a full reload;
   `lcmAnchor.reset('stat-orbs')` (and therefore the panel row) puts it back to the
   default box `[0, 34, 36, 120]`; the ghost box and the drawn orbs agree. Same for
@@ -473,30 +571,69 @@ Two traps found while wiring this up, both now fixed platform-wide:
   doubled), that the numbers really can be pushed flush against the sidebar's edge and no
   further, that dragging back out of the strip leaves no orb pixels behind on the stone,
   and that switching the mod off with the orbs in the strip clears it.
-- The panel's mod view lists all fourteen rows with the right kinds, and the master switch
+- The panel's mod view lists all fifteen rows with the right kinds, and the master switch
   gates them.
-- `bun run mods/stat-orbs/tools/stat_orbs_test.ts` — 164 checks over the shipped core:
-  the settings clamp table and the half-step ladder; the readout geometry at every scale
-  (including the 1x expression being digit-for-digit the old one, and the ladder never
-  shrinking); the font rasters (1x/2x/3x exactly the 3x5 table block for block, 1.5x/2.5x
-  exactly the 4x7 one, and a stroke weight of 1/1/2/2/3 across the ladder); the orb marks
-  all being complete 7x7s, with a one-character-off mark refused (the empty-orb bug) and
-  the bolt's bar on its middle row; the prayer book resolving off 289's own prayer.if
-  geometry, in book order, with the right varps, click ids and per-prayer icons, and
-  refusing non-consecutive varps / a missing icon / misaligned icons / a renumbered
-  interface; the run pair resolving off the run varp and never off the retaliate varp; the
-  spec bar resolving off a combat_axe-shaped interface (varp, maximum off the bar's own
-  top threshold, the hidden layer as "no special attack", the percentage maths) and
-  refusing uneven thresholds, a single segment, a non-pushvar segment, an `eq` bar, a
-  missing tree, and a shorter decoy bar; the panel's box, its fifteen cells and its hit
-  test; and the spec orb's box, its distance from the column and the wiki button, its disc
-  hit test and its inside-number scale; and the stone strip's geometry against the
-  widget's (`ORB_STRIP_X + ORB_STRIP_W == ORB_ORIGIN_X`, the strip exactly the widget's
-  height) with the placement clamp around it — the shipped default spot untouched, the
-  strip's far edge reachable and the wall, the widget's right/bottom edges still walls,
-  and `statOrbsInStrip` deciding the strip's paint (checked at both boxes' positions).
+- `bun run mods/stat-orbs/tools/stat_orbs_test.ts` — **202 checks** over the shipped core:
+  the settings clamp table (spec click included) and the half-step ladder; the readout
+  geometry at every scale (including the 1x expression being digit-for-digit the old one,
+  and the ladder never shrinking); the font rasters (1x/2x/3x exactly the 3x5 table block
+  for block, 1.5x/2.5x exactly the 4x7 one, and a stroke weight of 1/1/2/2/3 across the
+  ladder); the **marks** — all three complete 15x15s with a one-character-off mark refused
+  (the empty-orb bug), no mark inking its own box corners, the size ladder off the orb's
+  own glass geometry (15px at the shipped size, 13px at the smallest, nothing below that,
+  always odd, never shrinking), the 13px down-sample being *symmetric* (mirrored columns
+  take mirrored source columns) and never inventing ink, and what each mark IS (the heart's
+  lobes, notch and point; the prayer star's centre bar, single-pixel tips and late flare;
+  the boot's left-hand shaft, widening foot and full-width sole) plus the old bolt's table
+  being gone; the prayer book resolving off 289's own prayer.if geometry, in book order,
+  with the right varps, click ids and per-prayer icons, and refusing non-consecutive varps
+  / a missing icon / misaligned icons / a renumbered interface; the run pair resolving off
+  the run varp and never off the retaliate varp; the **spec bar** resolving off a
+  combat_axe-shaped interface in the RUNTIME shape — the varp, the maximum off the bar's
+  own top threshold, the bar's own clickable rect, its armed varp, the layer that CONTAINS
+  the bar (and explicitly *not* the interface root: the assertion that fails against the
+  old `layerId` reading, along with hiding the root layer instead of the bar's), and the
+  refusals (uneven thresholds, a single segment, a non-pushvar segment, an `eq` bar, a
+  missing tree, a shorter decoy bar, a bar with no clickable rect, a bar with no active
+  text); the panel's box, its fifteen cells and its hit test; and the spec orb's box, its
+  distance from the column and the wiki button, its disc hit test and its inside-number
+  scale; and the stone strip's geometry against the widget's
+  (`ORB_STRIP_X + ORB_STRIP_W == ORB_ORIGIN_X`, the strip exactly the widget's height) with
+  the placement clamp around it — the shipped default spot untouched, the strip's far edge
+  reachable and the wall, the widget's right/bottom edges still walls, and
+  `statOrbsInStrip` deciding the strip's paint (checked at both boxes' positions).
+- The **fixture is falsified, not just green**: running this harness against a copy of the
+  core with the old `layerId` reading restored fails 10 of the spec-bar assertions — the
+  first of them being `spec.layer` coming back as the interface root — which is the
+  regression the old fixture could not see.
 - `tsc -p tsconfig.json` clean on the applied tree, and the built `client.js` carries the
-  new keys, the bolt's digits, and the two overhang registrations (`34,0,0,0`).
-- The overlay's acceptance harness (pristine clones at the pins, byte-compare against
-  the live install, converge round-trip) and `tools/matrix.mjs` over every declared
-  revision.
+  new key (`statOrbsSpecClick`), the mark art (the heart's top row, the star's tip rows) and
+  the two overhang registrations (`34,0,0,0`).
+- The overlay's acceptance harness (pristine clones at the pins, byte-compare against the
+  live install, converge round-trip byte-stable) and `tools/matrix.mjs` over every declared
+  revision (289, 254, 274 — 274 inherits the new corpus exactly).
+
+### What to check in-game
+
+Nothing below is provable headlessly; the harness proves the decision and the tree, and
+nothing at all about the round trip or the pixels.
+
+1. **The marks read as what they are.** A heart on the HP orb, the prayer star in the
+   middle, and a **boot** on the run orb — at the default 22px orb, and again at 20px
+   (the mark drops to 13px there) and 28px.
+2. **The orbs still read.** The 15px marks are big by design: check the fill is still
+   obvious at 100%, 50% and 25% on all three, in both the liquid and the pie styles, and
+   that no mark's outline has landed on an orb's metal rim.
+3. **The spec orb on a weapon with NO special attack** (e.g. unarmed, or a plain weapon):
+   it should be a **dead grey** orb — flat dark glass, grey fill, dim grey number — not a
+   red/green one. Then equip something with a spec (a dragon weapon, a rune thrownaxe)
+   and it should turn red/green again.
+4. **The spec orb's click.** Click it: the orb should light (gold rim, yellow number) a
+   tick later and the combat tab's own bar should show `SPECIAL ATTACK` in yellow too.
+   Click it again to disarm. Then check the actual attack: arm it and attack something —
+   the special should fire and the orb's percentage should drop. Try it with 0% energy:
+   the orb must NOT stay lit.
+5. **It does not fight the tab.** Arm/disarm from the combat tab's own bar and watch the
+   orb follow; switch weapons (including to unarmed) and watch it follow that too.
+6. **The click is still consumed, not a walk.** Click the orb while standing next to the
+   map — the player must not walk.

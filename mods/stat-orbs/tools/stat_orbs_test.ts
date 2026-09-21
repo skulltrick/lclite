@@ -14,9 +14,10 @@
 //     centred top row, where a 'left' readout starts, and that the ladder only ever
 //     grows: a half step has to sit BETWEEN its neighbours, not next to them;
 //  3. the readout font itself: the 1x/2x/3x rasters are the 3x5 table block for block
-//     (the shipped look, digit for digit), the half steps are the 4x7 table, and the
-//     orb marks are all complete 7x7s — a mark of the wrong length is silently not
-//     drawn at all, which is how the run orb shipped with an empty middle;
+//     (the shipped look, digit for digit), the half steps are the 4x7 table, the orb marks
+//     are complete 15x15s drawn at the largest odd size the orb's glass can carry (a mark
+//     of the wrong length is silently not drawn at all, which is how the run orb shipped
+//     with an empty middle), and the 13px down-sample is symmetric;
 //  4. the prayer-book lookup against a fixture built to 289's OWN prayer.if geometry
 //     (fifteen 34x34 toggles on the tab's 3x5 grid pushing prayer0..prayer14, each with
 //     a 30x30 graphic+activegraphic icon at +2,+2, plus the tab's decoy graphic that has
@@ -26,10 +27,13 @@
 //     pair and the run pair, both SELECT buttons pushing a varp) — it must pick the run
 //     pair off the varp alone and never the retaliate pair;
 //  6. the special-attack bar against a fixture built to 289's OWN combat_axe.if geometry
-//     (a specbar layer holding ten model segments, each reading the sa_energy varp with
-//     `gt,99` … `gt,999`) — the varp, the maximum energy off the bar's own top
-//     threshold, the layer the server hides for a weapon without a special attack, and
-//     the refusals (uneven thresholds, one segment, a non-pushvar script, no tree);
+//     AND to the shape the client actually hands over (`layerId` is the interface ROOT on
+//     every component, the named layer lives only in the parent's `children`): a specbar
+//     layer holding ten model segments, each reading the sa_energy varp with `gt,99` …
+//     `gt,999`, its own clickable rect and its own armed label — the varp, the maximum
+//     energy off the bar's own top threshold, the LAYER the server hides for a weapon
+//     without a special attack, the rect the orb's click names, the armed varp, and the
+//     refusals (uneven thresholds, one segment, a non-pushvar script, no tree);
 //  7. the panel's box (beside the orb column, sliding right as the readouts grow,
 //     clamped flush inside the 172x156 widget), its fifteen cell positions, its hit
 //     test, and the spec orb's own box, hit test and inside-number scale;
@@ -61,7 +65,7 @@ console.log('\nsettings:');
 {
     const read = (map: Record<string, string>) => (k: string) => (k in map ? map[k] : null);
 
-    eq(S.statOrbsSettings(read({})), { numberScale: 1, runClick: true, prayerPanel: true }, 'defaults: 1x, run click on, panel on');
+    eq(S.statOrbsSettings(read({})), { numberScale: 1, runClick: true, prayerPanel: true, specClick: true }, 'defaults: 1x, run click on, panel on, spec click on');
     eq(S.statOrbsSettings(read({ statOrbsNumberScale: '3' })).numberScale, 3, "scale '3'");
     eq(S.statOrbsSettings(read({ statOrbsNumberScale: '2.0' })).numberScale, 2, 'a slider float parses to its half step');
     eq(S.statOrbsSettings(read({ statOrbsNumberScale: '1.5' })).numberScale, 1.5, 'and 1.5 is a scale of its own');
@@ -71,6 +75,8 @@ console.log('\nsettings:');
     eq(S.statOrbsSettings(read({ statOrbsNumberScale: '-4' })).numberScale, 1, 'a negative clamps to 1');
     eq(S.statOrbsSettings(read({ statOrbsRunClick: 'false' })).runClick, false, 'run click off');
     eq(S.statOrbsSettings(read({ statOrbsPrayerPanel: 'false' })).prayerPanel, false, 'panel off');
+    eq(S.statOrbsSettings(read({ statOrbsSpecClick: 'false' })).specClick, false, 'spec orb click off');
+    eq(S.statOrbsSettings(read({ statOrbsSpecClick: 'yes' })).specClick, true, 'anything but \'false\' is on (spec click)');
     eq(S.statOrbsSettings(read({ statOrbsRunClick: 'yes' })).runClick, true, "anything but 'false' is on");
     // the scale is a HALF-step ladder: the old 1 -> 2 jump was the whole range in one
     // notch, which is the jump this exists to soften
@@ -179,19 +185,85 @@ console.log('\nreadout font:');
     eq(SCALES.map((s: number) => stroke(raster(0, s))), [1, 1, 2, 2, 3], 'the stroke weight steps 1/1/2/2/3 across the ladder');
     ok(S.statOrbsGlyph(0, 1).length === 15 && raster(0, 1)[0] === '111', 'the 1x zero is still the 3px-wide shipped glyph');
 
-    // the orb marks: drawOrb inks a mark only when it is a COMPLETE 7x7, so a table entry
-    // of the wrong length is not a smaller mark — it is an empty orb, with no error
-    eq([S.ORB_GLYPH_HP.length, S.ORB_GLYPH_PRAYER.length, S.ORB_GLYPH_RUN.length], [49, 49, 49], 'all three orb marks are 7x7');
-    ok([S.ORB_GLYPH_HP, S.ORB_GLYPH_PRAYER, S.ORB_GLYPH_RUN].every((g: string) => S.statOrbsGlyphOk(g)), 'and every one of them passes the mark test drawOrb uses');
+    // the orb marks: drawOrb inks a mark only when it is a COMPLETE square of the master's
+    // own size, so a table entry of the wrong length is not a smaller mark — it is an empty
+    // orb, with no error anywhere to say why (the run orb shipped that way for a while)
+    const rows = (mark: string, size: number) => {
+        const out: string[] = [];
+        for (let j = 0; j < size; j++) {
+            let row = '';
+            for (let i = 0; i < size; i++) { row += S.statOrbsMarkPixel(mark, size, i, j) ? '1' : '0'; }
+            out.push(row);
+        }
+        return out;
+    };
+    const MARKS = [S.ORB_GLYPH_HP, S.ORB_GLYPH_PRAYER, S.ORB_GLYPH_RUN];
+    eq([S.ORB_MARK_SIZE, ...MARKS.map((g: string) => g.length)], [15, 225, 225, 225], 'all three orb marks are 15x15 (the master size)');
+    ok(MARKS.every((g: string) => S.statOrbsGlyphOk(g)), 'and every one of them passes the mark test drawOrb uses');
     ok(!S.statOrbsGlyphOk(S.ORB_GLYPH_RUN + '0') && !S.statOrbsGlyphOk(S.ORB_GLYPH_RUN.substring(1)),
-        'a mark one character off 7x7 is refused — the bug that shipped an empty run orb');
-    ok(!S.statOrbsGlyphOk('0'.repeat(49)) === false && S.statOrbsGlyphOk('0'.repeat(49)) === true, 'a blank 7x7 is still a valid mark (it is simply nothing to draw)');
-    ok(!S.statOrbsGlyphOk('2'.repeat(49)), 'and a mark of non-pixels is refused');
-    // the run mark is a bolt: ink in every row, and its bar is the widest row
-    const bolt = [0, 1, 2, 3, 4, 5, 6].map((r: number) => S.ORB_GLYPH_RUN.substring(r * 7, r * 7 + 7));
-    ok(bolt.every((r: string) => r.indexOf('1') >= 0), 'the run orb\u2019s bolt has ink in all seven rows');
-    const widths = bolt.map((r: string) => r.split('').filter((c: string) => c === '1').length);
-    eq(widths.indexOf(Math.max(...widths)), 3, 'and its bar is the middle row, as a lightning bolt\u2019s is');
+        'a mark one character off 15x15 is refused — the bug that shipped an empty run orb');
+    ok(S.statOrbsGlyphOk('0'.repeat(225)), 'a blank mark is still a valid mark (it is simply nothing to draw)');
+    ok(!S.statOrbsGlyphOk('2'.repeat(225)), 'and a mark of non-pixels is refused');
+    // no mark inks its own corners: the glass they sit in is a CIRCLE, so corner ink is
+    // either clipped away or — worse, if the clip were ever dropped — painted over the rim
+    ok(MARKS.every((g: string) => [0, 14, 210, 224].every((k: number) => g.charAt(k) === '0')),
+        'no mark inks the corners of its own box (they are outside the glass)');
+
+    // ---- the mark SIZE ladder, off the orb's own geometry ----
+    eq([8, 9, 10, 11, 12, 14].map((r: number) => S.statOrbsGlassRadius(r)), [6, 6, 7, 8, 9, 11],
+        'the glass radius sits inside the 1px outline and the metal rim (2px from 18px orbs up)');
+    eq([10, 11, 12, 14].map((r: number) => S.statOrbsMarkSize(S.statOrbsGlassRadius(r))), [13, 15, 15, 15],
+        'the mark is 15px from the shipped 22px orb up, 13px on the smallest orb the panel offers');
+    ok(S.statOrbsMarkSize(S.statOrbsGlassRadius(11)) >= 14,
+        'and at the shipped orb size it is at least twice the 7px mark it replaced');
+    eq([6, 7, 8, 9].map((r: number) => S.statOrbsMarkSize(S.statOrbsGlassRadius(r))), [0, 0, 11, 11],
+        'a glass too small to carry an outlined mark draws none rather than a smudge');
+    ok([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].every((g: number, i: number, a: number[]) => i === 0 || S.statOrbsMarkSize(g) >= S.statOrbsMarkSize(a[i - 1])),
+        'the mark only ever grows with the glass');
+    ok([11, 13, 15].every((s: number) => s % 2 === 1 && S.statOrbsMarkSize((s + 1) / 2) === s),
+        'every size it picks is ODD, so the mark has a true centre pixel');
+
+    // the down-sample is SYMMETRIC: a 13px mark is the 15px art with the outermost
+    // columns dropped from BOTH sides, not a lopsided squeeze
+    const src13 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((d: number) => S.statOrbsMarkSource(13, d));
+    eq(src13, [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14], 'a 13px mark samples the master symmetrically');
+    ok(src13.every((s: number, i: number) => s + src13[12 - i] === 14),
+        'and mirrored columns take mirrored source columns');
+    eq([0, 5, 14].map((d: number) => S.statOrbsMarkSource(15, d)), [0, 5, 14], 'a full-size mark is the master, column for column');
+    // a 13px raster is the same ART, not a different one: every row of it is a subset of
+    // the master's own ink (the drop is columns, never new pixels)
+    ok(MARKS.every((g: string) => rows(g, 13).every((row: string, j: number) =>
+        row.split('').every((c: string, i: number) => c === '0' || g.charAt(S.statOrbsMarkSource(13, j) * 15 + S.statOrbsMarkSource(13, i)) === '1'))),
+        'the 13px raster only ever takes ink the 15px art already had');
+
+    // ---- what each mark IS ----
+    const heart = rows(S.ORB_GLYPH_HP, 15);
+    ok(heart[0].indexOf('1') > 0 && heart[0].lastIndexOf('1') < 14 && heart[0].indexOf('0', heart[0].indexOf('1')) < heart[0].lastIndexOf('1'),
+        'the HP mark is a heart: two lobes with a notch between them, clear of the corners');
+    eq(heart[14], '000000010000000', 'and it comes to a single-pixel point at the bottom');
+    ok(heart[0].split('').filter((c: string) => c === '1').length < heart[7].split('').filter((c: string) => c === '1').length,
+        'and the widest part is its middle, not its top');
+
+    const star = rows(S.ORB_GLYPH_PRAYER, 15);
+    eq(star[7], '111111111111111', 'the prayer mark is the game\u2019s own 2004 icon: a star whose bar is the centre row');
+    eq(star[0], '000000010000000', 'with a single-pixel tip at the top');
+    eq([star[0], star[14]], [star[14], star[0]], 'and the same tip at the bottom (it is symmetric)');
+    ok(star.every((row: string, j: number) => row === star[14 - j]), 'the whole star mirrors top to bottom');
+    ok(star.every((row: string) => row === row.split('').reverse().join('')), 'and left to right');
+    ok(star[5].split('').filter((c: string) => c === '1').length < star[6].split('').filter((c: string) => c === '1').length,
+        'its arms flare out LATE, which is what makes it concave rather than a diamond');
+
+    const boot = rows(S.ORB_GLYPH_RUN, 15);
+    ok(boot[0].indexOf('1') === 3 && boot[0].lastIndexOf('1') === 5, 'the run mark is a boot: its shaft starts at the top, on the left');
+    ok(boot[0].split('').filter((c: string) => c === '1').length < boot[14].split('').filter((c: string) => c === '1').length,
+        'the foot widens downward');
+    eq(boot[14], '011111111111110', 'and its sole runs the width of the bottom row');
+    ok(boot.every((row: string) => row.indexOf('1') >= 0), 'with ink in all fifteen rows (no floating halves)');
+    ok(boot.every((row: string, j: number) => j === 0 || boot[j - 1].split('').filter((c: string) => c === '1').length <= row.split('').filter((c: string) => c === '1').length),
+        'and it only ever widens: a boot is not a bolt, but it is not a blob either');
+    // the bolt this replaced is GONE — the run mark must not be its old self
+    ok(!MARKS.some((g: string) => g === '0001100001100001100001111111000110000110000110000'),
+        'the old 7x7 lightning bolt is no longer the run mark');
 }
 
 // ---- the 289 interface fixtures --------------------------------------------------
@@ -200,10 +272,10 @@ function com(o: any): any {
     return {
         id: 0, layerId: 0, type: 0, buttonType: 0, x: 0, y: 0,
         scripts: null, scriptComparator: null, scriptOperand: null, children: null, hide: false,
-        graphic: null, graphic2: null, ...o
+        text: null, text2: null, buttonText: null, graphic: null, graphic2: null, ...o
     };
 }
-const PUSHVAR = 5, TOGGLE = 4, SELECT = 5, GRAPHIC = 5, MODEL = 6, LAYER = 0, GT = 3;
+const PUSHVAR = 5, TOGGLE = 4, SELECT = 5, GRAPHIC = 5, MODEL = 6, LAYER = 0, GT = 3, TEXT = 4, OK = 1;
 
 /** 289's prayer tab: prayer_thickskin..prayer_protectfrommelee at the tab's own 3x5
  *  grid coordinates, pushing prayer0..prayer14 (varps 83..97), each with its icon
@@ -237,29 +309,53 @@ function controlsTab(layer: number, retaliateVarp: number, runVarp: number) {
     ];
 }
 
-/** A combat tab as 289's combat_axe.if is shaped: a root layer whose specbar layer holds
- *  ten MODEL segments, each shown while the energy varp is above its own threshold
- *  (`script1=gt,99` … `gt,999`), plus the bar's own rect and its two border graphics.
+/** A combat tab as 289's combat_axe.if is shaped AND as the client actually hands it over:
+ *  a root layer whose specbar layer holds ten MODEL segments, each shown while the energy
+ *  varp is above its own threshold (`script1=gt,99` … `gt,999`), the bar's own clickable
+ *  rect (`option=Use @gre@Special Attack`), its two border graphics and its label — a TEXT
+ *  component whose `activetext` swaps while the ARMED varp is above 0.
+ *
+ *  `layerId` is the interface's ROOT on EVERY component, because that is what the packer
+ *  writes (`client.p2(getByName(root))` for every component of the interface) and what the
+ *  client parses — NOT the named layer a component was declared under, which lives only in
+ *  the parent's `children`. A fixture that put `specLayer` into `layerId` would pass while
+ *  the live feature read the TAB's hide flag (never set) and called every weapon a
+ *  special-attack weapon: the bug this fixture now pins.
  *
  *  Returned the way the client hands us its list: indexed BY COMPONENT ID (IfType.list is
  *  sparse), because the lookup walks the interface's own tree from the tab's root. */
-function combatTab(root: number, specLayer: number, energyVarp: number, thresholds: number[] = [99, 199, 299, 399, 499, 599, 699, 799, 899, 999], hidden: boolean = false) {
+function combatTab(root: number, specLayer: number, energyVarp: number, thresholds: number[] = [99, 199, 299, 399, 499, 599, 699, 799, 899, 999], hidden: boolean = false, armedVarp: number = 331, clickable: boolean = true, rootHidden: boolean = false) {
     const list: any[] = [];
-    const segs: number[] = [];
+    const children: number[] = [];
+    // the bar's own clickable rect: BUTTON_OK, and its `option` is what the client's own
+    // right-click menu offers — i.e. what makes it a component a player can click
+    const rect = specLayer + 1;
+    list[rect] = com({
+        id: rect, layerId: root, type: 3, x: 0, y: 1, buttonType: clickable ? OK : 0,
+        buttonText: clickable ? 'Use @gre@Special Attack' : null, scripts: [], scriptOperand: []
+    });
+    children.push(rect);
     for (let i = 0; i < thresholds.length; i++) {
-        const id = specLayer + 1 + i;
-        segs.push(id);
+        const id = specLayer + 2 + i;
+        children.push(id);
         list[id] = com({
-            id, layerId: specLayer, type: MODEL, x: 3 + i * 14, y: 8, width: 146, height: 9,
+            id, layerId: root, type: MODEL, x: 3 + i * 14, y: 8, width: 146, height: 9,
             scripts: [[PUSHVAR, energyVarp]], scriptComparator: [GT], scriptOperand: [thresholds[i]]
         });
     }
-    list[specLayer] = com({ id: specLayer, layerId: root, type: LAYER, x: 17, y: 231, children: segs, hide: hidden });
-    list[specLayer - 1] = com({ id: specLayer - 1, layerId: specLayer, type: 3, x: 0, y: 1, scripts: [], scriptOperand: [] });   // the bar's own rect
-    list[root] = com({ id: root, layerId: root, type: LAYER, children: [specLayer - 1, specLayer] });
+    // the bar's own label: the text that turns yellow while the special attack is armed
+    const label = specLayer + 2 + thresholds.length;
+    children.push(label);
+    list[label] = com({
+        id: label, layerId: root, type: TEXT, x: 20, y: 7,
+        text: 'S P E C I A L  A T T A C K', text2: '@yel@S P E C I A L  A T T A C K',
+        scripts: [[PUSHVAR, armedVarp]], scriptComparator: [GT], scriptOperand: [0]
+    });
+    list[specLayer] = com({ id: specLayer, layerId: root, type: LAYER, x: 17, y: 231, children, hide: hidden });
+    list[root] = com({ id: root, layerId: root, type: LAYER, children: [specLayer, root + 1, root + 2], hide: rootHidden });
     // the tab's own bits: the weapon preview and its name
     list[root + 1] = com({ id: root + 1, layerId: root, type: MODEL, x: 5, y: 8 });
-    list[root + 2] = com({ id: root + 2, layerId: root, type: 4, x: 82, y: 216, scripts: [[9, 5]] });
+    list[root + 2] = com({ id: root + 2, layerId: root, type: TEXT, x: 82, y: 216, scripts: [[9, 5]] });
     return list;
 }
 
@@ -351,23 +447,52 @@ console.log('\nspecial attack bar:');
     // the spec layer sits WELL clear of the root's own bits (root+1, root+2): the
     // client's list is indexed by component id, so overlapping ids would silently
     // overwrite one another
-    const ROOT = 7000, SPEC = 7100, VARP = 330;
+    const ROOT = 7000, SPEC = 7100, VARP = 330, ARMED = 331;
     const list = combatTab(ROOT, SPEC, VARP);
     const spec = S.statOrbsSpec(list, ROOT);
     ok(spec !== null, "289's combat tab resolves its spec bar");
-    eq(spec, { varp: VARP, max: 1000, layer: SPEC }, 'the varp, the bar\u2019s own maximum (the top threshold 999 is exclusive, so full is 1000), and the layer the server hides');
-    ok(S.statOrbsSpecWeapon(list, spec), 'a weapon WITH a special attack: the bar\u2019s layer is not hidden');
+    eq(spec.varp, VARP, 'the energy varp the segments push');
+    eq(spec.max, 1000, "the bar's own maximum (the top threshold 999 is exclusive, so full is 1000)");
+    // THE LAYER IS THE SEGMENTS' PARENT. `layerId` is the interface's ROOT (the packer
+    // writes the root into every component), so a lookup that read it would test the TAB's
+    // own hide flag — which nothing ever sets — and call every weapon a spec weapon.
+    eq(spec.layer, SPEC, 'the layer that CONTAINS the bar, i.e. the one if_sethide targets');
+    ok(spec.layer !== ROOT, 'and never the interface root (that was the bug: the orb read red on every weapon)');
+    eq(spec.click, SPEC + 1, "the bar's own clickable rect (the orb's click sends an IF_BUTTON for it)");
+    eq(spec.armed, ARMED, "the varp the bar's own label reads while the attack is armed");
+    eq(spec.armedMin, 0, 'and the operand it is compared against');
+
+    ok(S.statOrbsSpecWeapon(list, spec), 'a weapon WITH a special attack: the bar LAYER is not hidden');
     // the server hides that layer for a weapon without one (`if_sethide($specbar_layer, …)`)
     const bare = combatTab(ROOT, SPEC, VARP, undefined, true);
-    ok(!S.statOrbsSpecWeapon(bare, S.statOrbsSpec(bare, ROOT)), 'a weapon WITHOUT one: the same bar, hidden');
+    ok(!S.statOrbsSpecWeapon(bare, S.statOrbsSpec(bare, ROOT)), 'a weapon WITHOUT one: the bar LAYER is hidden');
+    // ...and the regression that fixture exists for: hiding the ROOT layer instead (which
+    // is what reading `layerId` amounts to) must NOT be what answers the question
+    const tabHidden = combatTab(ROOT, SPEC, VARP, undefined, false, ARMED, true, true);
+    ok(S.statOrbsSpecWeapon(tabHidden, S.statOrbsSpec(tabHidden, ROOT)),
+        'the ROOT layer\u2019s hide flag is not the answer — the same bar still reads as a spec weapon');
     ok(!S.statOrbsSpecWeapon(list, null), 'and no bar at all is never a special attack');
     // the flag is read LIVE, so the same resolved bar answers both ways
     ok(S.statOrbsSpecWeapon(list, spec) !== S.statOrbsSpecWeapon(bare, spec), 'the same bar answers for both weapons (the flag is read, not cached)');
 
+    // the armed flag, read the way getIfActive reads it
+    ok(S.statOrbsSpecArmed(1, spec), 'the armed varp above its operand = the special attack is armed');
+    ok(!S.statOrbsSpecArmed(0, spec), 'and at the operand it is not');
+    ok(!S.statOrbsSpecArmed(1, null), 'no bar = never armed');
+    const noLabel = combatTab(ROOT, SPEC, VARP);
+    noLabel[SPEC + 12].text2 = null;                       // the bar's label loses its active text
+    ok(S.statOrbsSpec(noLabel, ROOT).armed < 0, 'a bar with no active text has no armed flag (never the energy varp itself)');
+
+    // the bar's clickable rect is the component with an OPTION: without one the client's
+    // own menu would never offer the click, so there is nothing to send
+    const noRect = combatTab(ROOT, SPEC, VARP, undefined, false, ARMED, false);
+    eq(S.statOrbsSpec(noRect, ROOT).click, -1, 'a bar with no clickable rect resolves with click -1 (the orb then does nothing)');
+
     // nothing is hardcoded: the same bar at other component ids, another varp, and a
     // server that rescales its energy all resolve
     const moved = combatTab(9000, 9100, 512);
-    eq(S.statOrbsSpec(moved, 9000), { varp: 512, max: 1000, layer: 9100 }, 'the same bar at shifted component ids and another varp still resolves');
+    eq([S.statOrbsSpec(moved, 9000).varp, S.statOrbsSpec(moved, 9000).max, S.statOrbsSpec(moved, 9000).layer],
+        [512, 1000, 9100], 'the same bar at shifted component ids and another varp still resolves');
     const coarse = combatTab(ROOT, SPEC, VARP, [9, 19, 29, 39, 49, 59, 69, 79, 89, 99]);
     eq(S.statOrbsSpec(coarse, ROOT).max, 100, 'a bar of ten 10-point steps is a maximum of 100 (the scale comes off the bar)');
 
@@ -377,7 +502,7 @@ console.log('\nspecial attack bar:');
     const one = combatTab(ROOT, SPEC, VARP, [99]);
     ok(S.statOrbsSpec(one, ROOT) === null, 'a single segment is refused');
     const noPush = combatTab(ROOT, SPEC, VARP);
-    noPush[SPEC + 1].scripts = [[11]];
+    noPush[SPEC + 2].scripts = [[11]];
     ok(S.statOrbsSpec(noPush, ROOT) !== null && S.statOrbsSpec(noPush, ROOT).layer === SPEC,
         'a segment that pushes a VALUE instead of a varp is not a segment (the rest of the bar still resolves)');
     // an equal-comparator bar is the prayer tab's shape, not the spec bar's
@@ -392,10 +517,10 @@ console.log('\nspecial attack bar:');
     // ten-segment bar (another bar on another varp is not the special-attack bar)
     const decoy = combatTab(ROOT, SPEC, VARP);
     decoy[7999] = com({ id: 7999, layerId: ROOT, type: LAYER, children: [7997, 7998] });
-    decoy[7997] = com({ id: 7997, layerId: 7999, type: MODEL, scripts: [[PUSHVAR, 999]], scriptComparator: [GT], scriptOperand: [49] });
-    decoy[7998] = com({ id: 7998, layerId: 7999, type: MODEL, scripts: [[PUSHVAR, 999]], scriptComparator: [GT], scriptOperand: [149] });
+    decoy[7997] = com({ id: 7997, layerId: ROOT, type: MODEL, scripts: [[PUSHVAR, 999]], scriptComparator: [GT], scriptOperand: [49] });
+    decoy[7998] = com({ id: 7998, layerId: ROOT, type: MODEL, scripts: [[PUSHVAR, 999]], scriptComparator: [GT], scriptOperand: [149] });
     decoy[ROOT].children.push(7999);
-    eq(S.statOrbsSpec(decoy, ROOT), { varp: VARP, max: 1000, layer: SPEC }, 'the fuller bar wins when the same interface holds a shorter one');
+    eq([S.statOrbsSpec(decoy, ROOT).varp, S.statOrbsSpec(decoy, ROOT).layer], [VARP, SPEC], 'the fuller bar wins when the same interface holds a shorter one');
 
     // the percentage: the orb's whole readout
     eq([0, 1, 250, 999, 1000, 1200, -5].map((v: number) => S.statOrbsSpecPercent(v, 1000)), [0, 0, 25, 100, 100, 100, 0], 'the energy varp reads out as a whole percent, clamped to 100');

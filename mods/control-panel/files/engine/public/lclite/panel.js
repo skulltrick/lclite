@@ -95,7 +95,7 @@
               return s.tris + '△ · ' + s.batches + ' calls · ' + s.ms + 'ms';
           } },
         { id: 'xp-drops', name: 'XP drops', desc: 'Customizable XP drops.', master: { key: 'xpDrops', def: 'true' } },
-        { id: 'stat-orbs', name: 'Stat orbs', desc: 'HP/Prayer/Run data orbs on the minimap panel, plus a special attack orb. Click the run orb to toggle run, the prayer orb for the prayer book. Alt+drag to move them.', master: { key: 'statOrbs', def: 'false' } },
+        { id: 'stat-orbs', name: 'Stat orbs', desc: 'HP/Prayer/Run data orbs on the minimap panel, plus a special attack orb. Click the run orb to toggle run, the prayer orb for the prayer book, the special orb to arm your special attack. Alt+drag to move them.', master: { key: 'statOrbs', def: 'false' } },
         { id: 'true-tile', name: 'True tile', desc: "Highlights player's true server tile. Customizable.", master: { key: 'trueTile', def: 'true' } },
         { id: 'true-tile-plus', name: 'True tile+', desc: 'Ground effects on your true tile: flat flames licking off its border, or a ripple wave sweeping out of it.', master: { key: 'trueTilePlus', def: 'true' } },
         { id: 'hover-tile', name: 'Hover tile', desc: 'Highlights the tile your mouse is over. Customizable.', master: { key: 'hoverTile', def: 'true' } },
@@ -184,6 +184,7 @@
         { id: 'orbs-fill', mod: 'stat-orbs', name: 'Fill style', desc: 'Liquid level (OSRS: drains downward as the stat falls) or a clockwise pie sweep from the top.', kind: 'select', key: 'statOrbsFill', def: 'liquid', options: [['liquid', 'Liquid level'], ['pie', 'Pie sweep']], apply(v) { LS.set('statOrbsFill', v); } },
         { id: 'orbs-pulse', mod: 'stat-orbs', name: 'Low HP warning', desc: 'Flash the Hitpoints orb while you are below a quarter health (OSRS behaviour).', key: 'statOrbsPulse', kind: 'toggle', def: 'true' },
         { id: 'orbs-run-click', mod: 'stat-orbs', name: 'Run orb toggles run', desc: 'Click the Run energy orb to turn run on or off — the same click the options tab sends. The orb glass lightens while run is on.', key: 'statOrbsRunClick', kind: 'toggle', def: 'true' },
+        { id: 'orbs-spec-click', mod: 'stat-orbs', name: 'Special orb arms the attack', desc: 'Click the special attack orb to arm or disarm your special attack — the same click the combat tab’s own special attack bar sends. The orb gets a gold rim and a yellow readout while it is armed, so you can see the state at a glance.', key: 'statOrbsSpecClick', kind: 'toggle', def: 'true' },
         { id: 'orbs-prayer-panel', mod: 'stat-orbs', name: 'Prayer book on the orb', desc: 'Click the Prayer orb to open the prayer book over the minimap: all fifteen prayers, drawn with the icons the game already has. Click a prayer to toggle it; click the orb or the panel again to close.', key: 'statOrbsPrayerPanel', kind: 'toggle', def: 'true' },
         { id: 'orbs-hp-color', mod: 'stat-orbs', name: 'Hitpoints color', desc: 'Liquid color of the Hitpoints orb.', kind: 'color', key: 'statOrbsHpColor', def: '#e82623' },
         { id: 'orbs-prayer-color', mod: 'stat-orbs', name: 'Prayer color', desc: 'Liquid color of the Prayer orb.', kind: 'color', key: 'statOrbsPrayerColor', def: '#d9a318' },

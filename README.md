@@ -89,7 +89,7 @@ that works, and how a revision is added, is [docs/REVS.md](docs/REVS.md).
 | ⚙ | **LCLite** | The panel itself: search, favorites, per-mod settings, Alt+drag placement, fullscreen, screenshots |
 | ☾ | **Camera** | Wheel zoom (0.4–2.6×, eased), middle-drag rotate, one-shot walk pick, chatbox scroll — the OSRS feel. It also stops the client sending the legacy mouse/camera/anticheat telemetry, so "anti-cheat off" is part of this mod now |
 | 📈 | **XP drops** | Floating `+N` rows with skill icons plus a tan level-progress tracker, auto-hiding |
-| 🔮 | **Stat orbs** | HP / Prayer / Energy orbs down the minimap's lower-left, numbers always visible; click the run orb to run, the prayer orb for the prayer book |
+| 🔮 | **Stat orbs** | HP / Prayer / Energy orbs down the minimap's lower-left, numbers always visible; click the run orb to run, the prayer orb for the prayer book, the special attack orb to arm your special attack |
 | 🃏 | **TCG** *(beta)* | Credits from xp, level-ups and kills → 5-card packs (7 tiers, foils, rare apex packs) → a 6,376-card album, cut to the cards your revision could have (1,388 of them at 289) |
 | 🟩 | **True tile** | Outline on the tile the *server* has you on, with color/border/fill controls |
 | 🎯 | **Hover tile** | Outline on the tile your mouse is over — sheared on slopes, hidden once the cursor leaves the scene |

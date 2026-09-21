@@ -43,7 +43,7 @@ export const MOD_META = {
     },
     'stat-orbs': {
         label: 'Stat orbs',
-        desc: 'HP/Prayer/Run data orbs on the minimap panel, plus a special attack orb. Click the run orb to toggle run, the prayer orb for the prayer book. Alt+drag to move them.',
+        desc: 'HP/Prayer/Run data orbs on the minimap panel, plus a special attack orb. Click the run orb to toggle run, the prayer orb for the prayer book, the special orb to arm your special attack. Alt+drag to move them.',
     },
     'tcg': {
         label: 'TCG',

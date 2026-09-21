@@ -65,24 +65,80 @@ export const ORB_DIGIT_H: number = 5;
 export const ORB_DIGIT_GAP: number = 1;
 
 // ---- the orbs' own marks ---------------------------------------------------------
-/** The 7x7 mark each orb carries, row-major, '1' = ink — the Hitpoints heart, the prayer
- *  star, and the run orb's LIGHTNING BOLT. 2004 has no run icon of its own to borrow (the
- *  options tab's run button is a plain button graphic), so the run orb carries the one
- *  mark that reads as "energy" at 7x7.
+/** The marks are authored ONCE at this size and drawn at the largest odd size the orb's
+ *  glass can carry (see statOrbsMarkSize) — 15px at the shipped orb size, which is 2.1x
+ *  the 7x7 mark this mod shipped first. At 7px a heart, a star and a bolt are three
+ *  blobs that read as the same smudge, which is exactly what was wrong with them.
+ *
+ *  The art is hand-drawn in the 2004 idiom: hard pixels, no anti-aliasing, and a
+ *  silhouette that keeps clear of the corners, because the glass it sits in is a CIRCLE.
+ *  The prayer mark is a redraw of the game's OWN prayer icon — 2004's Prayer skill icon
+ *  (`staticons,4` in the media jag) is a concave four-pointed star, so the orb carries
+ *  the game's own symbol rather than an invented one. The run mark is the BOOT every
+ *  RuneScape player reads as "run energy"; a lightning bolt was never that.
  *
  *  They live here with the digit font, and for the same reason: the client only inks a
- *  mark that is a COMPLETE 7x7 (see statOrbsGlyphOk), and the run orb shipped for a while
- *  with a 52-character bolt that the old length test silently refused — an empty orb,
- *  with nothing anywhere to say why. The harness checks them now. */
-export const ORB_GLYPH_SIZE: number = 7;
-export const ORB_GLYPH_HP: string = '0110110111111111111110111110001110000010000000000';
-export const ORB_GLYPH_PRAYER: string = '0001000000100001111101111111011111000010000001000';
-export const ORB_GLYPH_RUN: string = '0001100001100001100001111111000110000110000110000';
+ *  mark that is a COMPLETE square of the master's own size (see statOrbsGlyphOk), and the
+ *  run orb shipped for a while with a 52-character bolt that the old length test silently
+ *  refused — an empty orb, with nothing anywhere to say why. The harness checks them. */
+export const ORB_MARK_SIZE: number = 15;
+/** The smallest mark worth drawing: below this the art is a smudge again, so the orb goes
+ *  without one. Nothing in the shipped 20-28px orb range reaches it. */
+export const ORB_MARK_MIN: number = 11;
 
-/** Is `glyph` a complete 7x7 mark of 0/1? `drawOrb` inks nothing else — a mark of the
- *  wrong length is not a smaller mark, it is no mark at all. */
+export const ORB_GLYPH_HP: string =
+    '001110000011100' +      // the two lobes, one pixel of gap between them
+    '011111000111110' +
+    '011111101111110' +
+    '011111111111110' +
+    '011111111111110' +
+    '011111111111110' +
+    '011111111111110' +
+    '011111111111110' +
+    '001111111111100' +
+    '001111111111100' +
+    '000111111111000' +
+    '000011111110000' +
+    '000001111100000' +
+    '000000111000000' +
+    '000000010000000';      // the point
+export const ORB_GLYPH_PRAYER: string =
+    '000000010000000' +      // the top point
+    '000000111000000' +
+    '000000111000000' +
+    '000001111100000' +
+    '000011111110000' +
+    '001111111111100' +      // the arms flare out late, which is what makes it concave
+    '011111111111110' +
+    '111111111111111' +      // the bar, on the centre row
+    '011111111111110' +
+    '001111111111100' +
+    '000011111110000' +
+    '000001111100000' +
+    '000000111000000' +
+    '000000111000000' +
+    '000000010000000';
+export const ORB_GLYPH_RUN: string =
+    '000111000000000' +      // the boot: the shaft (ankle) on the left,
+    '000111000000000' +
+    '000111000000000' +
+    '000111000000000' +
+    '000111000000000' +
+    '000111100000000' +
+    '000111110000000' +
+    '000111111000000' +      // the instep, then the foot reaching right,
+    '001111111100000' +
+    '001111111110000' +
+    '011111111111000' +
+    '011111111111100' +
+    '011111111111110' +      // and the sole
+    '011111111111110' +
+    '011111111111110';
+
+/** Is `glyph` a complete ORB_MARK_SIZE x ORB_MARK_SIZE mark of 0/1? `drawOrb` inks nothing
+ *  else — a mark of the wrong length is not a smaller mark, it is no mark at all. */
 export function statOrbsGlyphOk(glyph: string): boolean {
-    if (glyph.length !== ORB_GLYPH_SIZE * ORB_GLYPH_SIZE) {
+    if (glyph.length !== ORB_MARK_SIZE * ORB_MARK_SIZE) {
         return false;
     }
 
@@ -94,6 +150,40 @@ export function statOrbsGlyphOk(glyph: string): boolean {
     }
 
     return true;
+}
+
+/** The side of the mark a glass of radius `innerR` can carry: the largest ODD size whose
+ *  1px outline still lands on glass, capped at the master's own size. 0 = no mark at all
+ *  (the outline is what makes a mark legible over both the liquid and the dark glass, so
+ *  a mark that cannot have one is not drawn). */
+export function statOrbsMarkSize(innerR: number): number {
+    if (!(innerR >= 1)) {
+        return 0;
+    }
+
+    let size: number = Math.min(ORB_MARK_SIZE, 2 * innerR - 1);
+    if (size % 2 === 0) {
+        size--;
+    }
+
+    return size >= ORB_MARK_MIN ? size : 0;
+}
+
+/** Which MASTER column/row a mark drawn at `size` samples. Symmetric nearest-neighbour —
+ *  `floor((d + 0.5) * MASTER / size)` — so a 13px mark is the 15px art with the two
+ *  outermost columns dropped from BOTH sides at once; the naive `d * MASTER / size` drops
+ *  them from one side only and quietly breaks the mark's own symmetry. */
+export function statOrbsMarkSource(size: number, d: number): number {
+    if (size >= ORB_MARK_SIZE) {
+        return d;
+    }
+
+    return ((d * ORB_MARK_SIZE + (ORB_MARK_SIZE >> 1)) / size) | 0;
+}
+
+/** One pixel of `mark` as drawn at `size` — the exact ink `drawOrb` plots. */
+export function statOrbsMarkPixel(mark: string, size: number, i: number, j: number): boolean {
+    return mark.charAt(statOrbsMarkSource(size, j) * ORB_MARK_SIZE + statOrbsMarkSource(size, i)) === '1';
 }
 
 /** The widest readout the column's inset reserves room for (three digits: "100"). */
@@ -139,8 +229,17 @@ export interface OrbCom {
     children: ArrayLike<number> | null;
     /** `if_sethide` — the server hides a spec bar's whole layer for a weapon without a
      *  special attack, so this flag is the game's own answer to "does this weapon have
-     *  one?". */
+     *  one?". Only a LAYER component carries it (the client's parse reads it inside the
+     *  TYPE_LAYER branch), which is why the lookup below has to find the layer that
+     *  actually CONTAINS the bar's segments. */
     hide: boolean;
+    /** A text component's ACTIVE text (`activetext=`): the game swaps to it while the
+     *  component's own comparator script is true, which is how the spec bar's own label
+     *  says "the special attack is armed". */
+    text2: string | null;
+    /** `option=` on a BUTTON_OK component — what the client's own right-click menu offers
+     *  and therefore what makes a component clickable at all. */
+    buttonText: string | null;
     graphic: unknown | null;
     graphic2: unknown | null;
 }
@@ -152,6 +251,9 @@ export interface OrbSettings {
     runClick: boolean;
     /** Click the prayer orb to open the prayer book over the minimap. */
     prayerPanel: boolean;
+    /** Click the special attack orb to arm/disarm the special attack (the combat tab's
+     *  own spec bar click). */
+    specClick: boolean;
 }
 
 /** This mod's OWN keys (rule 5), read per frame at its own hook and clamped here so a
@@ -162,7 +264,8 @@ export function statOrbsSettings(read: (key: string) => string | null): OrbSetti
     return {
         numberScale: statOrbsScale(parseFloat(read('statOrbsNumberScale') || '') || ORB_NUMBER_SCALE_MIN),
         runClick: read('statOrbsRunClick') !== 'false',
-        prayerPanel: read('statOrbsPrayerPanel') !== 'false'
+        prayerPanel: read('statOrbsPrayerPanel') !== 'false',
+        specClick: read('statOrbsSpecClick') !== 'false'
     };
 }
 
@@ -542,6 +645,11 @@ export const ORB_SPEC_WALK_MAX: number = 4096;
 export const ORB_SPEC_EXTRA: number = 2;
 /** How clear of the column's own right edge the spec orb's default spot sits. */
 export const ORB_SPEC_GAP: number = 4;
+/** The component types the bar's own two parts are (webclient's ComponentType.TYPE_TEXT
+ *  and ButtonType.BUTTON_OK): the bar's clickable rect is a BUTTON_OK component and its
+ *  label is a TEXT one. */
+export const ORB_TYPE_TEXT: number = 4;
+export const ORB_BUTTON_OK: number = 1;
 
 export interface OrbSpec {
     /** The varp the bar's segments read — 2004Scape's `sa_energy`. */
@@ -550,8 +658,22 @@ export interface OrbSpec {
      *  exclusive (`gt,999` is the bar at full), so this is 1000 in 2004Scape
      *  (`^sa_max_energy`), derived from the interface rather than hardcoded. */
     max: number;
-    /** The layer component the server hides for a weapon without a special attack. */
+    /** The LAYER component the server hides for a weapon without a special attack — the
+     *  layer the bar's segments were actually declared under, NOT their `layerId` (which
+     *  is the interface's root: see statOrbsSpec). */
     layer: number;
+    /** The bar's own clickable rect — the `[specbar]` component whose
+     *  `option=Use @gre@Special Attack` the player clicks in the combat tab. Sending an
+     *  IF_BUTTON for it is EXACTLY what that click sends, which is what makes the orb a
+     *  real special-attack button rather than a second, parallel control. -1 when this
+     *  revision's bar has no such rect. */
+    click: number;
+    /** The varp the bar's own ACTIVE TEXT reads (`script1op1=pushvar,sa_attack` with
+     *  `script1=gt,0`) — the game's own "the special attack is armed" flag, and the very
+     *  value its own label turns yellow on. -1 when the bar has no active text. */
+    armed: number;
+    /** The operand of that `gt`: the flag is on while the varp is ABOVE it. */
+    armedMin: number;
 }
 
 /** Find the special-attack bar in the COMBAT tab's interface, STRUCTURALLY.
@@ -559,26 +681,37 @@ export interface OrbSpec {
  *  The bar is the one layer holding a run of segments that each read the SAME varp with a
  *  `gt` comparator and evenly rising thresholds (`script1=gt,99` … `gt,999`) — that is how
  *  2004 draws it: ten model components, each shown while the energy is above its own
- *  threshold. The varp they push IS the energy varp, and the highest threshold plus the
- *  step is the maximum, so nothing here is hardcoded: a revision that renumbers the
- *  interface, or a server that rescales the energy, still resolves.
+ *  threshold. The varp they push IS the energy varp, and the highest threshold plus one is
+ *  the maximum, so nothing here is hardcoded: a revision that renumbers the interface, or
+ *  a server that rescales the energy, still resolves.
  *
  *  `root` is the combat tab's own interface component (`sideIcon[0]`, which the server
  *  swaps by weapon category), and only THAT interface is searched — every other category's
  *  spec bar keeps whatever hidden state it had when it was last on screen, so a stale one
  *  must never be mistaken for the wielded weapon's. Returns null when this revision's
- *  interfaces do not match, and the caller then simply never offers the orb. */
+ *  interfaces do not match, and the caller then simply never offers the orb.
+ *
+ *  THE LAYER IS THE SEGMENTS' PARENT, NOT THEIR `layerId`. The interface packer writes the
+ *  interface's own ROOT id into every component's layer slot (`layerId`), and a `layer=`
+ *  line only MOVES a component into a named layer's `children` — so `layerId` is the TAB,
+ *  and reading `hide` off it answers "is the combat tab hidden", i.e. always no. That was
+ *  this mod's bug: the orb read red for every weapon, special attack or not. The component
+ *  `if_sethide($specbar_layer, …)` actually targets is the one that CONTAINS the segments,
+ *  which only the tree walk can tell us, so the walk records each component's parent. */
 export function statOrbsSpec(list: (OrbCom | null | undefined)[], root: number): OrbSpec | null {
     if (!(root >= 0) || root >= list.length) {
         return null;
     }
 
-    // walk the interface's own tree (the root's `children`, then theirs)
+    // walk the interface's own tree, remembering each component's PARENT
+    const parent: number[] = [];
     const seen: number[] = [root];
     const stack: number[] = [root];
+    parent[root] = -1;
     let guard: number = 0;
     while (stack.length > 0 && guard++ < ORB_SPEC_WALK_MAX) {
-        const com = list[stack.pop() as number];
+        const owner: number = stack.pop() as number;
+        const com = list[owner];
         if (!com || !com.children) {
             continue;
         }
@@ -590,16 +723,19 @@ export function statOrbsSpec(list: (OrbCom | null | undefined)[], root: number):
             }
 
             seen.push(id);
+            parent[id] = owner;
             stack.push(id);
         }
     }
 
-    // group the segments by the varp they push: one bar is one varp inside one layer
+    // group the segments by the varp they push AND the layer that holds them: one bar is
+    // one varp inside one layer
     const varps: number[] = [];
     const layers: number[] = [];
     const ops: number[][] = [];
     for (let s: number = 0; s < seen.length; s++) {
-        const com = list[seen[s]];
+        const id: number = seen[s];
+        const com = list[id];
         if (!com || !com.scriptComparator || com.scriptComparator[0] !== ORB_CMP_GT) {
             continue;
         }
@@ -609,14 +745,24 @@ export function statOrbsSpec(list: (OrbCom | null | undefined)[], root: number):
             continue;
         }
 
-        let g: number = varps.indexOf(varp);
+        const layer: number = parent[id] === undefined ? -1 : parent[id];
+        if (layer < 0) {
+            continue;                       // the root itself is nobody's segment
+        }
+
+        let g: number = -1;
+        for (let i: number = 0; i < varps.length; i++) {
+            if (varps[i] === varp && layers[i] === layer) {
+                g = i;
+                break;
+            }
+        }
+
         if (g < 0) {
             varps.push(varp);
-            layers.push(com.layerId);
+            layers.push(layer);
             ops.push([]);
             g = varps.length - 1;
-        } else if (layers[g] !== com.layerId) {
-            continue;                       // same varp, another layer: not one bar
         }
 
         ops[g].push(com.scriptOperand ? com.scriptOperand[0] : 0);
@@ -664,13 +810,74 @@ export function statOrbsSpec(list: (OrbCom | null | undefined)[], root: number):
     // plus one the maximum (1000 in 2004Scape, `^sa_max_energy`). Taking the step size
     // instead would read 1099 and cost the readout a tenth of its range.
     const bestOps: number[] = ops[best];
-    return { varp: varps[best], max: bestOps[bestOps.length - 1] + 1, layer: layers[best] };
+    const layer: number = layers[best];
+    const flag: number[] = orbSpecFlag(list, layer, varps[best]);
+    return {
+        varp: varps[best],
+        max: bestOps[bestOps.length - 1] + 1,
+        layer: layer,
+        click: orbSpecButton(list, layer),
+        armed: flag[0],
+        armedMin: flag[1]
+    };
+}
+
+/** The bar layer's own clickable rect: its BUTTON_OK child that carries an option. The
+ *  client's right-click menu only offers a button with a `buttonText` (that is where the
+ *  packer puts `option=`), so that is the component a player can actually click — and
+ *  therefore the one an IF_BUTTON for this orb must name. -1 when there is none. */
+function orbSpecButton(list: (OrbCom | null | undefined)[], layer: number): number {
+    const com = list[layer];
+    if (!com || !com.children) {
+        return -1;
+    }
+
+    for (let i: number = 0; i < com.children.length; i++) {
+        const child = list[com.children[i]];
+        if (child && child.buttonType === ORB_BUTTON_OK && child.buttonText !== null && child.buttonText.length > 0) {
+            return child.id;
+        }
+    }
+
+    return -1;
+}
+
+/** The bar layer's own "armed" flag, as `[varp, operand]`: the TEXT child whose active
+ *  text swaps while a varp is above a threshold (`script1=gt,0`). That is the game's own
+ *  test — the same one that turns the bar's label yellow — so this can never drift from
+ *  what the bar itself shows. `[-1, 0]` when the bar has no such text. */
+function orbSpecFlag(list: (OrbCom | null | undefined)[], layer: number, energyVarp: number): number[] {
+    const com = list[layer];
+    if (!com || !com.children) {
+        return [-1, 0];
+    }
+
+    for (let i: number = 0; i < com.children.length; i++) {
+        const child = list[com.children[i]];
+        if (!child || child.type !== ORB_TYPE_TEXT || child.text2 === null) {
+            continue;
+        }
+
+        if (!child.scriptComparator || child.scriptComparator[0] !== ORB_CMP_GT) {
+            continue;
+        }
+
+        const varp: number = orbScriptVar(child, 0);
+        if (varp < 0 || varp === energyVarp) {
+            continue;
+        }
+
+        return [varp, child.scriptOperand && child.scriptOperand.length > 0 ? child.scriptOperand[0] : 0];
+    }
+
+    return [-1, 0];
 }
 
 /** Does the wielded weapon have a special attack? The server hides the whole bar's layer
  *  for one that does not (`if_sethide($specbar_layer, …)` on every weapon category), so
  *  this is the game's own answer — read LIVE, because the weapon can change on any tick
- *  and the flag moves with it. */
+ *  and the flag moves with it. The client skips a hidden layer and its children in
+ *  drawInterface, so a bar this refuses is a bar the player cannot see either. */
 export function statOrbsSpecWeapon(list: (OrbCom | null | undefined)[], spec: OrbSpec | null): boolean {
     if (spec === null) {
         return false;
@@ -678,6 +885,13 @@ export function statOrbsSpecWeapon(list: (OrbCom | null | undefined)[], spec: Or
 
     const com = list[spec.layer];
     return com !== undefined && com !== null && !com.hide;
+}
+
+/** Is the special attack ARMED — will the next attack spend the energy? The bar's own
+ *  active text answers it, so the caller hands in that varp's value straight out of the
+ *  client's own `var[]` and this makes the same comparison `getIfActive` does. */
+export function statOrbsSpecArmed(value: number, spec: OrbSpec | null): boolean {
+    return spec !== null && spec.armed >= 0 && value > spec.armedMin;
 }
 
 /** The bar's energy as a whole percent (0-100), off the varp's raw value. */
@@ -688,6 +902,14 @@ export function statOrbsSpecPercent(value: number, max: number): number {
 
     const pct: number = Math.round((value * 100) / max);
     return pct > 100 ? 100 : pct;
+}
+
+/** The radius of an orb's GLASS, for an orb of radius `r`: inside the 1px hard outline and
+ *  the metal rim (2px from 18px orbs up, 1px below that). This is the disc every mark is
+ *  clipped to and the ring the spec orb's "armed" highlight is drawn on, so `drawOrb` and
+ *  its callers cannot disagree about where the glass ends. */
+export function statOrbsGlassRadius(r: number): number {
+    return r - 1 - (r >= 9 ? 2 : 1);
 }
 
 /** The spec orb's default box [x, y, w, h] in the widget's own pixels: the panel's BOTTOM
