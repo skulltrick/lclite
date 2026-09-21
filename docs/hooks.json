@@ -106,7 +106,7 @@
     "marker": true
    },
    {
-    "mod": "hover-tile",
+    "mod": "true-tile",
     "note": "src/client/Client.ts @ old line 71",
     "line": 71,
     "marker": true
@@ -298,13 +298,13 @@
     "marker": true
    },
    {
-    "mod": "hover-tile",
+    "mod": "true-tile",
     "note": "src/client/Client.ts @ old line 4242",
     "line": 4242,
     "marker": true
    },
    {
-    "mod": "hover-tile",
+    "mod": "true-tile",
     "note": "src/client/Client.ts @ old line 4248",
     "line": 4248,
     "marker": true
@@ -358,7 +358,7 @@
     "marker": true
    },
    {
-    "mod": "hover-tile",
+    "mod": "true-tile",
     "note": "src/client/Client.ts @ old line 5092",
     "line": 5091,
     "marker": true
@@ -558,7 +558,7 @@
     "marker": true
    },
    {
-    "mod": "hover-tile",
+    "mod": "true-tile",
     "note": "src/dash3d/World.ts @ old line 114",
     "line": 114,
     "marker": true
@@ -696,19 +696,19 @@
     "marker": true
    },
    {
-    "mod": "hover-tile",
+    "mod": "true-tile",
     "note": "src/dash3d/World.ts @ old line 2003",
     "line": 2003,
     "marker": true
    },
    {
-    "mod": "hover-tile",
+    "mod": "true-tile",
     "note": "src/dash3d/World.ts @ old line 2055",
     "line": 2055,
     "marker": true
    },
    {
-    "mod": "hover-tile",
+    "mod": "true-tile",
     "note": "src/dash3d/World.ts @ old line 2141",
     "line": 2141,
     "marker": true

@@ -21,7 +21,7 @@
 | webclient/src/client/Client.ts | 19 | wiki-lookup | `` |
 | webclient/src/client/Client.ts | 23 | stat-orbs | `// lclite:stat-orbs` |
 | webclient/src/client/Client.ts | 28 | ground-items | `` |
-| webclient/src/client/Client.ts | 71 | hover-tile | `// lclite:hover-tile` |
+| webclient/src/client/Client.ts | 71 | true-tile | `// lclite:true-tile` |
 | webclient/src/client/Client.ts | 87 | xp-drops | `/* ─── custom (lclite "xp-drops" mod) tunables ──────────────────────────────── ` |
 | webclient/src/client/Client.ts | 121 | xp-drops | `/// custom (lclite "xp-drops"): skill id -> staticons sprite index. Pack order i` |
 | webclient/src/client/Client.ts | 355 | camera | `/// custom: OSRS-style camera zoom + middle-button rotate lclite:camera` |
@@ -53,8 +53,8 @@
 | webclient/src/client/Client.ts | 4193 | camera | `// custom: uniform zoom — the entire camera-relative geometry (orbit distance lc` |
 | webclient/src/client/Client.ts | 4210 | true-tile-plus | `// lclite:true-tile-plus` |
 | webclient/src/client/Client.ts | 4237 | true-tile | `// lclite:true-tile` |
-| webclient/src/client/Client.ts | 4242 | hover-tile | `// lclite:hover-tile` |
-| webclient/src/client/Client.ts | 4248 | hover-tile | `// lclite:hover-tile` |
+| webclient/src/client/Client.ts | 4242 | true-tile | `// lclite:true-tile` |
+| webclient/src/client/Client.ts | 4248 | true-tile | `// lclite:true-tile` |
 | webclient/src/client/Client.ts | 4259 | camera | `// lclite:camera` |
 | webclient/src/client/Client.ts | 4267 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC6 counter and its packet ` |
 | webclient/src/client/Client.ts | 4386 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC1 counter and its packet ` |
@@ -63,7 +63,7 @@
 | webclient/src/client/Client.ts | 4575 | xp-drops | `// custom (lclite "xp-drops"): tracker panel + drop rows into the game buffer. l` |
 | webclient/src/client/Client.ts | 4801 | ground-items | `// lclite:ground-items` |
 | webclient/src/client/Client.ts | 4867 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC5 counter and its packet ` |
-| webclient/src/client/Client.ts | 5091 | hover-tile | `// lclite:hover-tile` |
+| webclient/src/client/Client.ts | 5091 | true-tile | `// lclite:true-tile` |
 | webclient/src/client/Client.ts | 5162 | ground-items | `// lclite:ground-items` |
 | webclient/src/client/Client.ts | 5402 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC3 counter and its packet ` |
 | webclient/src/client/Client.ts | 5571 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC2 counter and its packet ` |
@@ -96,7 +96,7 @@
 | webclient/src/client/Client.ts | 11694 | shift-drop | `// lclite:shift-drop` |
 | webclient/src/dash3d/World.ts | 11 | true-tile-plus | `// lclite:true-tile-plus` |
 | webclient/src/dash3d/World.ts | 22 | true-tile | `// lclite:true-tile` |
-| webclient/src/dash3d/World.ts | 114 | hover-tile | `// lclite:hover-tile` |
+| webclient/src/dash3d/World.ts | 114 | true-tile | `// lclite:true-tile` |
 | webclient/src/dash3d/World.ts | 117 | camera | `/// custom: camera zoom. visBacking is precomputed at the default camera distanc` |
 | webclient/src/dash3d/World.ts | 505 | true-tile | `// lclite:true-tile` |
 | webclient/src/dash3d/World.ts | 588 | true-tile-plus | `// lclite:true-tile-plus` |
@@ -119,9 +119,9 @@
 | webclient/src/dash3d/World.ts | 1367 | camera | `// custom: live probe when zoomed (table stale), else cached row lclite:camera` |
 | webclient/src/dash3d/World.ts | 1491 | true-tile | `// lclite:true-tile` |
 | webclient/src/dash3d/World.ts | 1494 | true-tile-plus | `// lclite:true-tile-plus` |
-| webclient/src/dash3d/World.ts | 2003 | hover-tile | `// lclite:hover-tile` |
-| webclient/src/dash3d/World.ts | 2055 | hover-tile | `// lclite:hover-tile` |
-| webclient/src/dash3d/World.ts | 2141 | hover-tile | `// lclite:hover-tile` |
+| webclient/src/dash3d/World.ts | 2003 | true-tile | `// lclite:true-tile` |
+| webclient/src/dash3d/World.ts | 2055 | true-tile | `// lclite:true-tile` |
+| webclient/src/dash3d/World.ts | 2141 | true-tile | `// lclite:true-tile` |
 | webclient/src/dash3d/Pix3D.ts | 34 | camera | `/// custom: depth clip planes, scaled with camera zoom (defaults match original ` |
 | webclient/src/dash3d/Model.ts | 1722 | camera | `// lclite:camera` |
 | webclient/bundle.ts | 59 | tcg | `// lclite:tcg — the window['tcg*'] surface shared between the bundled core` |

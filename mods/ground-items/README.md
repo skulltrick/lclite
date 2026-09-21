@@ -34,7 +34,7 @@ or a reload.
 
 The labels are painted at the **end of `entityOverlays()`**. That is still inside the
 per-frame world pass: `Pix2D` is bound to the 512×334 `areaGame` buffer (the same ride as
-`true-tile`'s outline and `hover-tile`'s square), and `otherOverlays()` runs afterwards, so
+`true-tile`'s outline and its hovered-tile square), and `otherOverlays()` runs afterwards, so
 **interfaces still composite on top of the labels** — a bank, a dialogue or the
 character-design screen covers them exactly as it covers the ground itself. Drawing after
 `otherOverlays()` (e.g. beside `areaGame.draw(4, 4)`) would put labels over the bank.
@@ -54,7 +54,7 @@ rendering, in the engine's own "top item first" order (`showObject` pushes the h
 item to the head), instead of reverse-engineering spawn packets.
 
 **The position is the engine's own projection.** `getOverlayPos(sceneX*128+64, sceneZ*128+64,
-GI_OFFSET_Z)` is the call entity names, `true-tile` and `hover-tile` use; it walks `getAvH`
+GI_OFFSET_Z)` is the call entity names and `true-tile` use; it walks `getAvH`
 per point, so a label sits on the ground correctly on slopes and stairs, and returns
 `projectX = -1` behind the camera or outside the build area.
 

@@ -138,7 +138,7 @@ keypress, an interface component, the minimap widget) are tabulated in
 **Put pure logic in the payload, not in the hunk.** Anything that does not need client
 state — a settings parse, a decision table, geometry — ships as
 `files/webclient/src/<mod>/…` and is pulled in by one import hunk, so a bun harness can
-import the REAL shipped file and test it headlessly (`mods/hotkeys`, `mods/hover-tile`,
+import the REAL shipped file and test it headlessly (`mods/hotkeys`, `mods/true-tile`,
 `mods/ground-items` all do this).
 
 ## 6. Settings, and the panel row

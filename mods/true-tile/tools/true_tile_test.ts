@@ -6,9 +6,11 @@
 // Set LCLITE_ROOT=<install> to test the copy inside an applied tree; it prints which
 // file it loaded either way.
 //
-// Covers the three things a browser cannot tell us cheaply:
-//  1. the settings parse/clamp table — a stale or hand-typed localStorage value must
-//     never paint garbage (bad colour → default, out-of-range numbers → clamped);
+// The mod has three markers — the true tile, the hovered tile and the destination tile —
+// and this harness covers all three plus the geometry they share:
+//  1. the settings parse/clamp table, PER MARKER — a stale or hand-typed localStorage
+//     value must never paint garbage (bad colour → default, out-of-range numbers →
+//     clamped), and each marker must read its OWN keys and nobody else's (rule 5);
 //  2. the decal geometry — the emitted triangles must cover the SAME pixels the mod's
 //     per-pixel edge-function rasterizer covered before it moved onto Pix3D, at any
 //     skew, in any vertex order, with the border exactly `thick` px wide;
@@ -17,15 +19,20 @@
 //     what the GPU captures per triangle. That is the whole reason the fill works on a
 //     gpu frame now (see the payload header).
 //
+// What this CANNOT cover: the engine-side half of each marker — the level a decal is
+// drawn at (World.pushDown's originalLevel rule), the ground pick that resolves the
+// hovered tile, and the client's own destination flag. Those live in Client.ts/World.ts
+// and are verified by reading the engine and in-game, not here.
+//
 // PARITY ORACLE: `oracleRaster` below is a verbatim copy of the per-pixel rasterizer
-// this mod shipped before the rework (the two mods' shared edge-function pass). It is
-// kept here — and NOT in the payload — so the new geometry is checked against the
-// implementation users already had, by an independent formulation. Its edge convention
-// (a pixel exactly ON an edge counts as inside, so a quad of S units covers S+1 pixels
-// across) differs from a triangle rasterizer's by up to one pixel on the boundary, so
-// the parity checks assert (a) no pixel is more than 1px from the other set, and
-// (b) every pixel more than 1px away from the ring's boundary is in the same class in
-// both. Nothing is asserted "approximately".
+// this mod shipped before the rework (the shared edge-function pass the hovered-tile mod
+// carried too, before it moved in here). It is kept here — and NOT in the payload — so
+// the new geometry is checked against the implementation users already had, by an
+// independent formulation. Its edge convention (a pixel exactly ON an edge counts as
+// inside, so a quad of S units covers S+1 pixels across) differs from a triangle
+// rasterizer's by up to one pixel on the boundary, so the parity checks assert (a) no
+// pixel is more than 1px from the other set, and (b) every pixel more than 1px away from
+// the ring's boundary is in the same class in both. Nothing is asserted "approximately".
 import path from 'node:path';
 
 const LCLITE = path.resolve(import.meta.dir, '../../..');
@@ -46,51 +53,91 @@ function eq(got: any, want: any, msg: string) { ok(JSON.stringify(got) === JSON.
 
 // ---- settings ---------------------------------------------------------------
 const store = (kv: Record<string, string>) => (key: string) => (key in kv ? kv[key] : null);
-const S = (kv: Record<string, string> = {}) => T.trueTileSettings(store(kv));
-const look = (s: any) => [s.enabled, s.rgb, s.thick, s.fillA, s.onlyDesync];
+const STrue = (kv: Record<string, string> = {}) => T.trueTileSettings(store(kv));
+const SHover = (kv: Record<string, string> = {}) => T.hoverTileSettings(store(kv));
+const SDest = (kv: Record<string, string> = {}) => T.destTileSettings(store(kv));
+const look = (s: any) => [s.rgb, s.thick, s.fillA];
 
-console.log('\nsettings defaults (empty store = a fresh install)');
-eq(look(S()), [true, 0x00ff00, 1, 0, false], 'defaults: on, green, 1px, no fill, always visible');
-eq(Object.keys(S()).sort(), ['enabled', 'fillA', 'onlyDesync', 'rgb', 'thick'], 'the settings object has exactly the documented fields');
-eq(T.TRUE_TILE_DEFAULT_COLOR, '#00ff00', 'documented default colour is the panel default');
-eq([T.TRUE_TILE_DEFAULT_OUTLINE, T.TRUE_TILE_DEFAULT_FILL], [1, 0], 'documented default px/% match the panel rows');
+/** The battery every marker's table must pass. All three share one validator in the
+ *  payload, so the point of running it three times is the KEY PREFIX: each marker must
+ *  read its own four keys and nothing else. */
+function settingsSuite(
+    name: string, read: (kv: Record<string, string>) => any,
+    key: string, defColor: string, defRgb: number, defThick: number, defFill: number,
+    fields: string[]
+) {
+    console.log(`\n${name}: defaults (empty store = a fresh install)`);
+    eq(look(read({})), [defRgb, defThick, defFill], `defaults: ${defColor}, ${defThick}px, ${defFill}% fill`);
+    eq(read({}).enabled, true, 'on by default (only the literal \'false\' disables it)');
+    eq(Object.keys(read({})).sort(), fields, 'exactly the documented fields');
 
-console.log('\nmaster key');
-eq(S({ trueTile: 'true' }).enabled, true, "'true' → on");
-eq(S({ trueTile: 'false' }).enabled, false, "'false' → off");
-eq(S({ trueTile: 'TRUE' }).enabled, true, 'anything else → on (only the literal false disables)');
-eq(S({ trueTile: '' }).enabled, true, 'empty string → on');
+    console.log(`\n${name}: its own switch`);
+    eq(read({ [key]: 'true' }).enabled, true, `'true' → on`);
+    eq(read({ [key]: 'false' }).enabled, false, `'false' → off`);
+    eq(read({ [key]: 'TRUE' }).enabled, true, 'anything else → on');
+    eq(read({ [key]: '' }).enabled, true, 'empty string → on');
 
-console.log('\ncolour: only a 7-char #rrggbb is accepted');
-eq(S({ trueTileColor: '#00ff00' }).rgb, 0x00ff00, "'#00ff00' → 0x00ff00");
-eq(S({ trueTileColor: '#FF00FF' }).rgb, 0xff00ff, "'#FF00FF' parses (case-insensitive)");
-eq(S({ trueTileColor: 'red' }).rgb, 0x00ff00, "'red' → default green");
-eq(S({ trueTileColor: '#fff' }).rgb, 0x00ff00, 'short hex → default');
-eq(S({ trueTileColor: '#gggggg' }).rgb, 0x00ff00, 'non-hex digits → default');
-eq(S({ trueTileColor: '#000000' }).rgb, 0x000000, 'black is a legal colour, not a falsy default');
+    console.log(`\n${name}: colour — only a 7-char #rrggbb is accepted`);
+    eq(read({ [`${key}Color`]: '#FF00FF' }).rgb, 0xff00ff, "'#FF00FF' parses (case-insensitive)");
+    eq(read({ [`${key}Color`]: '#0a0B0c' }).rgb, 0x0a0b0c, "'#0a0B0c' mixed case parses");
+    eq(read({ [`${key}Color`]: 'red' }).rgb, defRgb, "'red' → default");
+    eq(read({ [`${key}Color`]: '#fff' }).rgb, defRgb, 'short hex → default');
+    eq(read({ [`${key}Color`]: '#gggggg' }).rgb, defRgb, 'non-hex digits → default');
+    eq(read({ [`${key}Color`]: '#1234567' }).rgb, defRgb, '8 chars → default');
+    eq(read({ [`${key}Color`]: '#12345' }).rgb, defRgb, '6 chars → default');
+    eq(read({ [`${key}Color`]: '#000000' }).rgb, 0x000000, 'black is a legal colour, not a falsy default');
 
-console.log('\nborder px: clamped to 1..8, NaN/garbage → 1');
-eq(S({ trueTileOutline: '1' }).thick, 1, "'1' → 1");
-eq(S({ trueTileOutline: '8' }).thick, 8, "'8' → 8 (max)");
-eq(S({ trueTileOutline: '0' }).thick, 1, "'0' → 1 (a zero-width border would be invisible)");
-eq(S({ trueTileOutline: '-4' }).thick, 1, 'negative → 1');
-eq(S({ trueTileOutline: '99' }).thick, 8, 'over max → 8');
-eq(S({ trueTileOutline: 'abc' }).thick, 1, 'non-numeric → 1');
-eq(S({ trueTileOutline: '3.9' }).thick, 3, 'parseInt truncates 3.9 → 3');
+    console.log(`\n${name}: border px — clamped to 1..8, NaN/garbage → 1`);
+    eq(read({ [`${key}Outline`]: '1' }).thick, 1, "'1' → 1");
+    eq(read({ [`${key}Outline`]: '8' }).thick, 8, "'8' → 8 (max)");
+    eq(read({ [`${key}Outline`]: '0' }).thick, 1, "'0' → 1 (a zero-width border would be invisible)");
+    eq(read({ [`${key}Outline`]: '-4' }).thick, 1, 'negative → 1');
+    eq(read({ [`${key}Outline`]: '99' }).thick, 8, 'over max → 8');
+    eq(read({ [`${key}Outline`]: 'abc' }).thick, 1, 'non-numeric → 1');
+    eq(read({ [`${key}Outline`]: '3.9' }).thick, 3, 'parseInt truncates 3.9 → 3');
+    eq(read({ [`${key}Outline`]: '' }).thick, 1, 'empty string → 1');
 
-console.log('\nfill %: clamped to 0..100, NaN/negative → 0');
-eq(S({ trueTileFill: '0' }).fillA, 0, "'0' → 0 (outline only)");
-eq(S({ trueTileFill: '55' }).fillA, 55, "'55' → 55");
-eq(S({ trueTileFill: '100' }).fillA, 100, "'100' → 100");
-eq(S({ trueTileFill: '150' }).fillA, 100, 'over 100 → 100');
-eq(S({ trueTileFill: '-5' }).fillA, 0, 'negative → 0');
-eq(S({ trueTileFill: 'x' }).fillA, 0, 'non-numeric → 0');
+    console.log(`\n${name}: fill % — clamped to 0..100, NaN/negative → 0`);
+    eq(read({ [`${key}Fill`]: '0' }).fillA, 0, "'0' → 0 (outline only)");
+    eq(read({ [`${key}Fill`]: '55' }).fillA, 55, "'55' → 55");
+    eq(read({ [`${key}Fill`]: '100' }).fillA, 100, "'100' → 100");
+    eq(read({ [`${key}Fill`]: '150' }).fillA, 100, 'over 100 → 100');
+    eq(read({ [`${key}Fill`]: '-5' }).fillA, 0, 'negative → 0');
+    eq(read({ [`${key}Fill`]: 'x' }).fillA, 0, 'non-numeric → 0');
+    eq(read({ [`${key}Fill`]: '' }).fillA, 0, 'empty string → 0');
+}
 
-console.log('\nonlyDesync (RuneLite\'s "hidden" behaviour)');
-eq(S({ trueTileOnlyDesync: 'true' }).onlyDesync, true, "'true' → hide while the model tile matches the server tile");
-eq(S({ trueTileOnlyDesync: 'false' }).onlyDesync, false, "'false' → always visible");
-eq(S({}).onlyDesync, false, 'unset → always visible (the default the mod shipped with)');
-eq(S({ trueTileOnlyDesync: '1' }).onlyDesync, false, 'anything else → off (only the literal true hides)');
+console.log('\nthe three markers and their documented defaults');
+eq(T.TRUE_TILE_DEFAULT_COLOR, '#00ff00', 'true tile: documented default colour is the panel default');
+eq([T.TRUE_TILE_DEFAULT_OUTLINE, T.TRUE_TILE_DEFAULT_FILL], [1, 0], 'true tile: documented default px/% match the panel rows');
+eq(T.HOVER_TILE_DEFAULT_COLOR, '#ffffff', 'hovered tile: documented default colour is the panel default');
+eq([T.HOVER_TILE_DEFAULT_OUTLINE, T.HOVER_TILE_DEFAULT_FILL], [2, 20], 'hovered tile: documented default px/% match the panel rows');
+eq(T.DEST_TILE_DEFAULT_COLOR, '#808080', 'destination tile: documented default colour is the panel default');
+eq([T.DEST_TILE_DEFAULT_OUTLINE, T.DEST_TILE_DEFAULT_FILL], [2, 20], 'destination tile: documented default px/% match the panel rows');
+
+settingsSuite('true tile', STrue, 'trueTile', '#00ff00', 0x00ff00, 1, 0, ['enabled', 'fillA', 'onlyDesync', 'rgb', 'thick']);
+settingsSuite('hovered tile', SHover, 'hoverTile', '#ffffff', 0xffffff, 2, 20, ['enabled', 'fillA', 'rgb', 'thick']);
+settingsSuite('destination tile', SDest, 'destTile', '#808080', 0x808080, 2, 20, ['enabled', 'fillA', 'rgb', 'thick']);
+
+console.log('\nthe three markers are independent switches');
+eq([STrue({}).enabled, SHover({}).enabled, SDest({}).enabled], [true, true, true], 'all three default on');
+eq(STrue({ trueTile: 'false' }).enabled, false, "trueTile 'false' → the true tile is off");
+eq(SHover({ trueTile: 'false' }).enabled, true, "…and the hovered tile is unaffected by it (its own key)");
+eq(SDest({ trueTile: 'false' }).enabled, true, '…and so is the destination tile');
+
+console.log('\nkey isolation: no marker reads another marker\'s keys (rule 5)');
+eq(look(STrue({ hoverTileColor: '#ff0000', destTileColor: '#ff0000' })), [0x00ff00, 1, 0], 'the true tile ignores the hovered/destination colours');
+eq(look(SHover({ trueTileColor: '#ff0000', destTileColor: '#ff0000' })), [0xffffff, 2, 20], 'the hovered tile ignores the true/destination colours');
+eq(look(SDest({ trueTileColor: '#ff0000', hoverTileColor: '#ff0000' })), [0x808080, 2, 20], 'the destination tile ignores the true/hovered colours');
+eq(look(SHover({ hoverTileOutline: '5', hoverTileFill: '40' })), [0xffffff, 5, 40], 'the hovered tile does read its own px/%');
+eq(look(SDest({ destTileOutline: '5', destTileFill: '40' })), [0x808080, 5, 40], 'the destination tile does read its own px/%');
+
+console.log('\ntrue tile only: onlyDesync (RuneLite\'s "hidden" behaviour)');
+eq(STrue({ trueTileOnlyDesync: 'true' }).onlyDesync, true, "'true' → hide while the model tile matches the server tile");
+eq(STrue({ trueTileOnlyDesync: 'false' }).onlyDesync, false, "'false' → always visible");
+eq(STrue({}).onlyDesync, false, 'unset → always visible (the default the mod shipped with)');
+eq(STrue({ trueTileOnlyDesync: '1' }).onlyDesync, false, 'anything else → off (only the literal true hides)');
+eq(Object.keys(STrue({})).sort(), ['enabled', 'fillA', 'onlyDesync', 'rgb', 'thick'], 'the true tile settings object has exactly the documented fields');
 
 // ---- decal geometry ---------------------------------------------------------
 const W = 96, HG = 96;
@@ -103,7 +150,7 @@ type Tri = { xA: number; xB: number; xC: number; yA: number; yB: number; yC: num
 function emit(q: Quad, rgb: number, thick: number, fillA: number): Tri[] {
     const out: Tri[] = [];
     let n = 0;
-    T.trueTileDecal((xA: number, xB: number, xC: number, yA: number, yB: number, yC: number, colour: number, trans: number) => {
+    T.tileDecal((xA: number, xB: number, xC: number, yA: number, yB: number, yC: number, colour: number, trans: number) => {
         out.push({ xA, xB, xC, yA, yB, yC, colour, trans, fill: fillA > 0 && n < 2 });
         n++;
     }, q.px, q.py, rgb, thick, fillA);
@@ -353,14 +400,22 @@ console.log('\ndecal: degenerate input draws nothing and never throws');
     ok(!threw && n === 10, 'the smallest legal settings (1px, 1%) are fine', { n });
 }
 
-console.log('\ndecal: settings → decal integration');
+console.log('\ndecal: settings → decal integration, one marker at a time');
 {
-    const s = S({ trueTileColor: '#ff8800', trueTileOutline: '4', trueTileFill: '60' });
-    const tris = emit(sq(20, 20, 60, 60), s.rgb, s.thick, s.fillA);
-    eq(tris.every((t: Tri) => t.colour === 0xff8800), true, 'the parsed colour reaches every triangle');
-    eq(tris.slice(0, 2).map((t: Tri) => t.trans), [102, 102], 'the parsed 60% fill becomes trans 102');
-    parity(sq(20, 20, 60, 60), s.rgb, s.thick, s.fillA, 'parsed settings');
-    const junk = S({ trueTileColor: 'nope', trueTileOutline: 'oops', trueTileFill: '-1' });
+    // each marker's OWN parsed settings drive the same geometry: the shared validator
+    // must not let one marker's keys reach another's decal
+    const markers: [string, any, Quad][] = [
+        ['true tile', STrue({ trueTileColor: '#ff8800', trueTileOutline: '4', trueTileFill: '60' }), sq(20, 20, 60, 60)],
+        ['hovered tile', SHover({ hoverTileColor: '#00ffff', hoverTileOutline: '3', hoverTileFill: '35' }), sq(4, 4, 44, 44)],
+        ['destination tile', SDest({ destTileColor: '#123456', destTileOutline: '2', destTileFill: '20' }), sq(50, 50, 90, 90)],
+    ];
+    for (const [name, s, q] of markers) {
+        const tris = emit(q, s.rgb, s.thick, s.fillA);
+        ok(tris.length > 0 && tris.every((t: Tri) => t.colour === s.rgb), name + ': the parsed colour reaches every triangle', { rgb: s.rgb });
+        eq(tris.slice(0, 2).map((t: Tri) => t.trans), [256 - Math.round((s.fillA * 256) / 100), 256 - Math.round((s.fillA * 256) / 100)], name + ': the parsed fill becomes the right trans');
+        parity(q, s.rgb, s.thick, s.fillA, name + ' (parsed settings)');
+    }
+    const junk = STrue({ trueTileColor: 'nope', trueTileOutline: 'oops', trueTileFill: '-1' });
     eq([junk.rgb, junk.thick, junk.fillA], [0x00ff00, 1, 0], 'a garbage store clamps to green / 1px / no fill');
     parity(sq(20, 20, 60, 60), junk.rgb, junk.thick, junk.fillA, 'clamped garbage');
 }

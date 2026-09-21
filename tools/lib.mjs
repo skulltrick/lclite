@@ -51,11 +51,7 @@ export const MOD_META = {
     },
     'true-tile': {
         label: 'True tile',
-        desc: "Highlights player's true server tile. Customizable.",
-    },
-    'hover-tile': {
-        label: 'Hover tile',
-        desc: 'Highlights the tile your mouse is over. Customizable.',
+        desc: "Marks the tile the server has you on, the tile your mouse is over, and the tile you're walking to. Customizable.",
     },
     'no-censor': {
         label: 'Disable profanity filter',

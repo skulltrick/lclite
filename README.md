@@ -74,13 +74,13 @@ inside one as `lclite/` and the tools find it without `LCLITE_ROOT`.
 
 ## The mods
 
-Sixteen mods, one folder each. Names and order are the ones you'll read in the
+Fifteen mods, one folder each. Names and order are the ones you'll read in the
 panel.
 
 They are not tied to one revision. Pick **274** in the launcher instead of **289** and
 every mod comes with it — each of the primary corpus's anchors still matches 274's
 source byte-for-byte, and `node tools/matrix.mjs` re-verifies that claim against real
-clones. **254** has a corpus of its own and 6 of the 16 mods; the other ten hook code
+clones. **254** has a corpus of its own and 6 of the 15 mods; the other nine hook code
 254 does not have yet. The launcher tells you exactly which mods a revision gets; how
 that works, and how a revision is added, is [docs/REVS.md](docs/REVS.md).
 
@@ -91,8 +91,7 @@ that works, and how a revision is added, is [docs/REVS.md](docs/REVS.md).
 | 📈 | **XP drops** | Floating `+N` rows with skill icons plus a tan level-progress tracker, auto-hiding |
 | 🔮 | **Stat orbs** | HP / Prayer / Energy orbs down the minimap's lower-left, numbers always visible; click the run orb to run, the prayer orb for the prayer book, the special attack orb to arm your special attack |
 | 🃏 | **TCG** *(beta)* | Credits from xp, level-ups and kills → 5-card packs (7 tiers, foils, rare apex packs) → a 6,376-card album, cut to the cards your revision could have (1,388 of them at 289) |
-| 🟩 | **True tile** | Outline on the tile the *server* has you on, with color/border/fill controls |
-| 🎯 | **Hover tile** | Outline on the tile your mouse is over — sheared on slopes, hidden once the cursor leaves the scene |
+| 🟩 | **True tile** | Three tile markers in one mod, each with its own color/border/fill: the tile the *server* has you on, the tile your mouse is over, and the tile you're walking to |
 | 🤬 | **Disable profanity filter** | Chat is not censored: your own messages, other players' and private messages alike |
 | 🚀 | **GPU** *(beta)* | WebGPU render of the 3D world at software-exact parity; falls back on any driver error, reason shown in the panel |
 | 🏠 | **Hide roofs** | Roofs everywhere, not only while you stand under them |

@@ -249,7 +249,7 @@ reset never races it.
   canvas surfaces FLUSH, so dragging the orb hard into the corner parks it flush rather
   than at the default 3px inset.
 - **289 and 274 only.** `274` inherits the 289 corpus; `254` has its own corpus and this
-  mod is not ported to it (same as camera, control-panel, hotkeys, stat-orbs, hover-tile
+  mod is not ported to it (same as camera, control-panel, hotkeys, stat-orbs
   and xp-drops). `node tools/port.mjs 254` is the one command that changes that.
 
 ## Verified

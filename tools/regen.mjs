@@ -68,9 +68,12 @@ const MODS = {
         'webclient/src/client/Client.ts'
     ],
     'true-tile': [
-        // the decal is drawn by World.fill(), on the true tile's own turn in the
-        // back-to-front ground pass, so this mod touches World.ts as well as Client.ts
-        // (Client only arms the tile; the draw and its settings live World-side).
+        // THREE markers in one mod: the true tile and the destination tile are drawn by
+        // World.fill(), on their tile's own turn in the back-to-front ground pass, and
+        // the hovered tile is resolved by World's own ground pick (the rasterizer's
+        // renderQuickGround/renderGround bodies) and drawn by the client after
+        // renderAll — so this mod owns hunks in BOTH files. Client arms all three and
+        // draws the hovered one; the decals and their settings live World-side.
         'webclient/src/client/Client.ts',
         'webclient/src/dash3d/World.ts'
     ],
@@ -79,13 +82,6 @@ const MODS = {
         // Client.ts arms the tile once per frame, World.fill() draws the effect on that
         // tile's own turn (World.trueTilePlusDraw). The effect geometry + settings ship
         // as the files/ payload dash3d/TrueTilePlus.ts, pulled in by the import hunk.
-        'webclient/src/client/Client.ts',
-        'webclient/src/dash3d/World.ts'
-    ],
-    'hover-tile': [
-        // the hover pick is resolved by the engine's own ground rasterizer, so this
-        // mod is the second one to touch World.ts (camera is the other) — the pick
-        // sites are in the pristine renderQuickGround/renderGround bodies.
         'webclient/src/client/Client.ts',
         'webclient/src/dash3d/World.ts'
     ],

@@ -96,9 +96,8 @@
           } },
         { id: 'xp-drops', name: 'XP drops', desc: 'Customizable XP drops.', master: { key: 'xpDrops', def: 'true' } },
         { id: 'stat-orbs', name: 'Stat orbs', desc: 'HP/Prayer/Run data orbs on the minimap panel, plus a special attack orb. Click the run orb to toggle run, the prayer orb for the prayer book, the special orb to arm your special attack. Alt+drag to move them.', master: { key: 'statOrbs', def: 'false' } },
-        { id: 'true-tile', name: 'True tile', desc: "Highlights player's true server tile. Customizable.", master: { key: 'trueTile', def: 'true' } },
+        { id: 'true-tile', name: 'True tile', desc: "Marks the tile the server has you on, the tile your mouse is over, and the tile you're walking to. Customizable.", master: { key: 'trueTile', def: 'true' } },
         { id: 'true-tile-plus', name: 'True tile+', desc: 'Ground effects on your true tile: flat flames licking off its border, or a ripple wave sweeping out of it.', master: { key: 'trueTilePlus', def: 'true' } },
-        { id: 'hover-tile', name: 'Hover tile', desc: 'Highlights the tile your mouse is over. Customizable.', master: { key: 'hoverTile', def: 'true' } },
         { id: 'tcg', name: 'TCG', desc: 'Left click opens pack, right click opens album. 1k exp = 100 credits, level ups = 1k-25k credits, kills = 1 credit per cb lvl.', master: { key: 'tcg', def: 'true' },
           status() {
               if (LS.get('tcg', 'true') !== 'true') return '';
@@ -151,13 +150,27 @@
         // itself. Default is Pixelated — the page stylesheet's own look for #canvas,
         // and what this setting is FOR: crisp upscaling at any canvas size.
         { id: 'gpu-pixel-scaling', mod: 'gpu', name: 'Pixel scaling', desc: 'Pixelated keeps the upscaled canvas crisp (recommended); Auto smooths it. Applied by the GPU mod — with the GPU off, scaling is Auto.', kind: 'select', key: 'gpuPixelScaling', def: 'pixelated', options: [['pixelated', 'Pixelated (recommended)'], ['auto', 'Auto']], apply(v) { LS.set('gpuPixelScaling', v); } },
-        // true-tile settings: the engine re-reads every key each frame, so all of
-        // these apply live. Only the master needs no row — its row's switch IS
-        // trueTile itself; these are the look of the tile.
+        // true-tile: the mod's THREE markers, one section each — RuneLite's own Tile
+        // Indicators shape ("Current tile" / "Hovered tile" / "Destination tile"). The
+        // mod's row switch above (`trueTile`) gates the whole mod; each marker's first row
+        // is its OWN switch, and those keys are the ones the standalone mods used, so
+        // nobody's settings reset when the hovered tile moved in here. Every row is
+        // re-read by the engine each frame at its own hook, so all of them apply live.
+        { id: 'true-tile-sec-true', mod: 'true-tile', name: 'True tile', desc: 'The tile the SERVER has you on — it pulls ahead of your character by up to a tick while you run, which is the whole point.', kind: 'section' },
         { id: 'true-tile-color', mod: 'true-tile', name: 'Outline color', desc: 'Color of the true-tile border.', kind: 'color', key: 'trueTileColor', def: '#00ff00' },
         { id: 'true-tile-outline', mod: 'true-tile', name: 'Border thickness', desc: 'Width of the true-tile outline, in pixels.', key: 'trueTileOutline', kind: 'slider', min: 1, max: 8, step: 1, def: '1', unit: 'px' },
         { id: 'true-tile-fill', mod: 'true-tile', name: 'Fill opacity', desc: 'Translucent color wash inside the tile (OSRS fill style). 0 = outline only.', key: 'trueTileFill', kind: 'slider', min: 0, max: 100, step: 5, def: '0', unit: '%' },
         { id: 'true-tile-desync', mod: 'true-tile', name: 'Only when out of sync', desc: 'Hide the tile while your model stands on the server tile — pops up only when the tick is visibly delayed.', key: 'trueTileOnlyDesync', kind: 'toggle', def: 'false' },
+        { id: 'true-tile-sec-hover', mod: 'true-tile', name: 'Hovered tile', desc: 'The tile your mouse is over, resolved by the engine’s own ground pick — the same test a walk click uses.', kind: 'section' },
+        { id: 'true-tile-hover', mod: 'true-tile', name: 'Highlight hovered tile', desc: 'Draw the square on the tile the cursor is pointing at. Off: no outline follows the mouse.', key: 'hoverTile', kind: 'toggle', def: 'true' },
+        { id: 'true-tile-hover-color', mod: 'true-tile', name: 'Outline color', desc: 'Color of the hovered-tile border.', kind: 'color', key: 'hoverTileColor', def: '#ffffff' },
+        { id: 'true-tile-hover-outline', mod: 'true-tile', name: 'Border thickness', desc: 'Width of the hovered-tile outline, in pixels.', key: 'hoverTileOutline', kind: 'slider', min: 1, max: 8, step: 1, def: '2', unit: 'px' },
+        { id: 'true-tile-hover-fill', mod: 'true-tile', name: 'Fill opacity', desc: 'Translucent color wash inside the hovered tile (OSRS fill style). 0 = outline only.', key: 'hoverTileFill', kind: 'slider', min: 0, max: 100, step: 5, def: '20', unit: '%' },
+        { id: 'true-tile-sec-dest', mod: 'true-tile', name: 'Destination tile', desc: 'The tile you clicked to walk to. It stays lit until the true tile reaches it.', kind: 'section' },
+        { id: 'true-tile-dest', mod: 'true-tile', name: 'Highlight destination tile', desc: 'Draw the square on the tile you are walking to, until your true tile gets there.', key: 'destTile', kind: 'toggle', def: 'true' },
+        { id: 'true-tile-dest-color', mod: 'true-tile', name: 'Outline color', desc: 'Color of the destination-tile border.', kind: 'color', key: 'destTileColor', def: '#808080' },
+        { id: 'true-tile-dest-outline', mod: 'true-tile', name: 'Border thickness', desc: 'Width of the destination-tile outline, in pixels.', key: 'destTileOutline', kind: 'slider', min: 1, max: 8, step: 1, def: '2', unit: 'px' },
+        { id: 'true-tile-dest-fill', mod: 'true-tile', name: 'Fill opacity', desc: 'Translucent color wash inside the destination tile (OSRS fill style). 0 = outline only.', key: 'destTileFill', kind: 'slider', min: 0, max: 100, step: 5, def: '20', unit: '%' },
         // true-tile-plus: ground effects on the same true tile, with its OWN keys (rule 5 —
         // it never reads true-tile's). Every row here is re-read by the engine every frame at
         // its own hook, so a change lands on the next frame; the rows are shared by BOTH
@@ -169,11 +182,6 @@
         // the speed slider's step is a fraction, so it writes its raw value (the default
         // slider write rounds to an integer, which would pin every setting to 0 or 1)
         { id: 'true-tile-plus-speed', mod: 'true-tile-plus', name: 'Effect speed', desc: 'How fast the effect animates — the flames dance, the ripples sweep. 0 freezes it.', key: 'trueTilePlusSpeed', kind: 'slider', min: 0, max: 3, step: 0.25, def: '1', unit: '×', apply(v) { LS.set('trueTilePlusSpeed', String(v)); } },
-        // hover-tile: the same contract as true-tile's rows — the engine re-reads its
-        // own keys every frame at its own hook, so all three apply live.
-        { id: 'hover-tile-color', mod: 'hover-tile', name: 'Outline color', desc: 'Color of the hover-tile border.', kind: 'color', key: 'hoverTileColor', def: '#ffffff' },
-        { id: 'hover-tile-outline', mod: 'hover-tile', name: 'Border thickness', desc: 'Width of the hover-tile outline, in pixels.', key: 'hoverTileOutline', kind: 'slider', min: 1, max: 8, step: 1, def: '2', unit: 'px' },
-        { id: 'hover-tile-fill', mod: 'hover-tile', name: 'Fill opacity', desc: 'Translucent color wash inside the hovered tile (OSRS fill style). 0 = outline only.', key: 'hoverTileFill', kind: 'slider', min: 0, max: 100, step: 5, def: '20', unit: '%' },
         // stat-orbs: the orbs are canvas-drawn into the minimap widget buffer, so the
         // engine re-reads every one of these per frame at its own hook (rule 5) — all of
         // them apply live, size included. The placement keys (lcmStatOrbs*) belong to the
@@ -735,6 +743,26 @@
         return row;
     }
 
+    // A section header INSIDE one mod's settings — true-tile's three markers, the one
+    // mod whose rows are three features rather than one feature's look. It is not a row:
+    // no control, no key, nothing written. It carries data-name like a row does, so the
+    // search dims (and so hides) it with the settings underneath it, and its desc rides
+    // the shared tooltip.
+    function sectionRow(f) {
+        const el = document.createElement('div');
+        el.className = 'lcm-sechead';
+        el.dataset.name = f.name.toLowerCase() + ' ' + (f.desc || '').toLowerCase();
+        const label = document.createElement('span');
+        label.className = 'lcm-name';
+        label.dataset.tip = f.desc || '';
+        label.textContent = f.name;
+        const line = document.createElement('i');
+        line.className = 'lcm-scline';
+        el.appendChild(label);
+        el.appendChild(line);
+        return el;
+    }
+
     // One mod's settings. No header and no collapse: the panel shows a single mod at a
     // time, so there is nothing to collapse it against — the mod's own row directly
     // above it carries the name, the favorite star and the master switch. (Camera's
@@ -755,7 +783,7 @@
             gbody.appendChild(off);
         } else {
             for (const f of list) {
-                gbody.appendChild(f.kind === 'toggle' ? toggleRow(f) : f.kind === 'slider' ? sliderRow(f) : f.kind === 'select' ? selectRow(f) : f.kind === 'color' ? colorRow(f) : f.kind === 'text' ? textRow(f) : actionRow(f));
+                gbody.appendChild(f.kind === 'section' ? sectionRow(f) : f.kind === 'toggle' ? toggleRow(f) : f.kind === 'slider' ? sliderRow(f) : f.kind === 'select' ? selectRow(f) : f.kind === 'color' ? colorRow(f) : f.kind === 'text' ? textRow(f) : actionRow(f));
             }
         }
         grp.appendChild(gbody);

@@ -152,11 +152,13 @@ so the rest of that mod's hunks keep following the primary.
 
 | revision | how it gets its hunks | mods | notes |
 |---|---|---|---|
-| **289** | primary — the corpus in `mods/*/patches/289/` | 16 | the reference: everything is authored here |
-| **274** | inherits 289 | 16 | every anchor matches 274 byte-for-byte, so it costs zero extra maintenance |
-| **254** | own corpus in `mods/*/patches/254/` | 6 | upstream rewrote code inside 41 of the 104 anchors the corpus had at the last port; 5 mods need revision-specific work |
+| **289** | primary — the corpus in `mods/*/patches/289/` | 15 | the reference: everything is authored here |
+| **274** | inherits 289 | 15 | every anchor matches 274 byte-for-byte, so it costs zero extra maintenance |
+| **254** | own corpus in `mods/*/patches/254/` | 6 | upstream rewrote code inside 41 of the 104 anchors the corpus had at the last port; the other 9 mods need revision-specific work |
 
-`254`'s five unavailable mods, and why — the honest list:
+`254`'s unavailable mods, and why — the honest list (the five below, plus `no-censor`,
+`wiki-lookup`, `ground-items` and `true-tile-plus`, each of which says so in its own
+README):
 
 | mod | why it is not on 254 yet |
 |---|---|
