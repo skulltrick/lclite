@@ -22,6 +22,7 @@
 | webclient/src/client/Client.ts | 23 | stat-orbs | `// lclite:stat-orbs` |
 | webclient/src/client/Client.ts | 26 | world-map | `// lclite:world-map client-import` |
 | webclient/src/client/Client.ts | 28 | ground-items | `` |
+| webclient/src/client/Client.ts | 40 | tile-markers | `// lclite:tile-markers` |
 | webclient/src/client/Client.ts | 71 | true-tile | `// lclite:true-tile` |
 | webclient/src/client/Client.ts | 87 | xp-drops | `/* ─── custom (lclite "xp-drops" mod) tunables ──────────────────────────────── ` |
 | webclient/src/client/Client.ts | 121 | xp-drops | `/// custom (lclite "xp-drops"): skill id -> staticons sprite index. Pack order i` |
@@ -58,6 +59,7 @@
 | webclient/src/client/Client.ts | 4210 | true-tile-plus | `// lclite:true-tile-plus` |
 | webclient/src/client/Client.ts | 4237 | true-tile | `// lclite:true-tile` |
 | webclient/src/client/Client.ts | 4242 | true-tile | `// lclite:true-tile` |
+| webclient/src/client/Client.ts | 4246 | tile-markers | `// lclite:tile-markers` |
 | webclient/src/client/Client.ts | 4248 | true-tile | `// lclite:true-tile` |
 | webclient/src/client/Client.ts | 4259 | camera | `// lclite:camera` |
 | webclient/src/client/Client.ts | 4267 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC6 counter and its packet ` |
@@ -67,6 +69,7 @@
 | webclient/src/client/Client.ts | 4575 | xp-drops | `// custom (lclite "xp-drops"): tracker panel + drop rows into the game buffer. l` |
 | webclient/src/client/Client.ts | 4801 | ground-items | `// lclite:ground-items` |
 | webclient/src/client/Client.ts | 4867 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC5 counter and its packet ` |
+| webclient/src/client/Client.ts | 5035 | tile-markers | `// lclite:tile-markers` |
 | webclient/src/client/Client.ts | 5091 | true-tile | `// lclite:true-tile` |
 | webclient/src/client/Client.ts | 5162 | ground-items | `// lclite:ground-items` |
 | webclient/src/client/Client.ts | 5402 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC3 counter and its packet ` |
@@ -79,6 +82,7 @@
 | webclient/src/client/Client.ts | 8282 | shift-drop | `// lclite:shift-drop` |
 | webclient/src/client/Client.ts | 8290 | ground-items | `// lclite:ground-items` |
 | webclient/src/client/Client.ts | 8364 | shift-drop | `// lclite:shift-drop` |
+| webclient/src/client/Client.ts | 8397 | tile-markers | `// lclite:tile-markers` |
 | webclient/src/client/Client.ts | 8585 | wiki-lookup | `// lclite:wiki-lookup` |
 | webclient/src/client/Client.ts | 8606 | camera | `// custom (lclite camera mod): no ANTICHEAT_OPLOGIC7 telemetry — the OP_OBJ1 pac` |
 | webclient/src/client/Client.ts | 8626 | camera | `// custom (lclite camera mod): no ANTICHEAT_OPLOGIC8 telemetry — the OP_OBJ4 pac` |

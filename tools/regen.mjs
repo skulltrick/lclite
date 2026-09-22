@@ -104,6 +104,16 @@ const MODS = {
         // GroundItems.ts, so nothing in World.ts or PixFont.ts is touched.
         'webclient/src/client/Client.ts'
     ],
+    'tile-markers': [
+        // One file only, and deliberately: the Shift+right-click is consumed in
+        // mouseLoop(), the pick it arms is resolved and the marks are drawn in
+        // gameDrawMain() after renderAll (over the scene, like RuneLite's
+        // ABOVE_SCENE overlay), and the store/settings/decal geometry ship as the
+        // files/ payload webclient/src/dash3d/TileMarkers.ts. The tile comes from
+        // World's OWN ground pick via updateMousePicking(), so no World.ts hunk —
+        // which also keeps this mod out of the three pick sites true-tile owns.
+        'webclient/src/client/Client.ts'
+    ],
     'tcg': [
         'webclient/src/client/Client.ts',
         'webclient/bundle.ts',
@@ -168,6 +178,7 @@ const HUNK_OWNER = {
         ['xp-drops', /xpDrops|XP_DROP|XP_PANEL|XP_HIDE|XP_BURST|XP_MAX|drawXp|xpSkillLabel|xpLastSkill|xpLastGain|xpStatic|xpRates|areaXp|STAT_ICON_BY_SKILL|gained amount|skill icons|fresh xp-drop|Experience  /i],
         ['stat-orbs', /orbsEnabled|orbsWereOn|drawStatOrbs|drawOrb\b|stat orbs|Stat orbs|statOrbs|backing ring|glass highlight|procedural orb/i],
         ['true-tile', /drawTrueTile|trueTileLine|trueTile\b|true tile|true-tile/i],
+        ['tile-markers', /tileMarkers|TileMarkers|tile marker/i],
         ['camera', /cameraZoom|wheelZoom|middleRotate|wheelScrollChat|rotateLastScreen|middleMouseDown|scrollChatbox|onwheel|camFollow|orbitCamera|setVisZoom|viewRadius|visTile|clearPick|World\.click|lostcityClient|applyCameraSettings|EVENT_MOUSE_MOVE|EVENT_CAMERA_POSITION|mouseTracking\.length/],
         ['hotkeys', /hotkeys|Hotkeys|hotkeyKey|Press Enter to Chat/],
         ['wiki-lookup', /wikiLookup|WikiLookup|wiki lookup|Wiki <target>/i],

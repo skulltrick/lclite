@@ -127,6 +127,22 @@
               if (typeof window.worldMapToggle !== 'function') return 'page script missing';
               return document.getElementById('lcwm-root') ? 'open' : '';
           } },
+        { id: 'tile-markers', name: 'Tile markers', desc: 'Shift+right-click a tile to mark or unmark it, RuneLite-style: the marks persist, are drawn only on the plane you made them on, and stop drawing beyond 32 tiles.', master: { key: 'tileMarkers', def: 'true' },
+          status() {
+              if (LS.get('tileMarkers', 'true') !== 'true') return '';
+              // the count comes off the same key the engine reads — a hand-edited or
+              // half-written store must not take the whole Mods list down with it
+              const raw = LS.get('tileMarkersMarks', '');
+              if (!raw || raw === '[]') return 'no tiles marked';
+              try {
+                  const a = JSON.parse(raw);
+                  if (!Array.isArray(a)) return 'store unreadable';
+                  const n = Math.floor(a.length / 3);
+                  return n === 1 ? '1 tile marked' : n + ' tiles marked';
+              } catch (e) {
+                  return 'store unreadable';
+              }
+          } },
         { id: 'control-panel', name: 'LCLite', desc: 'This panel and the page around it: canvas size, fullscreen, screenshots.', master: null }
     ];
 
@@ -354,7 +370,22 @@
         { id: 'ground-items-show-value', mod: 'ground-items', name: 'Show high alch value', desc: 'Append the high alch value to each label, e.g. "Rune platebody (39K gp)".', key: 'groundItemsShowValue', kind: 'toggle', def: 'false' },
         { id: 'ground-items-color', mod: 'ground-items', name: 'Label color', desc: 'Colour of a normal label.', kind: 'color', key: 'groundItemsColor', def: '#ffffff' },
         { id: 'ground-items-listed-color', mod: 'ground-items', name: 'Shown-item color', desc: 'Colour of an item on your Shown items list.', kind: 'color', key: 'groundItemsHighlightColor', def: '#ff9040' },
-        { id: 'ground-items-hidden-color', mod: 'ground-items', name: 'Hidden-item color', desc: 'Colour of a hidden item while Alt is held (it is the only time a hidden item is labelled).', kind: 'color', key: 'groundItemsHiddenColor', def: '#808080' }
+        { id: 'ground-items-hidden-color', mod: 'ground-items', name: 'Hidden-item color', desc: 'Colour of a hidden item while Alt is held (it is the only time a hidden item is labelled).', kind: 'color', key: 'groundItemsHiddenColor', def: '#808080' },
+
+        // tile-markers (mods/tile-markers) — RuneLite's Ground Markers, 2004 flavour. The
+        // MARKS themselves are not a setting: they are made in game (Shift+right-click) and
+        // live in their own key, which is why the only row about them is the Clear action.
+        // Every value here is re-read by the engine every frame at its own hook.
+        { id: 'tile-markers-color', mod: 'tile-markers', name: 'Border color', desc: 'Color of a marked tile’s border. RuneLite’s own default is yellow.', kind: 'color', key: 'tileMarkersColor', def: '#ffff00' },
+        { id: 'tile-markers-fill-color', mod: 'tile-markers', name: 'Fill color', desc: 'Color of the translucent wash inside a marked tile. RuneLite’s own fill is always black.', kind: 'color', key: 'tileMarkersFillColor', def: '#000000' },
+        { id: 'tile-markers-outline', mod: 'tile-markers', name: 'Border width', desc: 'Width of a marked tile’s border, in pixels.', key: 'tileMarkersOutline', kind: 'slider', min: 1, max: 8, step: 1, def: '2', unit: 'px' },
+        { id: 'tile-markers-fill', mod: 'tile-markers', name: 'Fill opacity', desc: 'Translucent wash inside a marked tile. 0 = border only (RuneLite’s default is about 20%).', key: 'tileMarkersFill', kind: 'slider', min: 0, max: 100, step: 5, def: '20', unit: '%' },
+        { id: 'tile-markers-clear', mod: 'tile-markers', name: 'Clear all markers', desc: 'Unmark every tile. There is no undo — marks are made in game, one Shift+right-click at a time.', kind: 'action', btn: 'Clear', run() {
+            // the engine's own key, deleted rather than blanked: the mod re-reads it every
+            // frame, so the wipe lands on the next frame with no reload
+            localStorage.removeItem('tileMarkersMarks');
+            toast('All tile markers cleared');
+        } }
     );
 
     // ---- effective mod list (registry ∪ manifest ∪ rows) ------------------

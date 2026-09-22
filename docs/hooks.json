@@ -112,6 +112,12 @@
     "marker": true
    },
    {
+    "mod": "tile-markers",
+    "note": "src/client/Client.ts @ old line 40",
+    "line": 40,
+    "marker": true
+   },
+   {
     "mod": "true-tile",
     "note": "src/client/Client.ts @ old line 71",
     "line": 71,
@@ -328,6 +334,12 @@
     "marker": true
    },
    {
+    "mod": "tile-markers",
+    "note": "src/client/Client.ts @ old line 4246",
+    "line": 4246,
+    "marker": true
+   },
+   {
     "mod": "true-tile",
     "note": "src/client/Client.ts @ old line 4248",
     "line": 4248,
@@ -379,6 +391,12 @@
     "mod": "camera",
     "note": "src/client/Client.ts @ old line 4868",
     "line": 4867,
+    "marker": true
+   },
+   {
+    "mod": "tile-markers",
+    "note": "src/client/Client.ts @ old line 5035",
+    "line": 5035,
     "marker": true
    },
    {
@@ -451,6 +469,12 @@
     "mod": "shift-drop",
     "note": "src/client/Client.ts @ old line 8364",
     "line": 8364,
+    "marker": true
+   },
+   {
+    "mod": "tile-markers",
+    "note": "src/client/Client.ts @ old line 8397",
+    "line": 8397,
     "marker": true
    },
    {
