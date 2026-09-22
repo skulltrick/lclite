@@ -223,6 +223,32 @@ anchor). Point doctor at the tree you're patching when this repo isn't inside on
 (`LCLITE_ROOT=<install> node tools/doctor.mjs`); with no host tree at all it exits 3
 and says so rather than reporting every mod as off.
 
+### 3b. Two traps a new mod hits (both cost real time on `mods/world-map`)
+
+**A big parked block moves the DIFF, not just the file.** `git diff -U0` aligns the whole
+file, so inserting 100+ lines (a mod's methods + fields parked in one island) can re-split
+ANOTHER mod's islands into fragments with no added marker line. regen then files those
+fragments under whichever mod the fallback picks (the declaring mod, or a regex match),
+`doctor` exits 3 (`hunk has no marker`), and a fragment can be applied by the wrong mod.
+The symptom to watch is `git status --short mods/` naming a patch JSON you did not touch
+after a regen — check that after EVERY regen, together with `doctor` (exit 0) and
+`node tools/selfcheck.mjs`. The fix is to move YOUR block: a different method boundary
+usually diffs cleanly. Sites are not guessable — brute-force them (`mods/world-map/tools/
+wm_site_search.py` inserts the same block at every method boundary in the pristine file and
+reports the marker-less island count; `wm_collateral_check.py` runs a real regen per
+candidate and reports which patch JSONs it churns). `mods/world-map/README.md` §The
+parked-block landmine has the measured results.
+
+**`apply` writes `installed.json` from the mods it can VERIFY**, and the test is a hunk's
+`replace` text being present in the tree. So a tree that was hand-edited but not yet
+regenerated has a stale corpus, and the next `apply` silently DROPS that mod from the
+manifest — and therefore from the F1 panel's list, which the manifest is. The order is
+always **edit the tree → `regen` → `apply`**, and after an apply confirm the mod is in
+`engine/public/lclite/installed.json` before wondering why its panel row is missing. The
+same law explains two other "dead mod" reports: a tree whose manifest predates the mod,
+and the engine's cached rendered page (a `client.ejs` change needs a world restart before
+the page carries your script tag).
+
 ### 4. Prove it survives
 ```
 # fast form: against the install you are patching (every anchor found, doctor healthy)
