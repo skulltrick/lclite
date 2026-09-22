@@ -25,6 +25,11 @@ export const LIB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 // option" in the launcher. Rename a mod there and rename it here in the same
 // commit; `node tools/doctor.mjs` warns when the two drift apart.
 export const MOD_META = {
+    'world-map': {
+        label: 'World map',
+        // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this)
+        desc: 'A globe button beside the wiki orb: click it and an interactive map of the world fills the window — terrain, place labels, POI icons, monster and item spawns, dungeon and extra sheets, and a you-are-here marker.',
+    },
     'control-panel': {
         label: 'LCLite',
         // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this): the

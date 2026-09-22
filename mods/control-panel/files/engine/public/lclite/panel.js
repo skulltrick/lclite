@@ -118,6 +118,15 @@
         { id: 'hotkeys', name: 'Hotkeys', desc: 'F-key sidebar tabs, Esc closes interfaces, Space and 1-5 drive dialogues, WASD camera with press-enter-to-chat.', master: { key: 'hotkeys', def: 'true' } },
         { id: 'wiki-lookup', name: 'Wiki lookup', desc: 'A wiki button on the minimap: click it, then click any NPC, object or item to open its OSRS wiki page. Optionally also a Wiki row in every right-click menu.', master: { key: 'wikiLookup', def: 'true' } },
         { id: 'ground-items', name: 'Ground item labels', desc: 'Labels on the items lying on the ground. Hold Alt to see every item and click the - / + boxes to hide or show one.', master: { key: 'groundItems', def: 'true' } },
+        { id: 'world-map', name: 'World map', desc: 'A globe button beside the wiki orb: click it and an interactive map of the world fills the window — terrain, place labels, POI icons, monster and item spawns, dungeon and extra sheets, and a you-are-here marker.', master: { key: 'worldMap', def: 'true' },
+          status() {
+              if (LS.get('worldMap', 'true') !== 'true') return '';
+              // the page script owns the overlay; without it the orb is a dead click, so
+              // say so rather than showing a healthy row (guarded — the panel is also
+              // loaded by builds whose mod set differs)
+              if (typeof window.worldMapToggle !== 'function') return 'page script missing';
+              return document.getElementById('lcwm-root') ? 'open' : '';
+          } },
         { id: 'control-panel', name: 'LCLite', desc: 'This panel and the page around it: canvas size, fullscreen, screenshots.', master: null }
     ];
 
@@ -318,6 +327,21 @@
             if (!q) { return; }
             window.open('https://oldschool.runescape.wiki/w/Special:Search?search=' + encodeURIComponent(q) + '&utm_source=lclite', '_blank');
             toast('Wiki search opened');
+        } },
+
+        // world-map (mods/world-map) — the client's own world map app, made reachable.
+        // The rows are the orb's two switches, the way in without the orb, and the
+        // placement reset (the drag layer is the only writer of the lcm* keys, so the
+        // row asks IT to clear them — never the keys themselves).
+        { id: 'world-map-button', mod: 'world-map', name: 'Minimap world button', desc: 'The globe orb on the minimap panel, immediately left of the wiki orb. Click it and the world map opens over the game; click it again (or Esc, or the map\'s own close button) and it goes away. Alt+drag moves it.', key: 'worldMapButton', kind: 'toggle', def: 'true' },
+        { id: 'world-map-centre', mod: 'world-map', name: 'Centre on me when it opens', desc: 'Open the map centred on your character — switching to the dungeon sheet when that is where you are. Off: the map opens wherever you last left it.', key: 'worldMapCentre', kind: 'toggle', def: 'true' },
+        { id: 'world-map-open', mod: 'world-map', name: 'Open the world map', desc: 'The orb\'s click, from here: opens the map (centred on you if that setting is on) or closes it if it is already open.', kind: 'action', btn: 'Open', run() {
+            if (typeof window.worldMapToggle === 'function') window.worldMapToggle(LS.get('worldMapCentre', 'true') === 'true' ? 1 : 0);
+            else toast('World map page script not loaded');
+        } },
+        { id: 'world-map-reset', mod: 'world-map', name: 'Reset button position', desc: 'Put the world orb back beside the wiki orb, bottom-right of the minimap panel. Same as Alt+right-click on it.', kind: 'action', btn: 'Reset', run() {
+            if (window.lcmAnchor && typeof window.lcmAnchor.reset === 'function') window.lcmAnchor.reset('world-map');
+            else toast('LCLite panel not loaded');
         } },
 
         // ground-items (mods/ground-items) — RuneLite's Ground Items, 2004 flavour.

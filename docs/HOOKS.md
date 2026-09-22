@@ -20,6 +20,7 @@
 | webclient/src/client/Client.ts | 11 | hotkeys | `// lclite:hotkeys` |
 | webclient/src/client/Client.ts | 19 | wiki-lookup | `` |
 | webclient/src/client/Client.ts | 23 | stat-orbs | `// lclite:stat-orbs` |
+| webclient/src/client/Client.ts | 26 | world-map | `// lclite:world-map client-import` |
 | webclient/src/client/Client.ts | 28 | ground-items | `` |
 | webclient/src/client/Client.ts | 71 | true-tile | `// lclite:true-tile` |
 | webclient/src/client/Client.ts | 87 | xp-drops | `/* ─── custom (lclite "xp-drops" mod) tunables ──────────────────────────────── ` |
@@ -32,6 +33,7 @@
 | webclient/src/client/Client.ts | 1015 | xp-drops | `// custom: skill icons for xp-drops (staticons = skills 0-17 in the SAME lclite:` |
 | webclient/src/client/Client.ts | 1729 | tcg | `// lclite:tcg — tell the (window) core who just logged in; it loads that` |
 | webclient/src/client/Client.ts | 1820 | xp-drops | `// custom: fresh xp-drop feed per session (world hop / re-login). lclite:xp-drop` |
+| webclient/src/client/Client.ts | 2037 | world-map | `// lclite:world-map client-parked` |
 | webclient/src/client/Client.ts | 2064 | camera | `// custom (lclite camera mod): this rev reports mouse movement to the server as ` |
 | webclient/src/client/Client.ts | 2132 | camera | `// custom (lclite camera mod): EVENT_MOUSE_CLICK telemetry is never sent either ` |
 | webclient/src/client/Client.ts | 2176 | camera | `// custom (lclite camera mod): the EVENT_CAMERA_POSITION packet was sent from lc` |
@@ -39,6 +41,7 @@
 | webclient/src/client/Client.ts | 2303 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC7 counter and its packet ` |
 | webclient/src/client/Client.ts | 2316 | camera | `// custom: the ground pick stays armed (World.click) after a walk click and lcli` |
 | webclient/src/client/Client.ts | 2326 | camera | `// custom: pick expiry is handled inside World.renderAll (clearPick / clickCycle` |
+| webclient/src/client/Client.ts | 2332 | world-map | `// lclite:world-map client-click` |
 | webclient/src/client/Client.ts | 2335 | wiki-lookup | `// lclite:wiki-lookup` |
 | webclient/src/client/Client.ts | 2513 | wiki-lookup | `// lclite:wiki-lookup` |
 | webclient/src/client/Client.ts | 2568 | wiki-lookup | `// lclite:wiki-lookup` |
@@ -49,6 +52,7 @@
 | webclient/src/client/Client.ts | 3227 | camera | `// custom: smooth the wheel zoom toward its target (OSRS-style easing) lclite:ca` |
 | webclient/src/client/Client.ts | 3888 | stat-orbs | `/// custom (lclite "stat-orbs" mod): fields + tunables live in this one lclite:s` |
 | webclient/src/client/Client.ts | 4000 | wiki-lookup | `// lclite:wiki-lookup` |
+| webclient/src/client/Client.ts | 4168 | world-map | `// lclite:world-map client-draw` |
 | webclient/src/client/Client.ts | 4174 | low-detail | `// lclite:low-detail` |
 | webclient/src/client/Client.ts | 4193 | camera | `// custom: uniform zoom — the entire camera-relative geometry (orbit distance lc` |
 | webclient/src/client/Client.ts | 4210 | true-tile-plus | `// lclite:true-tile-plus` |
@@ -131,8 +135,13 @@
 | engine/view/client.ejs | 263 | control-panel | `// lclite:control-panel` |
 | engine/view/client.ejs | 303 | control-panel | `// lclite:control-panel` |
 | engine/view/client.ejs | 331 | control-panel | `<!-- lclite:control-panel -->` |
+| engine/view/client.ejs | 375 | world-map | `<!-- lclite:world-map page -->` |
 | engine/view/client.ejs | 392 | control-panel | `<!-- lclite:control-panel -->` |
 | engine/view/client.ejs | 401 | tcg | `<!-- lclite:tcg -->` |
+| webclient/src/mapview/MapView.ts | 12 | world-map | `// lclite:world-map mapview-import` |
+| webclient/src/mapview/MapView.ts | 333 | world-map | `// lclite:world-map mapview-marker` |
+| webclient/src/mapview/MapView.ts | 682 | world-map | `// lclite:world-map mapview-parked` |
+| webclient/src/mapview/MapView.ts | 695 | world-map | `// lclite:world-map mapview-jag` |
 | engine/src/web.ts | 152 | control-panel | `// lclite:control-panel` |
 | engine/src/web.ts | 346 | control-panel | `// lclite:control-panel` |
 | webclient/src/wordfilter/WordFilter.ts | 48 | no-censor | `// lclite:no-censor` |

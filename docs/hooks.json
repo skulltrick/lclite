@@ -100,6 +100,12 @@
     "marker": true
    },
    {
+    "mod": "world-map",
+    "note": "src/client/Client.ts @ old line 26",
+    "line": 26,
+    "marker": true
+   },
+   {
     "mod": "ground-items",
     "note": "src/client/Client.ts @ old line 28",
     "line": 28,
@@ -172,6 +178,12 @@
     "marker": true
    },
    {
+    "mod": "world-map",
+    "note": "src/client/Client.ts @ old line 2037",
+    "line": 2037,
+    "marker": true
+   },
+   {
     "mod": "camera",
     "note": "src/client/Client.ts @ old line 2065",
     "line": 2064,
@@ -211,6 +223,12 @@
     "mod": "camera",
     "note": "src/client/Client.ts @ old line 2326",
     "line": 2326,
+    "marker": true
+   },
+   {
+    "mod": "world-map",
+    "note": "src/client/Client.ts @ old line 2332",
+    "line": 2332,
     "marker": true
    },
    {
@@ -271,6 +289,12 @@
     "mod": "wiki-lookup",
     "note": "src/client/Client.ts @ old line 4000",
     "line": 4000,
+    "marker": true
+   },
+   {
+    "mod": "world-map",
+    "note": "src/client/Client.ts @ old line 4168",
+    "line": 4168,
     "marker": true
    },
    {
@@ -776,6 +800,12 @@
     "marker": true
    },
    {
+    "mod": "world-map",
+    "note": "view/client.ejs @ old line 375",
+    "line": 375,
+    "marker": true
+   },
+   {
     "mod": "control-panel",
     "note": "view/client.ejs @ old line 392",
     "line": 392,
@@ -785,6 +815,32 @@
     "mod": "tcg",
     "note": "view/client.ejs @ old line 401",
     "line": 401,
+    "marker": true
+   }
+  ],
+  "webclient/src/mapview/MapView.ts": [
+   {
+    "mod": "world-map",
+    "note": "src/mapview/MapView.ts @ old line 12",
+    "line": 12,
+    "marker": true
+   },
+   {
+    "mod": "world-map",
+    "note": "src/mapview/MapView.ts @ old line 333",
+    "line": 333,
+    "marker": true
+   },
+   {
+    "mod": "world-map",
+    "note": "src/mapview/MapView.ts @ old line 682",
+    "line": 682,
+    "marker": true
+   },
+   {
+    "mod": "world-map",
+    "note": "src/mapview/MapView.ts @ old line 696",
+    "line": 695,
     "marker": true
    }
   ],

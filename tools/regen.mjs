@@ -146,6 +146,18 @@ const MODS = {
         // files/ copy (webclient/src/client/Hotkeys.ts), like gpu's renderer.
         'webclient/src/client/GameShell.ts',
         'webclient/src/client/Client.ts'
+    ],
+    'world-map': [
+        // the minimap world orb (its click, its pixels, the page bridge) in Client.ts;
+        // the player marker + the page's command surface in the map app's OWN bundle
+        // entrypoint (webclient/src/mapview/MapView.ts — a file no other mod touches,
+        // and the only mod code that ships in out/mapview.js rather than client.js);
+        // and the overlay's page-script tag in client.ejs. The two pure cores ship as
+        // files/ copies (webclient/src/client/WorldMap.ts,
+        // webclient/src/mapview/WorldMapCore.ts), pulled in by the import hunks.
+        'webclient/src/client/Client.ts',
+        'webclient/src/mapview/MapView.ts',
+        'engine/view/client.ejs'
     ]
 };
 
@@ -158,7 +170,8 @@ const HUNK_OWNER = {
         ['true-tile', /drawTrueTile|trueTileLine|trueTile\b|true tile|true-tile/i],
         ['camera', /cameraZoom|wheelZoom|middleRotate|wheelScrollChat|rotateLastScreen|middleMouseDown|scrollChatbox|onwheel|camFollow|orbitCamera|setVisZoom|viewRadius|visTile|clearPick|World\.click|lostcityClient|applyCameraSettings|EVENT_MOUSE_MOVE|EVENT_CAMERA_POSITION|mouseTracking\.length/],
         ['hotkeys', /hotkeys|Hotkeys|hotkeyKey|Press Enter to Chat/],
-        ['wiki-lookup', /wikiLookup|WikiLookup|wiki lookup|Wiki <target>/i]
+        ['wiki-lookup', /wikiLookup|WikiLookup|wiki lookup|Wiki <target>/i],
+        ['world-map', /worldMap|WorldMap|world map/i]
     ],
     'webclient/bundle.ts': [
         // terser property reserves exist FOR the panel contract (client.ejs/

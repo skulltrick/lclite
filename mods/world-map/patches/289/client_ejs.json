@@ -1,0 +1,43 @@
+{
+ "file": "engine/view/client.ejs",
+ "mod": "world-map",
+ "rev": "289",
+ "generated_from": {
+  "repo": "engine",
+  "head": "0c7cf6555d0cf92d2348999b2fd27c6ceff5ffbf"
+ },
+ "hunks": [
+  {
+   "find": [
+    "        </div>",
+    "    </center>",
+    "",
+    "    <script>"
+   ],
+   "replace": [
+    "        </div>",
+    "    </center>",
+    "    <!-- lclite:world-map page -->",
+    "    <!-- lclite world map: the overlay controller. It builds the full-frame overlay,",
+    "         boots the map app (the deployed /lclite/worldmap/mapview.js bundle) inside an",
+    "         iframe — the map app is a second GameShell and needs its own document — and",
+    "         feeds it the player's live position from the bundled core's",
+    "         window['worldMapPlayer'](). Version-keyed like every page asset: bump ?v= here",
+    "         and VERSION in ui.js together. -->",
+    "    <script src=\"/lclite/worldmap/ui.js?v=1\" defer></script>",
+    "",
+    "    <!-- lclite:world-map end page -->",
+    "",
+    "    <script>"
+   ],
+   "note": "view/client.ejs @ old line 375",
+   "occ": 1,
+   "pos": [
+    375,
+    0,
+    373,
+    376
+   ]
+  }
+ ]
+}

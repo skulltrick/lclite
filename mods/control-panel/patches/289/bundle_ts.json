@@ -40,7 +40,7 @@
     "                    // lclite:control-panel — placement platform: the alt-drag anchor API",
     "                    // shared with canvas-drawn mods (xpAnchorFrame in Client.ts registers",
     "                    // the xp tracker; panel.js owns the drag layer and writes the keys).",
-    "                    'lcmAnchor', 'registerCanvas', 'lcmXpBounds', 'lcmStatOrbsBounds', 'lcmWikiLookupBounds', 'lcmHeld', 'lcmAlt'",
+    "                    'lcmAnchor', 'registerCanvas', 'lcmXpBounds', 'lcmStatOrbsBounds', 'lcmWikiLookupBounds', 'lcmWorldMapBounds', 'lcmHeld', 'lcmAlt', 'worldMapToggle', 'worldMapPlayer', 'worldMapUi'",
     "                ]",
     "            }"
    ],

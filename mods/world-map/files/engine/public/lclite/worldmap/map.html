@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>World map</title>
+    <!--
+      lclite:world-map — the map document. It is loaded INSIDE the overlay's iframe by
+      the mod's page script (lclite/worldmap/ui.js), one per open.
+
+      WHY AN IFRAME: the map app (webclient/src/mapview/MapView.ts, deployed as
+      ./mapview.js) is a second GameShell — it takes #canvas at module load and runs its
+      own mainloop. Booting it in the game's page would fight the game for the canvas,
+      the input and the loop; a separate document gives it everything it expects.
+
+      Everything here is the mod's own chrome around that canvas: the sheet selector,
+      the layer switches, "Centre on me", the close button, and the honest cards for
+      "this world serves no map data" and "the app failed". The app itself is untouched
+      upstream code plus the mod's marker/bridge hunks.
+
+      Version keys: ui.js loads this file with ?v=N, and this file loads ./mapview.js
+      with the same N. Bump ALL THREE (ui.js's VERSION, this file's VERSION, the
+      <script src> in ui.js) in one commit — docs/MODS.md §version-keying.
+    -->
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #wrap {
+            position: relative;
+            width: 765px;
+            height: 503px;
+        }
+
+        canvas {
+            width: 765px;
+            height: 503px;
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        #bar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 765px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 6px;
+            box-sizing: border-box;
+            background: rgba(28, 26, 22, .94);
+            border-bottom: 1px solid #4d4233;
+            font: 11px/1.2 "Segoe UI", system-ui, sans-serif;
+            color: #e8e0cc;
+            user-select: none;
+        }
+
+        #bar select,
+        #bar button {
+            font: inherit;
+            color: inherit;
+            background: #1c1a16;
+            border: 1px solid #4d4233;
+            border-radius: 2px;
+            padding: 2px 6px;
+            cursor: pointer;
+        }
+
+        #bar button:hover,
+        #bar select:hover {
+            border-color: #7d7466;
+        }
+
+        #bar label {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            cursor: pointer;
+        }
+
+        #bar input[type=checkbox] {
+            margin: 0;
+        }
+
+        .sep {
+            width: 1px;
+            height: 14px;
+            background: #4d4233;
+        }
+
+        #spacer {
+            flex: 1 1 auto;
+        }
+
+        #hint {
+            color: #ffd166;
+            white-space: nowrap;
+        }
+
+        #close {
+            font-weight: bold;
+            padding: 2px 8px;
+        }
+
+        #card {
+            position: absolute;
+            inset: 24px 0 0 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0 60px;
+            box-sizing: border-box;
+            text-align: center;
+            background: #12100e;
+            font: 13px/1.5 "Segoe UI", system-ui, sans-serif;
+            color: #e8e0cc;
+        }
+
+        #card b {
+            color: #ffd166;
+        }
+
+        #card code {
+            color: #9fd6a0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="wrap">
+        <canvas id="canvas" width="765" height="503"></canvas>
+
+        <div id="bar">
+            <span>Area</span>
+            <select id="area" title="Which sheet of the world to show">
+                <option value="0">Main</option>
+                <option value="1">Dungeon</option>
+                <option value="2">Extra</option>
+            </select>
+            <span class="sep"></span>
+            <label title="Monster and NPC spawns"><input type="checkbox" id="l-npc"> NPCs</label>
+            <label title="Ground-item spawns"><input type="checkbox" id="l-item"> Items</label>
+            <label title="Place labels"><input type="checkbox" id="l-labels"> Labels</label>
+            <label title="Multi-combat zones"><input type="checkbox" id="l-multi"> Multi</label>
+            <span class="sep"></span>
+            <select id="zoom" title="Zoom">
+                <option value="3">37%</option>
+                <option value="4" selected>50%</option>
+                <option value="6">75%</option>
+                <option value="8">100%</option>
+            </select>
+            <button id="centre" title="Centre the map on your character">Centre on me</button>
+            <span id="spacer"></span>
+            <span id="hint"></span>
+            <button id="close" title="Close the map (Esc)">&times;</button>
+        </div>
+
+        <div id="card"></div>
+    </div>
+
+    <script type="module">
+        // ---- this file's version: keep in step with ui.js's VERSION and its ?v= -----
+        const VERSION = 1;
+        window.__lcwmMap = VERSION;
+
+        const JAGS = ['/worldmap.jag', '/client/worldmap.jag'];
+        const CMD_PLAYER = 1, CMD_AREA = 2, CMD_LAYER = 3, CMD_CENTRE = 4, CMD_STATE = 5, CMD_ZOOM = 6, CMD_JAG = 7;
+        const AREA_NAMES = ['Main', 'Dungeon', 'Extra'];
+
+        const card = document.getElementById('card');
+        const hint = document.getElementById('hint');
+        const areaSel = document.getElementById('area');
+        const zoomSel = document.getElementById('zoom');
+        const boxes = [document.getElementById('l-npc'), document.getElementById('l-item'), document.getElementById('l-labels'), document.getElementById('l-multi')];
+        // layer index -> checkbox: NPCs(0), items(1), labels(2), multi(4). Borders(3) and
+        // the F2P sheet(5) are the app's own; the mod does not surface them.
+        const BOX_LAYER = [0, 1, 2, 4];
+
+        let app = null;
+        let lastPlayerKey = '';
+
+        function send(msg) {
+            try {
+                parent.postMessage(msg, location.origin);
+            } catch (_e) {
+                // no parent (opened standalone): the map still works, it just cannot close itself
+            }
+        }
+
+        function showCard(html) {
+            card.innerHTML = html;
+            card.style.display = 'flex';
+        }
+
+        // ---- probe the map data BEFORE booting the app -----------------------------
+        // MapView.loadWorldmap() retries forever on a failed fetch and does NOT check
+        // response.ok, so a 404 hands it an HTML error page to parse. The page therefore
+        // finds a usable jag first and tells the app which URL to read (WORLD_MAP_CMD_JAG
+        // — an INDEX, because a string cannot cross the bundle boundary as a value).
+        async function probeJag() {
+            for (let i = 0; i < JAGS.length; i++) {
+                try {
+                    const res = await fetch(JAGS[i], { cache: 'no-cache' });
+                    if (!res.ok) {
+                        continue;
+                    }
+                    const bytes = await res.arrayBuffer();
+                    if (bytes.byteLength > 100000) {
+                        return i;
+                    }
+                } catch (_e) {
+                    // try the next one
+                }
+            }
+            return -1;
+        }
+
+        function applyState(state) {
+            if (!Array.isArray(state) || state.length < 12) {
+                return;
+            }
+
+            const area = state[0];
+            if (areaSel.value !== String(area)) {
+                areaSel.value = String(area);
+            }
+
+            for (let i = 0; i < boxes.length; i++) {
+                boxes[i].checked = state[4 + BOX_LAYER[i]] === 1;
+            }
+
+            const playerArea = state[10];
+            const here = state[11] === 1;
+            if (playerArea < 0) {
+                hint.textContent = '';
+            } else if (here) {
+                hint.textContent = 'you are on this sheet';
+            } else {
+                hint.textContent = 'you are in ' + (AREA_NAMES[playerArea] || '?') + ' \u2014 Centre on me';
+            }
+        }
+
+        function ui(cmd) {
+            if (!app) {
+                return [];
+            }
+            const state = app.worldMapUi(cmd);
+            applyState(state);
+            return state;
+        }
+
+        // ---- boot ------------------------------------------------------------------
+        (async () => {
+            const jag = await probeJag();
+            if (jag < 0) {
+                showCard(
+                    '<b>No world map data on this server.</b>' +
+                    '<div>The map needs <code>/worldmap.jag</code> (the engine serves it on a dev ' +
+                    'world) or a copy at <code>/client/worldmap.jag</code>. LCLite&rsquo;s build ' +
+                    'deploys that copy from the install&rsquo;s own packed map, so run ' +
+                    '<code>node tools/lclite.mjs build</code> once against this install.</div>'
+                );
+                send({ lcwm: 'error', reason: 'data' });
+                return;
+            }
+
+            let mod;
+            try {
+                mod = await import('./mapview.js?v=' + VERSION);
+            } catch (e) {
+                showCard('<b>The world map app is not deployed.</b><div><code>./mapview.js</code> is built by ' +
+                    '<code>bun run bundle.ts</code> and copied by <code>node tools/lclite.mjs build</code>.</div>');
+                send({ lcwm: 'error', reason: 'bundle' });
+                return;
+            }
+
+            try {
+                app = new mod.MapView();
+            } catch (e) {
+                showCard('<b>The world map app failed to start.</b><div>' + String(e) + '</div>');
+                send({ lcwm: 'error', reason: 'boot' });
+                return;
+            }
+
+            // runs in the same task as the constructor, i.e. before the app's first
+            // awaited frame can reach loadWorldmap()
+            ui([CMD_JAG, jag]);
+
+            areaSel.addEventListener('change', () => ui([CMD_AREA, parseInt(areaSel.value, 10) || 0]));
+            zoomSel.addEventListener('change', () => ui([CMD_ZOOM, parseInt(zoomSel.value, 10) || 4]));
+            document.getElementById('centre').addEventListener('click', () => ui([CMD_CENTRE]));
+            document.getElementById('close').addEventListener('click', () => send({ lcwm: 'close' }));
+            for (let i = 0; i < boxes.length; i++) {
+                boxes[i].addEventListener('change', () => ui([CMD_LAYER, BOX_LAYER[i], boxes[i].checked ? 1 : 0]));
+            }
+
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    send({ lcwm: 'close' });
+                }
+            }, true);
+
+            // the player, from the game bundle through the parent page
+            window.addEventListener('message', (e) => {
+                if (e.origin !== location.origin) {
+                    return;
+                }
+                const d = e.data || {};
+                if (d.lcwm === 'player' && Array.isArray(d.p)) {
+                    const key = d.p.join(',');
+                    if (key !== lastPlayerKey) {
+                        lastPlayerKey = key;
+                        ui([CMD_PLAYER, d.p[0], d.p[1], d.p[2]]);
+                    }
+                } else if (d.lcwm === 'centre') {
+                    ui([CMD_CENTRE]);
+                }
+            });
+
+            applyState(ui([CMD_STATE]));
+            send({ lcwm: 'ready' });
+        })();
+
+        window.addEventListener('unhandledrejection', (e) => {
+            const reason = e.reason && e.reason.message ? e.reason.message : String(e.reason);
+            showCard('<b>The world map hit an error.</b><div>' + reason + '</div>');
+            send({ lcwm: 'error', reason: 'runtime' });
+        });
+    </script>
+</body>
+
+</html>

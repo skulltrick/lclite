@@ -283,6 +283,40 @@ function build() {
         try { fs.copyFileSync(src + ext, dst + ext); } catch {}
     }
     console.log('built + deployed client.js');
+
+    // ---- the extra assets mods serve themselves --------------------------------
+    // `bun run bundle.ts` also builds the world map app (src/mapview/MapView.ts is one
+    // of its entrypoints), but nothing upstream ever deploys it — the engine serves
+    // only public/, and public/client/ has always carried client.js alone. The
+    // world-map mod's page loads it from /lclite/worldmap/mapview.js, so deploy it
+    // there (the overlay's own folder, next to the panel assets apply copies).
+    //
+    // The world map's DATA is the engine's own packed jag. Its route (/worldmap.jag) is
+    // registered inside `if (Environment.node.debug)`, so a live world 404s it; the
+    // copy at /client/worldmap.jag is a plain static file every world serves — and the
+    // launcher's join bridge serves /client/* from the LOCAL install, which is what
+    // makes the map work on somebody else's world too. Each piece is optional: a tree
+    // with no world map app (an older webclient) just skips it.
+    const wmSrc = path.join(wc, 'out/mapview.js');
+    if (fs.existsSync(wmSrc)) {
+        const wmDst = path.join(ROOT, 'engine/public/lclite/worldmap/mapview.js');
+        fs.mkdirSync(path.dirname(wmDst), { recursive: true });
+        fs.copyFileSync(wmSrc, wmDst);
+        try { fs.copyFileSync(wmSrc + '.map', wmDst + '.map'); } catch {}
+        console.log('built + deployed lclite/worldmap/mapview.js');
+    } else {
+        console.log('note: no out/mapview.js — the world-map mod will report a missing map app');
+    }
+
+    const jagSrc = path.join(ROOT, 'engine/data/pack/mapview/worldmap.jag');
+    if (fs.existsSync(jagSrc)) {
+        const jagDst = path.join(ROOT, 'engine/public/client/worldmap.jag');
+        fs.copyFileSync(jagSrc, jagDst);
+        console.log('deployed the packed world map data to client/worldmap.jag');
+    } else {
+        console.log('note: no engine/data/pack/mapview/worldmap.jag yet — the world map needs one packed map (npm run build in engine/)');
+    }
+
     return true;
 }
 

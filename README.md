@@ -74,13 +74,13 @@ inside one as `lclite/` and the tools find it without `LCLITE_ROOT`.
 
 ## The mods
 
-Fifteen mods, one folder each. Names and order are the ones you'll read in the
+Sixteen mods, one folder each. Names and order are the ones you'll read in the
 panel.
 
 They are not tied to one revision. Pick **274** in the launcher instead of **289** and
 every mod comes with it — each of the primary corpus's anchors still matches 274's
 source byte-for-byte, and `node tools/matrix.mjs` re-verifies that claim against real
-clones. **254** has a corpus of its own and 6 of the 15 mods; the other nine hook code
+clones. **254** has a corpus of its own and 6 of the 16 mods; the other ten hook code
 254 does not have yet. The launcher tells you exactly which mods a revision gets; how
 that works, and how a revision is added, is [docs/REVS.md](docs/REVS.md).
 
@@ -99,6 +99,7 @@ that works, and how a revision is added, is [docs/REVS.md](docs/REVS.md).
 | ⇧ | **Shift-click drop** | Hold Shift and left-click an item to drop it, skipping the menu |
 | ⌨ | **Hotkeys** | F-key sidebar tabs, Esc closes interfaces, Space and 1-5 drive dialogues, WASD camera with press-enter-to-chat |
 | 📖 | **Wiki lookup** | A wiki button on the minimap: arm it, click any NPC, object or item, and its OSRS wiki page opens |
+| 🌍 | **World map** | A globe orb beside the wiki orb: click it and the client's own world map fills the window — labels, POI icons, spawn layers, dungeon and extra sheets, and a you-are-here marker that follows you |
 | 🏷 | **Ground item labels** | Labels on the items lying on the ground; hold Alt to see every item and click `-` / `+` to hide or show one |
 | 🔥 | **True tile+** | Ground effects on your true tile: flat flames licking off its border, or a ripple wave sweeping out of it |
 
