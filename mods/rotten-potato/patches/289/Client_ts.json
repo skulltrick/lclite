@@ -1,0 +1,54 @@
+{
+ "file": "webclient/src/client/Client.ts",
+ "mod": "rotten-potato",
+ "rev": "289",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "a52b321a9f42530f3dd2f1a02cd335c955791a12"
+ },
+ "hunks": [
+  {
+   "find": [
+    "                            this.redrawChat = true;",
+    "                        }",
+    "                    } else if (this.chatModalId === -1) {",
+    "                        // custom: when typing a command, you can use the debugproc character (tilde)",
+    "                        if (key >= 32 && (key <= 122 || (this.chatInput.startsWith('::') && key <= 126)) && this.chatInput.length < 80) {"
+   ],
+   "replace": [
+    "                            this.redrawChat = true;",
+    "                        }",
+    "                    } else if (this.chatModalId === -1 || typeof (window as any)['rottenPotatoCmd'] === 'string') {",
+    "                        // lclite:rotten-potato",
+    "                        /// custom (lclite \"rotten-potato\" mod): the staff palette's command",
+    "                        /// handoff. The page's ui.js writes the command BODY into the reserved",
+    "                        /// window slot and queues the Enter that lands here; this fills the",
+    "                        /// engine's OWN chat input with it, so the send below is the engine's own",
+    "                        /// path — every command behaves exactly as if it had been typed (::fpson,",
+    "                        /// ::tcg, the colour prefixes and CLIENT_CHEAT included), and it works",
+    "                        /// while a chat modal is open, which is the whole reason this mod has an",
+    "                        /// engine hunk at all (see mods/rotten-potato/README.md). The guard above",
+    "                        /// is widened for exactly the tick this arrives on.",
+    "                        const rottenPotato: unknown = (window as any)['rottenPotatoCmd'];",
+    "                        if (typeof rottenPotato === 'string' && (key === 10 || key === 13)) {",
+    "                            (window as any)['rottenPotatoCmd'] = null;",
+    "                            if (this.ingame) {",
+    "                                this.chatInput = '::' + rottenPotato.slice(0, 77);",
+    "                                this.redrawChat = true;",
+    "                            }",
+    "                        }",
+    "                        // lclite:rotten-potato end",
+    "                        // custom: when typing a command, you can use the debugproc character (tilde)",
+    "                        if (key >= 32 && (key <= 122 || (this.chatInput.startsWith('::') && key <= 126)) && this.chatInput.length < 80) {"
+   ],
+   "note": "src/client/Client.ts @ old line 3050",
+   "occ": 1,
+   "pos": [
+    3049,
+    1,
+    3047,
+    3051
+   ]
+  }
+ ]
+}

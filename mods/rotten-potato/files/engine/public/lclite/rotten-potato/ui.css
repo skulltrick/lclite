@@ -1,0 +1,272 @@
+/* lclite:rotten-potato — the palette's chrome.
+   Same material as the LCLite panel and the tcg overlay: dark brown, gold ink.
+   z 9550 = above the FAB (9000) and the panel's tooltip (9500), below tcg's
+   reveal/album (9600) so a card reveal still lands on top. */
+#rp-root {
+    position: fixed;
+    inset: 0;
+    z-index: 9550;
+    pointer-events: none;
+    font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+/* ---- the potato ---------------------------------------------------------- */
+#rp-btn {
+    position: fixed;
+    top: 16px;
+    left: 18px;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    cursor: pointer;
+    user-select: none;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .6));
+    transition: transform .12s ease;
+}
+
+#rp-btn:hover { transform: scale(1.12) rotate(-4deg); }
+
+.rp-potato {
+    position: absolute;
+    inset: 6px 3px 3px 3px;
+    border-radius: 52% 48% 46% 54% / 55% 52% 48% 45%;
+    background: radial-gradient(circle at 34% 30%, #c1914f 0%, #9a6c3c 45%, #6d4826 100%);
+    box-shadow: inset -2px -3px 0 #4b3118, inset 2px 2px 0 #cfa46a;
+}
+
+.rp-potato::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+        radial-gradient(circle at 68% 64%, #3d2a12 0 2px, transparent 2.5px),
+        radial-gradient(circle at 38% 72%, #3d2a12 0 1.5px, transparent 2px),
+        radial-gradient(circle at 30% 44%, #3d2a12 0 1.5px, transparent 2px),
+        radial-gradient(circle at 60% 34%, #6f7a34 0 3.5px, transparent 4px);
+}
+
+.rp-sprout {
+    position: absolute;
+    left: 50%;
+    top: 1px;
+    width: 3px;
+    height: 8px;
+    margin-left: -1px;
+    background: linear-gradient(#8ea33f, #5f6f28);
+    border-radius: 2px;
+    transform: rotate(-16deg);
+}
+
+/* ---- the palette --------------------------------------------------------- */
+#rp-panel {
+    position: fixed;
+    top: 90px;
+    left: 20px;
+    display: none;
+    flex-direction: column;
+    width: 442px;
+    max-height: min(74vh, 566px);
+    background: rgba(18, 14, 9, .96);
+    border: 1px solid #6b5a3a;
+    border-radius: 10px;
+    color: #ded4c0;
+    pointer-events: auto;
+    overflow: hidden;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, .6);
+}
+
+.rp-bar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 10px;
+    border-bottom: 1px solid #2c2517;
+    background: linear-gradient(#221a10, #1a1409);
+}
+
+.rp-title { color: #ffe7a8; font-size: 14px; font-weight: 600; letter-spacing: .2px; }
+.rp-tagline { color: #8a7454; font-size: 10.5px; margin-right: auto; }
+
+#rp-search {
+    flex: 0 1 150px;
+    background: #221b10;
+    color: #ffe7a8;
+    border: 1px solid #4e3f27;
+    border-radius: 6px;
+    padding: 4px 7px;
+    font-size: 11.5px;
+    font-family: inherit;
+    outline: none;
+}
+
+#rp-search:focus { border-color: #8a7454; }
+
+#rp-close {
+    background: none;
+    border: none;
+    color: #8a7454;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 4px;
+    line-height: 1;
+}
+
+#rp-close:hover { color: #ffe7a8; }
+
+#rp-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 8px;
+    border-bottom: 1px solid #2c2517;
+}
+
+.rp-tab {
+    background: #201910;
+    color: #b8a67e;
+    border: 1px solid #3a2f1c;
+    border-radius: 999px;
+    padding: 3px 9px;
+    font-size: 10.5px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.rp-tab:hover { color: #ffe7a8; }
+
+.rp-tab.on { background: #3a3120; color: #ffe7a8; border-color: #6b5a3a; }
+
+#rp-list {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 6px 8px 8px;
+    min-height: 120px;
+}
+
+.rp-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 5px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.rp-row:hover { background: #241d12; }
+
+.rp-star {
+    background: none;
+    border: none;
+    color: #6b5a3a;
+    font-size: 13px;
+    line-height: 1.2;
+    cursor: pointer;
+    padding: 0 2px;
+    flex: 0 0 auto;
+}
+
+.rp-star:hover { color: #f2c94c; }
+
+.rp-main { min-width: 0; flex: 1; }
+.rp-label { color: #efe6d2; font-size: 12px; }
+.rp-sub { font-size: 10px; color: #8a7454; margin-top: 1px; word-break: break-word; }
+.rp-sub code { color: #c9a86a; font-family: Consolas, 'Courier New', monospace; font-size: 10px; }
+.rp-note { color: #6f6146; }
+
+.rp-form {
+    margin: 0 0 6px 26px;
+    padding: 7px 8px;
+    background: #191309;
+    border: 1px solid #2c2517;
+    border-radius: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    align-items: center;
+}
+
+.rp-field { display: flex; flex-direction: column; gap: 2px; font-size: 9.5px; color: #8a7454; }
+
+.rp-field input,
+.rp-field select {
+    background: #221b10;
+    color: #ffe7a8;
+    border: 1px solid #4e3f27;
+    border-radius: 5px;
+    padding: 3px 6px;
+    font-size: 11px;
+    font-family: Consolas, 'Courier New', monospace;
+    width: 132px;
+    outline: none;
+}
+
+.rp-field input:focus, .rp-field select:focus { border-color: #8a7454; }
+
+.rp-runrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 2px;
+}
+
+.rp-preview { color: #7fd07f; font-family: Consolas, 'Courier New', monospace; font-size: 10.5px; flex: 1; word-break: break-all; }
+
+.rp-run {
+    background: #2b2417;
+    color: #ffe7a8;
+    border: 1px solid #6b5a3a;
+    border-radius: 6px;
+    padding: 4px 14px;
+    font-size: 11.5px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.rp-run:hover { background: #3a3120; }
+
+.rp-head {
+    margin: 8px 4px 2px;
+    color: #6b5a3a;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    border-top: 1px solid #241d12;
+    padding-top: 6px;
+}
+
+.rp-dim { color: #6f6146; font-size: 11px; padding: 6px 6px; }
+
+.rp-raw { padding: 8px 6px; font-size: 11.5px; color: #b8a67e; }
+.rp-raw p { margin: 0 0 8px; line-height: 1.5; }
+.rp-raw code { color: #c9a86a; font-family: Consolas, 'Courier New', monospace; }
+.rp-raw input {
+    flex: 1;
+    background: #221b10;
+    color: #ffe7a8;
+    border: 1px solid #4e3f27;
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 12px;
+    font-family: Consolas, 'Courier New', monospace;
+    outline: none;
+}
+
+#rp-status {
+    padding: 6px 10px;
+    border-top: 1px solid #2c2517;
+    background: #1a1409;
+    color: #8a7454;
+    font-size: 10.5px;
+    font-family: Consolas, 'Courier New', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#rp-status.rp-warn { color: #e0a35c; }

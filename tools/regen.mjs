@@ -168,6 +168,17 @@ const MODS = {
         'webclient/src/client/Client.ts',
         'webclient/src/mapview/MapView.ts',
         'engine/view/client.ejs'
+    ],
+    'rotten-potato': [
+        // A staff/dev command palette. Its page layer ships as files/ (ui.js + core.js
+        // + ui.css); the tree edits are TWO small islands: the chat send path in
+        // Client.ts (so a palette click rides the engine's OWN :: send — and works
+        // while a chat modal is open, which typing into the chatbox cannot), and the
+        // terser reserve for the window slot the page writes (bundle.ts). Deliberately
+        // NO parked block, so no other mod's islands can be re-split by this one.
+        'webclient/src/client/Client.ts',
+        'webclient/bundle.ts',
+        'engine/view/client.ejs'
     ]
 };
 

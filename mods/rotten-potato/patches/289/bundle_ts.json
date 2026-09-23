@@ -1,0 +1,39 @@
+{
+ "file": "webclient/bundle.ts",
+ "mod": "rotten-potato",
+ "rev": "289",
+ "generated_from": {
+  "repo": "webclient",
+  "head": "a52b321a9f42530f3dd2f1a02cd335c955791a12"
+ },
+ "hunks": [
+  {
+   "find": [
+    "                    'Status',",
+    "                    'Answer',",
+    "",
+    "                    // main thread <-> ondemand worker protocol"
+   ],
+   "replace": [
+    "                    'Status',",
+    "                    'Answer',",
+    "                    // lclite:rotten-potato — the page palette's command handoff: ui.js",
+    "                    // writes the command BODY into this window slot and the client reads it",
+    "                    // in the chat send path (Client.ts). Cross-realm names must be reserved:",
+    "                    // the property mangler rewrites string-keyed access too.",
+    "                    'rottenPotatoCmd',",
+    "                    // lclite:rotten-potato end",
+    "",
+    "                    // main thread <-> ondemand worker protocol"
+   ],
+   "note": "bundle.ts @ old line 114",
+   "occ": 1,
+   "pos": [
+    114,
+    0,
+    112,
+    115
+   ]
+  }
+ ]
+}

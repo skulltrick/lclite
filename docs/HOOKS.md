@@ -49,6 +49,7 @@
 | webclient/src/client/Client.ts | 2598 | wiki-lookup | `// lclite:wiki-lookup` |
 | webclient/src/client/Client.ts | 2743 | stat-orbs | `// custom (lclite "stat-orbs" mod): the orb column and its prayer book sit ON th` |
 | webclient/src/client/Client.ts | 2938 | camera | `// custom (lclite camera mod): the ANTICHEAT_CYCLELOGIC4 counter and its packet ` |
+| webclient/src/client/Client.ts | 3049 | rotten-potato | `} else if (this.chatModalId === -1 \|\| typeof (window as any)['rottenPotatoCmd'] ` |
 | webclient/src/client/Client.ts | 3091 | tcg | `// lclite:tcg — ::tcg opens the album; staff subcommands (give/roll)` |
 | webclient/src/client/Client.ts | 3227 | camera | `// custom: smooth the wheel zoom toward its target (OSRS-style easing) lclite:ca` |
 | webclient/src/client/Client.ts | 3888 | stat-orbs | `/// custom (lclite "stat-orbs" mod): fields + tunables live in this one lclite:s` |
@@ -134,12 +135,14 @@
 | webclient/src/dash3d/Pix3D.ts | 34 | camera | `/// custom: depth clip planes, scaled with camera zoom (defaults match original ` |
 | webclient/src/dash3d/Model.ts | 1722 | camera | `// lclite:camera` |
 | webclient/bundle.ts | 59 | tcg | `// lclite:tcg — the window['tcg*'] surface shared between the bundled core` |
+| webclient/bundle.ts | 114 | rotten-potato | `// lclite:rotten-potato — the page palette's command handoff: ui.js` |
 | webclient/bundle.ts | 131 | control-panel | `'id',  // lclite:control-panel` |
 | engine/view/client.ejs | 4 | control-panel | `<!-- lclite:control-panel -->` |
 | engine/view/client.ejs | 9 | control-panel | `<!-- lclite:control-panel -->` |
 | engine/view/client.ejs | 263 | control-panel | `// lclite:control-panel` |
 | engine/view/client.ejs | 303 | control-panel | `// lclite:control-panel` |
 | engine/view/client.ejs | 331 | control-panel | `<!-- lclite:control-panel -->` |
+| engine/view/client.ejs | 342 | rotten-potato | `<!-- lclite:rotten-potato -->` |
 | engine/view/client.ejs | 375 | world-map | `<!-- lclite:world-map page -->` |
 | engine/view/client.ejs | 392 | control-panel | `<!-- lclite:control-panel -->` |
 | engine/view/client.ejs | 401 | tcg | `<!-- lclite:tcg -->` |

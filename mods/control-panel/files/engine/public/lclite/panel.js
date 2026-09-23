@@ -143,6 +143,14 @@
                   return 'store unreadable';
               }
           } },
+        { id: 'rotten-potato', name: 'Rotten Potato', desc: 'A staff and developer command palette: the engine’s :: commands and the content repo’s ::~ debug procs, searchable, with item names instead of ids.', master: { key: 'rottenPotato', def: 'true' },
+          status() {
+              if (LS.get('rottenPotato', 'true') !== 'true') return '';
+              // the palette is the page layer's; without it there is nothing to open
+              if (!document.getElementById('rp-btn')) return 'page layer missing';
+              const last = LS.get('rottenPotatoLast', '');
+              return last ? 'last: ' + last : '';
+          } },
         { id: 'control-panel', name: 'LCLite', desc: 'This panel and the page around it: canvas size, fullscreen, screenshots.', master: null }
     ];
 
@@ -385,6 +393,22 @@
             // frame, so the wipe lands on the next frame with no reload
             localStorage.removeItem('tileMarkersMarks');
             toast('All tile markers cleared');
+        } },
+
+        // rotten-potato (mods/rotten-potato) — a staff/dev command palette. The rows
+        // below are its page layer's OWN keys, read there (rule 5); the palette itself
+        // is opened from the potato button in the page corner or the Open row here.
+        { id: 'rotten-potato-button', mod: 'rotten-potato', name: 'Show the potato button', desc: 'The potato in the page corner. With it hidden, the palette still opens from this mod’s Open row.', kind: 'toggle', key: 'rottenPotatoButton', def: 'true' },
+        { id: 'rotten-potato-open', mod: 'rotten-potato', name: 'Open the palette', desc: 'The same as clicking the potato button in the corner.', kind: 'action', btn: 'Open', run() {
+            if (typeof window.rottenPotatoOpen === 'function') window.rottenPotatoOpen();
+            else toast('Rotten Potato page layer not loaded (lclite apply)');
+        } },
+        { id: 'rotten-potato-close', mod: 'rotten-potato', name: 'Close after running', desc: 'Hide the palette as soon as a command is sent, so it never sits over the game.', kind: 'toggle', key: 'rottenPotatoCloseOnRun', def: 'false' },
+        { id: 'rotten-potato-reset', mod: 'rotten-potato', name: 'Reset position', desc: 'Put the palette and its button back in their default spots. Same as Alt+right-click on either of them.', kind: 'action', btn: 'Reset', run() {
+            if (window.lcmAnchor && typeof window.lcmAnchor.reset === 'function') {
+                window.lcmAnchor.reset('rottenPotato');
+                window.lcmAnchor.reset('rottenPotatoButton');
+            } else { toast('LCLite panel not loaded'); }
         } }
     );
 

@@ -103,6 +103,11 @@ export const MOD_META = {
         // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this)
         desc: 'Ground effects on your true tile: flat flames licking off its border, or a ripple wave sweeping out of it.',
     },
+    'rotten-potato': {
+        label: 'Rotten Potato',
+        // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this)
+        desc: 'A staff and developer command palette: the engine’s :: commands and the content repo’s ::~ debug procs, searchable, with item names instead of ids.',
+    },
 };
 
 export const meta = name => MOD_META[name] || { label: name, desc: '', required: false };

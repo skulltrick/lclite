@@ -1,0 +1,43 @@
+{
+ "file": "engine/view/client.ejs",
+ "mod": "rotten-potato",
+ "rev": "289",
+ "generated_from": {
+  "repo": "engine",
+  "head": "0c7cf6555d0cf92d2348999b2fd27c6ceff5ffbf"
+ },
+ "hunks": [
+  {
+   "find": [
+    "        </div>",
+    "",
+    "        <div class=\"centered\" id=\"controls\">",
+    "            <select id=\"size\" name=\"size\" onchange=\"setSize();\">"
+   ],
+   "replace": [
+    "        </div>",
+    "",
+    "    <!-- lclite:rotten-potato -->",
+    "    <!-- lclite rotten potato: the staff command palette's page layer. The ENGINE",
+    "         half is the Client.ts hunk that reads the reserved window slot ui.js writes",
+    "         (see mods/rotten-potato/README.md); both halves ship in this mod. It is a",
+    "         module because ui.js imports its catalogue from core.js.",
+    "         Version-keyed like every page asset: bump ?v= here and VERSION in ui.js",
+    "         together (core.js is pulled at the same version). -->",
+    "    <link rel=\"stylesheet\" href=\"/lclite/rotten-potato/ui.css?v=1\">",
+    "    <script type=\"module\" src=\"/lclite/rotten-potato/ui.js?v=1\" data-rp-ui=\"1\"></script>",
+    "    <!-- lclite:rotten-potato end -->",
+    "        <div class=\"centered\" id=\"controls\">",
+    "            <select id=\"size\" name=\"size\" onchange=\"setSize();\">"
+   ],
+   "note": "view/client.ejs @ old line 342",
+   "occ": 1,
+   "pos": [
+    342,
+    0,
+    340,
+    343
+   ]
+  }
+ ]
+}
