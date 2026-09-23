@@ -83,6 +83,7 @@
 | webclient/src/client/Client.ts | 8290 | ground-items | `// lclite:ground-items` |
 | webclient/src/client/Client.ts | 8364 | shift-drop | `// lclite:shift-drop` |
 | webclient/src/client/Client.ts | 8397 | tile-markers | `// lclite:tile-markers` |
+| webclient/src/client/Client.ts | 8575 | tile-markers | `// lclite:tile-markers` |
 | webclient/src/client/Client.ts | 8585 | wiki-lookup | `// lclite:wiki-lookup` |
 | webclient/src/client/Client.ts | 8606 | camera | `// custom (lclite camera mod): no ANTICHEAT_OPLOGIC7 telemetry — the OP_OBJ1 pac` |
 | webclient/src/client/Client.ts | 8626 | camera | `// custom (lclite camera mod): no ANTICHEAT_OPLOGIC8 telemetry — the OP_OBJ4 pac` |

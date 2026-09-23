@@ -26,6 +26,11 @@
 //     cases where the geometry must change shape rather than emit nonsense.
 //  7. the Shift state — the modifier this mod tracks itself (it must not read shift-drop's
 //     field, which does not exist when that mod is not installed).
+//  8. the right-click menu row — RuneLite's own interaction, ported: the label is decided
+//     from the same store the toggle writes (a marked tile offers to UNmark it, on its own
+//     plane only), and the row's action id is a plugin id the engine's own menu sort cannot
+//     move and no engine action can collide with (a collision would make the engine run the
+//     mod's row as a game action, or the mod's dispatch swallow an engine option).
 import path from 'node:path';
 
 const LCLITE = path.resolve(import.meta.dir, '../../..');
@@ -336,6 +341,43 @@ console.log('\nshift state');
     ok(typeof T.tmTrackShift === 'function', 'tmTrackShift exists for the engine hook to call every frame');
     T.tmTrackShift();
     ok(true, 'tmTrackShift is safe to call with no DOM (it must not throw under bun)');
+}
+
+// ---- 8. the right-click menu row ---------------------------------------------------
+console.log('\nmenu row');
+{
+    // RuneLite's own wording: their entry is setOption("Mark"|"Unmark") + setTarget("Tile")
+    eq(T.TM_MENU_MARK, 'Mark Tile', 'the row reads "Mark Tile" (RuneLite: option "Mark" + target "Tile")');
+    eq(T.TM_MENU_UNMARK, 'Unmark Tile', 'and "Unmark Tile" once the tile is marked');
+
+    eq(T.tmMenuLabel([], 3222, 3222, 0), 'Mark Tile', 'an unmarked tile offers to mark it');
+    eq(T.tmMenuLabel([3222, 3222, 0], 3222, 3222, 0), 'Unmark Tile', 'a marked tile offers to unmark it');
+    eq(T.tmMenuLabel([3222, 3222, 0], 3223, 3222, 0), 'Mark Tile', 'the neighbouring tile is still unmarked');
+    eq(T.tmMenuLabel([3222, 3222, 0], 3222, 3223, 0), 'Mark Tile', 'and so is the one the other way');
+    eq(T.tmMenuLabel([3222, 3222, 0], 3222, 3222, 1), 'Mark Tile', 'the same tile on another PLANE is a different mark');
+    eq(T.tmMenuLabel([1, 1, 0, 3222, 3222, 2], 3222, 3222, 2), 'Unmark Tile', 'the label follows a mark that is not the first');
+
+    // the label must be read off the very array the toggle writes — the row is built from it
+    // and the toggle replaces it, so a label that read a stale copy would lie after one click
+    const flipped: number[] = T.tmToggle([], 3222, 3222, 0);
+    eq(T.tmMenuLabel(flipped, 3222, 3222, 0), 'Unmark Tile', 'the label flips on the array tmToggle just returned');
+    eq(T.tmMenuLabel(T.tmToggle(flipped, 3222, 3222, 0), 3222, 3222, 0), 'Mark Tile', 'and flips back on the second toggle');
+
+    // the action id. The client has one flat id space, so a plugin row needs an id that the
+    // engine's own menu sort cannot move and no engine action can collide with.
+    ok(T.TM_MENU_ACTION > 1000, 'the id is > 1000, so the sort at the end of buildMinimenu() cannot move the row');
+    ok(T.TM_MENU_ACTION < 2000, 'and < _PRIORITY (2000), so doAction() never treats it as a priority-wrapped action');
+    // the engine's OWN ids above 1000, read from webclient/src/client/MiniMenuAction.ts (289)
+    const ENGINE_OVER_1000: number[] = [
+        1106,   // CANCEL
+        1152,   // OP_OBJ6
+        1328,   // OP_HELD6
+        1381,   // OP_LOC6
+        1714,   // OP_NPC6
+    ];
+    ok(!ENGINE_OVER_1000.includes(T.TM_MENU_ACTION), 'it collides with no engine action id above 1000', ENGINE_OVER_1000);
+    ok(T.TM_MENU_ACTION !== 1234, "and not with wiki-lookup's own menu row (1234)");
+    ok(Number.isInteger(T.TM_MENU_ACTION), 'the id is an integer (menuAction is an Int32Array)');
 }
 
 console.log(`\n${pass} passed, ${fail} failed\n`);

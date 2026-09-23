@@ -66,7 +66,7 @@ export const MOD_META = {
     'tile-markers': {
         label: 'Tile markers',
         // exactly the F1 panel's own MOD_REGISTRY wording (doctor checks this)
-        desc: 'Shift+right-click a tile to mark or unmark it, RuneLite-style: the marks persist, are drawn only on the plane you made them on, and stop drawing beyond 32 tiles.',
+        desc: 'Shift+right-click a tile and the right-click menu gains a RuneLite-style Mark tile row: the marks persist, are drawn only on the plane you made them on, and stop drawing beyond 32 tiles.',
     },
     'gpu': {
         label: 'GPU',

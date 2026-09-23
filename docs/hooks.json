@@ -478,6 +478,12 @@
     "marker": true
    },
    {
+    "mod": "tile-markers",
+    "note": "src/client/Client.ts @ old line 8575",
+    "line": 8575,
+    "marker": true
+   },
+   {
     "mod": "wiki-lookup",
     "note": "src/client/Client.ts @ old line 8585",
     "line": 8585,

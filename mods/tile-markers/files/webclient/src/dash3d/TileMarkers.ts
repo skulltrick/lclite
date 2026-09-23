@@ -2,28 +2,32 @@
 /// Tile markers — RuneLite's "Ground Markers" plugin, 2004 flavour.
 ///
 /// This file is the mod's PURE half: the settings parse, the marker store (parse,
-/// serialise, find, toggle), the Shift state and the projected-quad decal geometry. The
-/// engine hooks are four hunks in Client.ts (one import, the Shift+right-click consume in
-/// mouseLoop(), the per-frame resolve+draw call in gameDrawMain(), and the parked
-/// fields+methods block), so a bun harness can import THIS file and test the real shipped
-/// logic headlessly — see mods/tile-markers/tools/tile_markers_test.ts.
+/// serialise, find, toggle), the menu row's label, the Shift state and the projected-quad
+/// decal geometry. The engine hooks are five hunks in Client.ts (one import, the
+/// Shift+right-click arm in mouseLoop(), the per-frame resolve+draw call in gameDrawMain(),
+/// the menu-row dispatch at the top of doAction(), and the parked fields+methods block), so
+/// a bun harness can import THIS file and test the real shipped logic headlessly — see
+/// mods/tile-markers/tools/tile_markers_test.ts.
 ///
-/// THE FEATURE: Shift+right-click a tile to mark it, Shift+right-click it again to unmark
-/// it. Marks persist in localStorage, are drawn only on the plane they were made on
+/// THE FEATURE: Shift+right-click a tile and the right-click menu gains a "Mark Tile" row
+/// ("Unmark Tile" when that tile is already marked); the mark is made when that row is
+/// clicked. Marks persist in localStorage, are drawn only on the plane they were made on
 /// (RuneLite: `worldPoint.getPlane() != wv.getPlane()` -> skip), and are culled at
 /// RuneLite's own MAX_DRAW_DISTANCE of 32 tiles from the player.
 ///
 /// PARITY, and where this mod deliberately diverges from RuneLite (their
 /// GroundMarkerPlugin/GroundMarkerConfig/GroundMarkerOverlay, read 2026-09-22):
 ///
-///   * RuneLite ADDS A MENU ROW ("Mark Tile" / "Unmark Tile") to the right-click menu
-///     while Shift is held, and the tile is marked when that row is clicked. This mod
-///     consumes the Shift+right-click itself and toggles the tile immediately — one
-///     gesture instead of a gesture plus a menu click, which is what the feature was
-///     asked for. The consequence is the documented one: a Shift+right-click never opens
-///     the menu. (RuneLite's own reason for a menu row is that it must share the right
-///     click with every entity option; here the gesture is free — Shift is used by
-///     shift-click drop for LEFT clicks only, and the engine never reads it.)
+///   * The menu row IS RuneLite's own interaction, ported: their onMenuEntryAdded appends
+///     `setOption(marked ? "Unmark" : "Mark")` with `setTarget("Tile")` when Shift is held
+///     AND the menu entry being built is the WALK option, and clicking the row toggles the
+///     tile. This mod adds the same row under the same condition (see TM_MENU_ACTION). Two
+///     mechanics differ, both forced by how this engine builds its menu: the tile comes from
+///     the engine's own ground pick at the CLICK pixel rather than from a live per-frame
+///     hover pick (RuneLite's `wv.getSelectedSceneTile()`), and this engine FREEZES the menu
+///     once it is open (`otherOverlays()` only calls `buildMinimenu()` while `!isMenuOpen`),
+///     so the row stays in the menu after Shift is released instead of vanishing with the
+///     key.
 ///   * Their defaults are `markerColor` YELLOW, `borderWidth` 2, `fillOpacity` 50/255
 ///     (~20%) with the fill FIXED BLACK. This mod keeps the numbers (2 px, 20%) and adds
 ///     a fill colour of its own (default black = theirs), so the wash can be tinted.
@@ -62,6 +66,23 @@ export const TM_DEFAULT_OUTLINE: number = 2;
 
 /** RuneLite's `fillOpacity` default is 50 of 255 = 19.6%, expressed here as a percent. */
 export const TM_DEFAULT_FILL: number = 20;
+
+/** RuneLite's own menu wording: their entry is `setOption(marked ? "Unmark" : "Mark")` with
+ *  `setTarget("Tile")`, which the menu renders as one row — "Mark Tile" / "Unmark Tile". */
+export const TM_MENU_MARK: string = 'Mark Tile';
+export const TM_MENU_UNMARK: string = 'Unmark Tile';
+
+/** The action id this mod stamps on its own menu row. RuneLite uses its own MenuAction enum
+ *  for this; this client has one flat id space, so a plugin row needs an id that is NOT a
+ *  `MiniMenuAction` value and cannot be moved by the engine's own menu sort. `buildMinimenu()`
+ *  ends with a bubble sort that walks every action > 1000 DOWN toward 'Cancel' (index 0), so
+ *  an id above 1000 is stable where it is put, and an id below `MiniMenuAction._PRIORITY`
+ *  (2000) is never treated as a priority-wrapped engine action (doAction subtracts _PRIORITY
+ *  from anything >= it). 1235 sits in that window and collides with no engine action — the
+ *  engine's own ids above 1000 are CANCEL 1106, OP_OBJ6 1152, OP_HELD6 1328, OP_LOC6 1381 and
+ *  OP_NPC6 1714 (webclient/src/client/MiniMenuAction.ts) — nor with wiki-lookup's own menu
+ *  row, which is 1234. */
+export const TM_MENU_ACTION: number = 1235;
 
 /** This mod's OWN localStorage keys (hard rule 5: read at the mod's own hook, per frame,
  *  never another mod's key and never through a hub). They are written in FULL here rather
@@ -216,6 +237,15 @@ export function tmToggle(marks: number[], x: number, z: number, level: number): 
 /** Within RuneLite's draw distance of the player? Chebyshev, their own metric. */
 export function tmNear(dx: number, dz: number): boolean {
     return dx < TM_MAX_DISTANCE && dx > -TM_MAX_DISTANCE && dz < TM_MAX_DISTANCE && dz > -TM_MAX_DISTANCE;
+}
+
+/** The label for this mod's right-click row on the tile (x, z, level). RuneLite decides its
+ *  own row's label exactly this way — `existingOpt.isPresent() ? "Unmark" : "Mark"`, looked
+ *  up by (regionX, regionY, plane) — so a tile that is already marked offers to unmark it.
+ *  The store is read live, which is what makes the row honest after a mark made a second
+ *  earlier: the row is built from the same array the toggle writes. */
+export function tmMenuLabel(marks: number[], x: number, z: number, level: number): string {
+    return tmFind(marks, x, z, level) === -1 ? TM_MENU_MARK : TM_MENU_UNMARK;
 }
 
 /** Is this scene tile one the ground rasterizer can reach? The client's scene is 104x104
